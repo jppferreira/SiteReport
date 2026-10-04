@@ -1,0 +1,86 @@
+{
+  "expo": {
+    "name": "SiteReport",
+    "slug": "sitereport",
+    "scheme": "sitereport",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "primaryColor": "#101310",
+    "backgroundColor": "#F7F8F7",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F7F8F7"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "bundleIdentifier": "com.sitereport.app",
+      "buildNumber": "1",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "SiteReport uses your camera to take before and after job photos for your reports.",
+        "NSPhotoLibraryUsageDescription": "SiteReport needs access to your photo library so you can add existing photos to a job report.",
+        "NSPhotoLibraryAddUsageDescription": "SiteReport can save generated job report PDFs to your photo library when you choose to."
+      }
+    },
+    "android": {
+      "package": "com.sitereport.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundColor": "#F7F8F7"
+      },
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES"
+      ]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F7F8F7",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 160
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SiteReport needs access to your photo library so you can add existing photos to a job report.",
+          "cameraPermission": "SiteReport uses your camera to take before and after job photos for your reports."
+        }
+      ],
+      "expo-sqlite",
+      "expo-secure-store",
+      [
+        "expo-sharing",
+        {
+          "ios": {
+            "appGroupIdentifier": "group.com.sitereport.app"
+          }
+        }
+      ],
+      "@react-native-community/datetimepicker"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "00000000-0000-0000-0000-000000000000"
+      }
+    }
+  }
+}

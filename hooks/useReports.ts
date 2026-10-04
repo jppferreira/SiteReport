@@ -1,0 +1,73 @@
+import { useCallback, useEffect, useState } from 'react';
+
+import { jobsRepository, reportsRepository } from '@/database';
+import { Job, Report } from '@/models';
+import { getReportFreshness } from '@/services/pdfService';
+import { logger } from '@/utils/logger';
+
+export type ReportWithJob = { report: Report; job: Job | null; isStale: boolean };
+
+export function useReports() {
+  const [items, setItems] = useState<ReportWithJob[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const reports = await reportsRepository.listAllReports();
+      const latestPerJob = new Map<string, Report>();
+      for (const report of reports) {
+        if (!latestPerJob.has(report.jobId)) {
+          latestPerJob.set(report.jobId, report);
+        }
+      }
+
+      const results = await Promise.all(
+        Array.from(latestPerJob.values()).map(async (report) => {
+          const [job, freshness] = await Promise.all([
+            jobsRepository.getJob(report.jobId),
+            getReportFreshness(report.jobId),
+          ]);
+          return { report, job, isStale: freshness === 'stale' };
+        })
+      );
+
+      results.sort((a, b) => (a.report.generatedAt < b.report.generatedAt ? 1 : -1));
+      setItems(results);
+    } catch (err) {
+      logger.error('Failed to load reports', err);
+      setError("We couldn't load your reports. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { items, loading, error, refresh };
+}
+
+export function useJobReports(jobId: string) {
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await reportsRepository.listReportsForJob(jobId);
+      setReports(result);
+    } finally {
+      setLoading(false);
+    }
+  }, [jobId]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { reports, loading, refresh };
+}
