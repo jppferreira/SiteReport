@@ -32,6 +32,9 @@ export function useJobs() {
   }, [filter, search]);
 
   useEffect(() => {
+    // Fetch on mount and whenever the filter/search change; `refresh`
+    // manages its own loading/error state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh(filter, search);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, search]);

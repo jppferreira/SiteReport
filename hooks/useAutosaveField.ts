@@ -19,6 +19,9 @@ export function useAutosaveField(
   const savedValue = useRef(initialValue);
 
   useEffect(() => {
+    // Re-syncs local state when the caller's `initialValue` prop changes
+    // (e.g. a different record loaded), not a derived-state anti-pattern.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setValue(initialValue);
     latestValue.current = initialValue;
     savedValue.current = initialValue;
@@ -38,7 +41,6 @@ export function useAutosaveField(
     } catch {
       setStatus('error');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onSave]);
 
   const onChange = useCallback(

@@ -10,17 +10,14 @@ const isDev = __DEV__;
 export const logger = {
   debug(message: string, context?: Record<string, unknown>) {
     if (!isDev) return;
-    // eslint-disable-next-line no-console
     console.log(`[SiteReport] ${message}`, context ?? '');
   },
   warn(message: string, context?: Record<string, unknown>) {
     if (!isDev) return;
-    // eslint-disable-next-line no-console
     console.warn(`[SiteReport] ${message}`, context ?? '');
   },
   error(message: string, error?: unknown) {
     if (!isDev) return;
-    // eslint-disable-next-line no-console
     console.error(`[SiteReport] ${message}`, error ?? '');
   },
 };

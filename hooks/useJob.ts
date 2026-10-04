@@ -57,6 +57,8 @@ export function useJob(jobId: string | undefined) {
   }, [jobId]);
 
   useEffect(() => {
+    // Fetch on mount; `refresh` manages its own loading/error state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 

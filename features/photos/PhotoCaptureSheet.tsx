@@ -14,7 +14,7 @@ type PhotoCaptureSheetProps = {
 };
 
 export function PhotoCaptureSheet({ visible, onClose, onTakePhoto, onChooseFromLibrary, label }: PhotoCaptureSheetProps) {
-  const { colors, radius, spacing } = useTheme();
+  const { colors, spacing } = useTheme();
 
   return (
     <BottomSheet visible={visible} onClose={onClose}>

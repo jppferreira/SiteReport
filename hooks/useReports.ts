@@ -45,6 +45,8 @@ export function useReports() {
   }, []);
 
   useEffect(() => {
+    // Fetch on mount; `refresh` manages its own loading/error state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 
@@ -66,6 +68,8 @@ export function useJobReports(jobId: string) {
   }, [jobId]);
 
   useEffect(() => {
+    // Fetch on mount; `refresh` manages its own loading state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 
