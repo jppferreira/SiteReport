@@ -19,7 +19,7 @@ type JobBundle = {
   reports: Report[];
 };
 
-const filters: Array<{ label: string; value: JobStatus | 'all' }> = [
+const filters: { label: string; value: JobStatus | 'all' }[] = [
   { label: 'All', value: 'all' },
   { label: 'Draft', value: 'draft' },
   { label: 'Complete', value: 'complete' },

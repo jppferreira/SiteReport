@@ -34,7 +34,6 @@ export default function JobPreviewScreen() {
   useEffect(() => {
     let mounted = true;
     if (!jobId) {
-      setError('Job not found');
       return;
     }
     (async () => {
@@ -93,6 +92,14 @@ export default function JobPreviewScreen() {
       await Sharing.shareAsync(uri);
     }
   };
+
+  if (!jobId) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <ErrorState title="Couldn't load job" description="Job not found." actionLabel="Back" onAction={() => router.back()} />
+      </SafeAreaView>
+    );
+  }
 
   if (loading) {
     return (

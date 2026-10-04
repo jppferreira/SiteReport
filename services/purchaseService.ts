@@ -12,7 +12,6 @@ import {
   type Product,
   type ProductSubscription,
   type Purchase,
-  type PurchaseError,
 } from 'expo-iap';
 import { Platform } from 'react-native';
 
@@ -26,7 +25,7 @@ const PRODUCT_IDS = {
   lifetime: 'com.sitereport.pro.lifetime',
 } as const;
 
-const SUBSCRIPTION_IDS = [PRODUCT_IDS.monthly, PRODUCT_IDS.annual];
+const SUBSCRIPTION_IDS = [PRODUCT_IDS.monthly, PRODUCT_IDS.annual] as string[];
 
 let cachedSubscriptions: ProductSubscription[] = [];
 let purchaseUpdatedSubscription: { remove: () => void } | null = null;
@@ -95,7 +94,7 @@ export const purchaseService = {
       await finishTransaction({ purchase, isConsumable: false });
     });
 
-    purchaseErrorSubscription = purchaseErrorListener((_error: PurchaseError) => {
+    purchaseErrorSubscription = purchaseErrorListener((_error) => {
       // The caller handles user-visible messages. We intentionally avoid logging sensitive purchase payloads.
     });
   },
@@ -109,14 +108,17 @@ export const purchaseService = {
   },
 
   async getProducts(): Promise<PlanProduct[]> {
-    const [subscriptionProducts, inAppProducts] = await Promise.all([
+    const [subscriptionProductsResult, inAppProductsResult] = await Promise.all([
       fetchProducts({ skus: SUBSCRIPTION_IDS, type: 'subs' }),
       fetchProducts({ skus: [PRODUCT_IDS.lifetime], type: 'in-app' }),
     ]);
 
-    cachedSubscriptions = subscriptionProducts as ProductSubscription[];
+    const subscriptionProducts = (Array.isArray(subscriptionProductsResult) ? subscriptionProductsResult : []) as ProductSubscription[];
+    const inAppProducts = (Array.isArray(inAppProductsResult) ? inAppProductsResult : []) as Product[];
+
+    cachedSubscriptions = subscriptionProducts;
     return [...subscriptionProducts, ...inAppProducts]
-      .map((product) => productToPlanProduct(product as Product | ProductSubscription))
+      .map((product) => productToPlanProduct(product))
       .filter((value): value is PlanProduct => Boolean(value));
   },
 

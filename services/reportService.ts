@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Print from 'expo-print';
 
 import { buildReportFileName } from '@/features/reports/reportFile';
@@ -293,13 +293,14 @@ export const reportService = {
     const destination = await fileService.buildReportPath(this.buildFileName(data.job));
     await FileSystem.moveAsync({ from: printResult.uri, to: destination });
     const info = await FileSystem.getInfoAsync(destination);
+    const fileSize = info.exists && !info.isDirectory && typeof info.size === 'number' ? info.size : 0;
     const latestReports = await databaseService.listReportsByJob(jobId);
     const version = (latestReports[0]?.version ?? 0) + 1;
 
     const saved = await databaseService.createReport({
       jobId,
       localPdfUri: destination,
-      fileSize: info.size ?? 0,
+      fileSize,
       version,
     });
 

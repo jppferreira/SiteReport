@@ -22,6 +22,10 @@ type ReportItem = {
   job: Job | null;
 };
 
+type ReportListEntry =
+  | { type: 'header'; label: 'Recent' | 'Earlier' }
+  | { type: 'item'; item: ReportItem };
+
 export default function ReportsTab() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<ReportItem[]>([]);
@@ -90,18 +94,23 @@ export default function ReportsTab() {
     );
   }
 
+  const listData: ReportListEntry[] = [];
+  if (grouped.recent.length > 0) {
+    listData.push({ type: 'header', label: 'Recent' });
+    listData.push(...grouped.recent.map((item): ReportListEntry => ({ type: 'item', item })));
+  }
+  if (grouped.earlier.length > 0) {
+    listData.push({ type: 'header', label: 'Earlier' });
+    listData.push(...grouped.earlier.map((item): ReportListEntry => ({ type: 'item', item })));
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <FlatList
         style={styles.root}
         contentContainerStyle={styles.list}
-        data={[
-          ...(grouped.recent.length > 0 ? [{ type: 'header', label: 'Recent' as const }] : []),
-          ...grouped.recent.map((item) => ({ type: 'item' as const, item })),
-          ...(grouped.earlier.length > 0 ? [{ type: 'header', label: 'Earlier' as const }] : []),
-          ...grouped.earlier.map((item) => ({ type: 'item' as const, item })),
-        ]}
-        keyExtractor={(entry, index) => ('item' in entry ? entry.item.report.id : `header-${entry.label}-${index}`)}
+        data={listData}
+        keyExtractor={(entry, index) => (entry.type === 'item' ? entry.item.report.id : `header-${entry.label}-${index}`)}
         renderItem={({ item }) => {
           if (item.type === 'header') {
             return (

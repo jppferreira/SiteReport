@@ -10,7 +10,7 @@ export default function NotFoundScreen() {
     <>
       <Stack.Screen options={{ title: 'Oops!' }} />
       <SafeAreaView style={styles.container}>
-        <AppText variant="h2">This screen doesn't exist.</AppText>
+        <AppText variant="h2">This screen does not exist.</AppText>
 
         <Link href="/" style={styles.link}>
           <AppText variant="bodySmall" color={colors.accent}>

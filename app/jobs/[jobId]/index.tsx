@@ -71,6 +71,8 @@ export default function JobOverviewScreen() {
     }, [load])
   );
 
+  const nextJobStatus = progress && progress.completedSections === progress.totalSections ? 'complete' : 'draft';
+
   useEffect(() => {
     if (!job) {
       return;
@@ -84,13 +86,13 @@ export default function JobOverviewScreen() {
           address: address.trim() || null,
           referenceNumber: referenceNumber.trim() || null,
           description: description.trim() || null,
-          status: progress?.completedSections === progress?.totalSections ? 'complete' : 'draft',
+          status: nextJobStatus,
         });
       })();
     }, 350);
 
     return () => clearTimeout(handle);
-  }, [title, customerName, address, referenceNumber, description]);
+  }, [job, title, customerName, address, referenceNumber, description, nextJobStatus]);
 
   const deleteJob = async () => {
     if (!job) return;
