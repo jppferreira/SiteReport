@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, View, ViewStyle } from 'react-native';
+import { AccessibilityInfo, StyleSheet, View, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
 import { useTheme } from '@/theme';
@@ -16,7 +16,15 @@ export function Skeleton({ width = '100%', height = 16, radius = 8, style }: Ske
   const opacity = useSharedValue(0.5);
 
   useEffect(() => {
-    opacity.value = withRepeat(withTiming(1, { duration: 700 }), -1, true);
+    AccessibilityInfo.isReduceMotionEnabled?.()
+      .then((reduceMotion) => {
+        // A looping pulse is unnecessary motion for Reduce Motion users; a
+        // static mid-tone placeholder still communicates "loading" clearly.
+        if (!reduceMotion) {
+          opacity.value = withRepeat(withTiming(1, { duration: 700 }), -1, true);
+        }
+      })
+      .catch(() => undefined);
   }, [opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));

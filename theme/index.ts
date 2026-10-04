@@ -8,3 +8,4 @@ export { typography, fontFamily } from './typography';
 export type { TypographyVariant } from './typography';
 export { shadows } from './shadows';
 export { useTheme, ThemeProvider } from './ThemeProvider';
+export { motionTiming } from './motion';

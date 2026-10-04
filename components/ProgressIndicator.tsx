@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
-import { useTheme } from '@/theme';
+import { motionTiming, useTheme } from '@/theme';
 
 import { Text } from './Text';
 
@@ -18,7 +18,7 @@ export function ProgressIndicator({ completed, total, label }: ProgressIndicator
   const ratio = total > 0 ? completed / total : 0;
 
   useEffect(() => {
-    progress.value = withTiming(ratio, { duration: 300 });
+    progress.value = motionTiming(ratio, { duration: 300 });
   }, [ratio, progress]);
 
   const animatedStyle = useAnimatedStyle(() => ({

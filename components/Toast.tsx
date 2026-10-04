@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useTheme } from '@/theme';
+import { motionTiming, useTheme } from '@/theme';
 
 import { Text } from './Text';
 
@@ -31,8 +31,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hide = useCallback(() => {
-    translateY.value = withTiming(40, { duration: 180 });
-    opacity.value = withTiming(0, { duration: 180 });
+    translateY.value = motionTiming(40, { duration: 180 });
+    opacity.value = motionTiming(0, { duration: 180 });
     setTimeout(() => setCurrent(null), 180);
   }, [translateY, opacity]);
 
@@ -43,8 +43,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       translateY.value = 40;
       opacity.value = 0;
       requestAnimationFrame(() => {
-        translateY.value = withTiming(0, { duration: 220 });
-        opacity.value = withTiming(1, { duration: 220 });
+        translateY.value = motionTiming(0, { duration: 220 });
+        opacity.value = motionTiming(1, { duration: 220 });
       });
       timer.current = setTimeout(() => hide(), options.durationMs ?? 3200);
     },

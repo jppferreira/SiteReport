@@ -1,8 +1,16 @@
+import { Platform } from 'react-native';
+
 import * as SQLite from 'expo-sqlite';
 
 import { logger } from '@/utils/logger';
 
-const DATABASE_NAME = 'sitereport.db';
+// Native builds (the app's actual targets) get a real persistent database
+// file. The web preview uses expo-sqlite's in-memory WASM backend instead of
+// its OPFS-backed persistent one: OPFS only allows a single open access
+// handle per file, so a persistent database there breaks across hot reloads
+// and multiple tabs. An in-memory database is a reasonable trade-off for a
+// demo-only surface that resets on reload.
+const DATABASE_NAME = Platform.OS === 'web' ? ':memory:' : 'sitereport.db';
 const CURRENT_SCHEMA_VERSION = 1;
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;

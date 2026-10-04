@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
 import { ConfirmationDialog, EmptyState, ErrorState, IconButton, SearchInput, Skeleton, Text, useToast } from '@/components';
 import { jobsRepository } from '@/database';
@@ -11,7 +11,7 @@ import { JobCard } from '@/features/jobs/JobCard';
 import { useJobs } from '@/hooks/useJobs';
 import { Job } from '@/models';
 import { deleteJobFiles } from '@/services/fileService';
-import { useTheme } from '@/theme';
+import { motionTiming, useTheme } from '@/theme';
 
 export default function JobsScreen() {
   const { colors, spacing } = useTheme();
@@ -142,7 +142,7 @@ function SwipeableJobCard({
   const toggle = () => {
     const next = !expanded;
     setExpanded(next);
-    height.value = withTiming(next ? 44 : 0, { duration: 160 });
+    height.value = motionTiming(next ? 44 : 0, { duration: 160 });
   };
 
   return (

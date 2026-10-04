@@ -1,7 +1,6 @@
-import * as SecureStore from 'expo-secure-store';
-
 import { Entitlement, FREE_ENTITLEMENT, PlanId, ProductInfo, PurchaseResult, RestoreResult } from '@/models';
 import { logger } from '@/utils/logger';
+import { getSecureItem, setSecureItem } from '@/utils/secureStorage';
 
 import { PurchaseService } from './PurchaseService';
 
@@ -71,7 +70,7 @@ const SIMULATED_DURATION_MS: Record<'monthly' | 'annual', number> = {
 };
 
 async function readState(): Promise<MockStoreState> {
-  const raw = await SecureStore.getItemAsync(STORE_STATE_KEY);
+  const raw = await getSecureItem(STORE_STATE_KEY);
   if (!raw) return EMPTY_STATE;
   try {
     return { ...EMPTY_STATE, ...JSON.parse(raw) };
@@ -81,7 +80,7 @@ async function readState(): Promise<MockStoreState> {
 }
 
 async function writeState(state: MockStoreState): Promise<void> {
-  await SecureStore.setItemAsync(STORE_STATE_KEY, JSON.stringify(state));
+  await setSecureItem(STORE_STATE_KEY, JSON.stringify(state));
 }
 
 export function entitlementFromState(state: MockStoreState): Entitlement {

@@ -1,9 +1,9 @@
 import * as Haptics from 'expo-haptics';
 import React, { useCallback } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
-import { useTheme } from '@/theme';
+import { motionTiming, useTheme } from '@/theme';
 
 import { Text } from './Text';
 
@@ -41,11 +41,11 @@ export function Button({
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   const handlePressIn = useCallback(() => {
-    scale.value = withTiming(0.97, { duration: 100 });
+    scale.value = motionTiming(0.97, { duration: 100 });
   }, [scale]);
 
   const handlePressOut = useCallback(() => {
-    scale.value = withTiming(1, { duration: 150 });
+    scale.value = motionTiming(1, { duration: 150 });
   }, [scale]);
 
   const handlePress = useCallback(() => {

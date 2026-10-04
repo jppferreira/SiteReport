@@ -1,15 +1,10 @@
 import React, { useEffect } from 'react';
 import { Modal as RNModal, Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useTheme } from '@/theme';
+import { motionTiming, useTheme } from '@/theme';
 
 type BottomSheetProps = {
   visible: boolean;
@@ -25,14 +20,14 @@ export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
 
   useEffect(() => {
     if (visible) {
-      translateY.value = withTiming(0, { duration: 240 });
-      backdropOpacity.value = withTiming(1, { duration: 240 });
+      translateY.value = motionTiming(0, { duration: 240 });
+      backdropOpacity.value = motionTiming(1, { duration: 240 });
     }
   }, [visible, translateY, backdropOpacity]);
 
   const close = () => {
-    translateY.value = withTiming(400, { duration: 200 });
-    backdropOpacity.value = withTiming(0, { duration: 200 }, () => {
+    translateY.value = motionTiming(400, { duration: 200 });
+    backdropOpacity.value = motionTiming(0, { duration: 200 }, () => {
       runOnJS(onClose)();
     });
   };
@@ -45,12 +40,12 @@ export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
     })
     .onEnd((event) => {
       if (event.translationY > 80) {
-        translateY.value = withTiming(400, { duration: 200 });
-        backdropOpacity.value = withTiming(0, { duration: 200 }, () => {
+        translateY.value = motionTiming(400, { duration: 200 });
+        backdropOpacity.value = motionTiming(0, { duration: 200 }, () => {
           runOnJS(onClose)();
         });
       } else {
-        translateY.value = withTiming(0, { duration: 180 });
+        translateY.value = motionTiming(0, { duration: 180 });
       }
     });
 

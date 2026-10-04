@@ -1,5 +1,3 @@
-import * as SecureStore from 'expo-secure-store';
-
 import { reportsRepository } from '@/database';
 import { countDistinctReportedJobs, isReportGenerationAllowed } from '@/features/entitlement/freeReportQuota';
 import {
@@ -12,6 +10,7 @@ import {
   RestoreResult,
 } from '@/models';
 import { logger } from '@/utils/logger';
+import { getSecureItem, setSecureItem } from '@/utils/secureStorage';
 
 import { getPurchaseService } from './purchases';
 
@@ -26,7 +25,7 @@ async function readCache(): Promise<Entitlement> {
   if (cached) return cached;
   let result: Entitlement;
   try {
-    const raw = await SecureStore.getItemAsync(ENTITLEMENT_CACHE_KEY);
+    const raw = await getSecureItem(ENTITLEMENT_CACHE_KEY);
     result = raw ? { ...FREE_ENTITLEMENT, ...JSON.parse(raw) } : FREE_ENTITLEMENT;
   } catch (error) {
     logger.warn('Failed to read entitlement cache, defaulting to free', { error: String(error) });
@@ -38,7 +37,7 @@ async function readCache(): Promise<Entitlement> {
 
 async function writeCache(entitlement: Entitlement): Promise<void> {
   cached = entitlement;
-  await SecureStore.setItemAsync(ENTITLEMENT_CACHE_KEY, JSON.stringify(entitlement));
+  await setSecureItem(ENTITLEMENT_CACHE_KEY, JSON.stringify(entitlement));
   listeners.forEach((listener) => listener(entitlement));
 }
 
