@@ -36,6 +36,11 @@ export function useJobs() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, search]);
 
+  // A stable identity matters here: this is handed to `useFocusEffect` /
+  // `useCallback` by screens, and a function that changes every render
+  // causes those effects to re-fire on every render — an infinite loop.
+  const refreshCurrent = useCallback(() => refresh(), [refresh]);
+
   return {
     jobs,
     photoSummaries,
@@ -45,6 +50,6 @@ export function useJobs() {
     setSearch,
     loading,
     error,
-    refresh: () => refresh(),
+    refresh: refreshCurrent,
   };
 }
