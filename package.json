@@ -46,6 +46,7 @@
     "eslint-config-expo": "^57.0.2",
     "jest": "^29.7.0",
     "jest-expo": "~57.0.0",
+    "patch-package": "^8.0.1",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -53,9 +54,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web --port 44321",
-    "lint": "expo lint",
+    "lint": "expo lint . database hooks services theme utils features",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "postinstall": "patch-package"
   },
   "private": true,
   "jest": {
