@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "SiteReport",
-    "slug": "sitereport",
-    "scheme": "sitereport",
+    "name": "Trade Report",
+    "slug": "tradesreport",
+    "scheme": "tradesreport",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -13,25 +13,37 @@
       "**/*"
     ],
     "ios": {
-      "bundleIdentifier": "com.sitereport.app",
-      "buildNumber": "1",
+      "bundleIdentifier": "com.tradesreport.app",
+      "buildNumber": "2",
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "SiteReport uses your camera to take before and after job photos for your reports.",
-        "NSPhotoLibraryUsageDescription": "SiteReport needs access to your photo library so you can add existing photos to a job report.",
-        "NSPhotoLibraryAddUsageDescription": "SiteReport can save generated job report PDFs to your photo library when you choose to."
+        "NSCameraUsageDescription": "Trade Report uses your camera to take before and after job photos for your reports.",
+        "NSPhotoLibraryUsageDescription": "Trade Report needs access to your photo library so you can add existing photos to a job report.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.sitereport.app",
-      "versionCode": 1,
+      "package": "com.tradesreport.app",
+      "versionCode": 7,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundColor": "#F7F8F7"
+        "backgroundColor": "#045C42"
       },
       "permissions": [
         "CAMERA",
-        "READ_MEDIA_IMAGES"
+        "android.permission.CAMERA"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -44,16 +56,17 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#F7F8F7",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 160
+          "backgroundColor": "#E7FCEE",
+          "image": "./assets/images/brand-mark.png",
+          "imageWidth": 120
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "SiteReport needs access to your photo library so you can add existing photos to a job report.",
-          "cameraPermission": "SiteReport uses your camera to take before and after job photos for your reports."
+          "photosPermission": "Trade Report needs access to your photo library so you can add existing photos to a job report.",
+          "cameraPermission": "Trade Report uses your camera to take before and after job photos for your reports.",
+          "microphonePermission": false
         }
       ],
       "expo-sqlite",
@@ -62,19 +75,23 @@
         "expo-sharing",
         {
           "ios": {
-            "appGroupIdentifier": "group.com.sitereport.app"
+            "appGroupIdentifier": "group.com.tradesreport.app"
           }
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-iap",
+      "./plugins/withStoreKitConfig.js"
     ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "00000000-0000-0000-0000-000000000000"
+        "projectId": "0c5e1edf-bf91-458d-8ce4-536a5b644367"
       }
-    }
+    },
+    "owner": "joaoferreira500"
   }
 }
