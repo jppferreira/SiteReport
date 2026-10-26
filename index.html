@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Trade Report — Proof of work in minutes</title>
+    <meta
+      name="description"
+      content="Trade Report turns before-and-after photos, work notes, and an optional customer signature into a branded PDF. Built for trades and small service businesses. Jobs stay on the device."
+    />
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="icon" href="favicon.png" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="nav">
+      <div class="nav-inner">
+        <a class="wordmark" href="#top" aria-label="Trade Report home">
+          <img class="mark" src="images/mark.png" width="192" height="194" alt="" />
+          <span class="wordmark-name">Trade<span>Report</span></span>
+        </a>
+        <nav class="nav-links" aria-label="Page">
+          <a href="#benefits">Benefits</a>
+          <a href="#app">The app</a>
+          <a href="#pricing">Pricing</a>
+          <a href="privacy.html">Privacy</a>
+          <a href="terms.html">Terms</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top">
+        <div class="hero-copy">
+          <p class="eyebrow">For trades and service businesses</p>
+          <h1>Proof of work in minutes.</h1>
+          <p class="lede">
+            Photograph the job, note what you did, and share a branded PDF before you leave.
+            Trade Report is the quiet way to hand a client something they can keep.
+          </p>
+          <div class="hero-actions">
+            <a class="btn" href="#app">See the app</a>
+            <p class="hero-note">Launching on iPhone and Android.</p>
+          </div>
+        </div>
+
+        <figure class="hero-visual">
+          <div class="hero-stage">
+            <div class="hero-photo-wrap">
+              <img
+                class="hero-photo"
+                src="images/carpenter-on-site.jpg"
+                width="1280"
+                height="720"
+                alt="A carpenter on a fit-out checks the job on his phone, one hand resting on a length of timber."
+              />
+              <div class="hero-device">
+                <canvas
+                  class="hero-phone-canvas"
+                  role="img"
+                  aria-label="Trade Report splash screen on a phone. TradesReport. Professional job reports in minutes."
+                ></canvas>
+              </div>
+            </div>
+          </div>
+          <figcaption>A finished job, ready to become a report.</figcaption>
+        </figure>
+      </section>
+
+      <section class="section" id="benefits">
+        <div class="section-intro">
+          <p class="eyebrow">Benefits</p>
+          <h2>Everything the client needs to see.</h2>
+          <p>A short set of tools for the end of the job. Nothing extra to learn on site.</p>
+        </div>
+
+        <ul class="benefits">
+          <li>
+            <span class="benefit-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 15l5-4 4 3 3-2 6 5" /></svg>
+            </span>
+            <h3>Before and after photos</h3>
+            <p>Pair the site as you found it with the finished work. Add a caption, reorder, and review full screen.</p>
+          </li>
+          <li>
+            <span class="benefit-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6z" /><path d="M9 12h6M9 16h4" /></svg>
+            </span>
+            <h3>Notes that save themselves</h3>
+            <p>Work completed, materials, and recommendations stay with the job and land in the PDF.</p>
+          </li>
+          <li>
+            <span class="benefit-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 16c2-1 3.5-4 5-4s2 3 4 3 3-5 5-6 2 2 2 2" /><path d="M4 20h16" /></svg>
+            </span>
+            <h3>Customer sign-off</h3>
+            <p>Capture a signature on the phone so the report shows the client agreed before you leave.</p>
+          </li>
+          <li>
+            <span class="benefit-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5" /><path d="M9 13h6M9 17h4" /></svg>
+            </span>
+            <h3>A PDF ready to send</h3>
+            <p>Preview the report, then share or save it from the phone. Four layouts, from a letterhead to a photo gallery.</p>
+          </li>
+          <li>
+            <span class="benefit-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><path d="M12 8v8M8 12h8" /></svg>
+            </span>
+            <h3>Your name on the page</h3>
+            <p>Logo, phone, and email on every report. Pro adds your accent colour and full branding.</p>
+          </li>
+          <li>
+            <span class="benefit-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="6" y="10" width="12" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
+            </span>
+            <h3>It stays on the device</h3>
+            <p>No account and no cloud. Jobs, photos, signatures, and reports live only on the phone.</p>
+          </li>
+        </ul>
+      </section>
+
+      <section class="section gallery" id="app">
+        <div class="section-intro">
+          <p class="eyebrow">The app</p>
+          <h2>Three screens. Then the report.</h2>
+          <p>Open a job, show the work, and hand over a page that looks like your business.</p>
+        </div>
+
+        <div class="shots">
+          <figure>
+            <div class="device" aria-hidden="true">
+              <div class="device-screen">
+                <div class="status"><span>9:41</span><span class="status-icons"></span></div>
+                <div class="ui-pad">
+                  <div class="ui-brandrow">
+                    <span class="mini-word">Trade<span>Report</span></span>
+                    <span class="mini-btn">New Job</span>
+                  </div>
+                  <div class="search">Search jobs</div>
+                  <div class="chips">
+                    <span class="chip on">All</span>
+                    <span class="chip">Draft</span>
+                    <span class="chip">Complete</span>
+                  </div>
+                  <div class="job-card">
+                    <span class="thumb after"></span>
+                    <span>
+                      <strong>Bathroom refit</strong>
+                      <em>14 Oak Lane</em>
+                      <small>4 Oct 2026 · 6 photos</small>
+                    </span>
+                  </div>
+                  <div class="job-card">
+                    <span class="thumb rough"></span>
+                    <span>
+                      <strong>Boiler service</strong>
+                      <em>8 Harbour Street</em>
+                      <small>2 Oct 2026 · 3 photos</small>
+                    </span>
+                  </div>
+                  <div class="job-card">
+                    <span class="thumb tile"></span>
+                    <span>
+                      <strong>Kitchen leak</strong>
+                      <em>22 Mill Road</em>
+                      <small>28 Sep 2026 · 4 photos</small>
+                    </span>
+                  </div>
+                </div>
+                <div class="tabbar">
+                  <div class="pill">
+                    <span class="tab on">Jobs</span>
+                    <span class="tab">Reports</span>
+                    <span class="tab">Settings</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <figcaption>
+              <strong>Jobs</strong>
+              <span>Every visit in one list. A title is enough to start.</span>
+            </figcaption>
+          </figure>
+
+          <figure>
+            <div class="device" aria-hidden="true">
+              <div class="device-screen">
+                <div class="status"><span>9:41</span><span class="status-icons"></span></div>
+                <div class="ui-pad">
+                  <div class="ui-topbar">
+                    <span class="back"></span>
+                    <span class="screen-label">Photos</span>
+                    <span class="more"></span>
+                  </div>
+                  <div class="segments">
+                    <span class="seg on">Before</span>
+                    <span class="seg">After</span>
+                  </div>
+                  <div class="photo-grid">
+                    <div class="frame rough"><span>Strip-out</span></div>
+                    <div class="frame rough alt"><span>Old suite</span></div>
+                    <div class="frame rough deep"><span>Pipework</span></div>
+                    <div class="frame add">+</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <figcaption>
+              <strong>Photos</strong>
+              <span>Before and after, captioned, in the order you want.</span>
+            </figcaption>
+          </figure>
+
+          <figure class="paper-figure">
+            <div class="paper" aria-hidden="true">
+              <div class="paper-rule"></div>
+              <div class="paper-head">
+                <span class="paper-logo">H</span>
+                <div>
+                  <p class="paper-business">Hart &amp; Co.</p>
+                  <p class="paper-contact">07700 900123 · hello@hartandco.example</p>
+                </div>
+              </div>
+              <p class="paper-kicker">Job report</p>
+              <h3 class="paper-title">Bathroom refit</h3>
+              <p class="paper-meta">4 Oct 2026 · 14 Oak Lane</p>
+              <div class="paper-block">
+                <p class="paper-label">Work completed</p>
+                <p>Removed the old suite, rerouted the waste, and fitted a new basin, shower, and WC. Walls tiled to the ceiling and sealed.</p>
+              </div>
+              <div class="compare">
+                <div>
+                  <p class="paper-label">Before</p>
+                  <div class="frame rough small"></div>
+                </div>
+                <div>
+                  <p class="paper-label">After</p>
+                  <div class="frame after small"></div>
+                </div>
+              </div>
+              <div class="signoff">
+                <span>Signed</span>
+                <svg viewBox="0 0 120 28" aria-hidden="true">
+                  <path d="M4 18c8-10 14-2 18 0s6 8 12 2 10-14 16-8 8 12 14 6 10-8 16-4 12 6 20 2" />
+                </svg>
+              </div>
+            </div>
+            <figcaption>
+              <strong>The PDF</strong>
+              <span>Your branding, the notes, the photos, and the signature.</span>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="section steps" id="how">
+        <div class="section-intro">
+          <p class="eyebrow">How it works</p>
+          <h2>From the driveway to a PDF.</h2>
+        </div>
+        <ol>
+          <li>
+            <span>01</span>
+            <h3>Start a job</h3>
+            <p>Add a title. Client, address, and date can wait until you have them.</p>
+          </li>
+          <li>
+            <span>02</span>
+            <h3>Add the proof</h3>
+            <p>Photos, a short summary, and a signature if the client is there to sign.</p>
+          </li>
+          <li>
+            <span>03</span>
+            <h3>Share the report</h3>
+            <p>Generate the PDF, preview it, then send it or keep a copy on the phone.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="privacy" id="privacy">
+        <div class="privacy-inner">
+          <p class="eyebrow">Privacy</p>
+          <h2>The job never leaves the phone.</h2>
+          <p>
+            Trade Report has no sign-in and no cloud database. Customer names, addresses, notes,
+            photos, signatures, and reports stay in the app’s storage on that device unless you
+            share a PDF or save a backup yourself. A backup is a zip you confirm first, then save
+            to a folder you pick, such as your own Google Drive. The app does not sign in to Google.
+            <a href="privacy.html">Privacy policy</a>.
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="pricing">
+        <div class="section-intro">
+          <p class="eyebrow">Pricing</p>
+          <h2>Start free. Upgrade when the work picks up.</h2>
+          <p>
+            The free app includes a report for 3 jobs. Pro is the same app with no report limit, your logo,
+            your colour, and a customer signature. These UK prices include VAT. The app shows the
+            VAT-inclusive price for your country.
+          </p>
+        </div>
+
+        <div class="price-grid">
+          <article>
+            <p class="plan-tag is-empty" aria-hidden="true">Best value</p>
+            <h3>Free</h3>
+            <p class="price"><span>£0</span> to start</p>
+            <p class="plan-lead">Three job reports, so you can see how it fits a real week of work.</p>
+          </article>
+          <article>
+            <p class="plan-tag is-empty" aria-hidden="true">Best value</p>
+            <h3>Monthly</h3>
+            <p class="price"><span>£4.99</span> per month</p>
+            <p class="plan-lead">Pro, billed every month until you cancel in the store.</p>
+          </article>
+          <article class="plan-pro">
+            <p class="plan-tag">Best value</p>
+            <h3>Yearly</h3>
+            <p class="price"><span>£29.99</span> per year</p>
+            <p class="plan-lead">About £2.50 a month. Half the price of paying monthly.</p>
+          </article>
+          <article>
+            <p class="plan-tag is-empty" aria-hidden="true">Best value</p>
+            <h3>Lifetime</h3>
+            <p class="price"><span>£79.99</span> once</p>
+            <p class="plan-lead">Pro for good. Charged once, and it does not renew.</p>
+          </article>
+        </div>
+
+        <div class="compare-block">
+          <h3>Features</h3>
+          <div class="feature-table-wrap">
+            <table class="feature-table">
+              <caption class="sr-only">
+                What Free includes, and what Pro adds. Monthly, yearly, and lifetime all include Pro.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Feature</th>
+                  <th scope="col">Free</th>
+                  <th scope="col">Pro</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Jobs, photos, and work notes</th>
+                  <td>Included</td>
+                  <td>Included</td>
+                </tr>
+                <tr>
+                  <th scope="row">Before and after photos, grouped by room or area</th>
+                  <td>Included</td>
+                  <td>Included</td>
+                </tr>
+                <tr>
+                  <th scope="row">Price lines for materials, labour, and other costs</th>
+                  <td>Included</td>
+                  <td>Included</td>
+                </tr>
+                <tr>
+                  <th scope="row">PDF preview, sharing, and all 7 layouts</th>
+                  <td>Included</td>
+                  <td>Included</td>
+                </tr>
+                <tr>
+                  <th scope="row">Business name and contact details on the report</th>
+                  <td>Included</td>
+                  <td>Included</td>
+                </tr>
+                <tr>
+                  <th scope="row">Reports</th>
+                  <td>3 jobs</td>
+                  <td>Unlimited</td>
+                </tr>
+                <tr>
+                  <th scope="row">Your logo on the report</th>
+                  <td>Not included</td>
+                  <td>Included</td>
+                </tr>
+                <tr>
+                  <th scope="row">Accent colour</th>
+                  <td>Not included</td>
+                  <td>Included</td>
+                </tr>
+                <tr>
+                  <th scope="row">Customer sign-off</th>
+                  <td>Not included</td>
+                  <td>Included</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="price-note">
+            Updating the PDF for a job that already has a report does not use another free slot. Price lines are a
+            reference for the job, not an invoice. The prices above include VAT. Monthly and yearly plans renew until
+            you cancel them in your App Store or Google Play account settings, at least 24 hours before the period
+            ends. Apple or Google charges the VAT-inclusive price shown in the app.
+          </p>
+        </div>
+      </section>
+
+      <section class="launch" id="download">
+        <div class="launch-inner">
+          <h2>Trade Report is on its way.</h2>
+          <p>The first release is for iPhone and Android. Same app, same reports, on the device you already carry.</p>
+          <div class="stores">
+            <div>
+              <span>Apple</span>
+              <strong>App Store</strong>
+            </div>
+            <div>
+              <span>Google</span>
+              <strong>Google Play</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <a class="wordmark" href="#top" aria-label="Trade Report home">
+        <img class="mark" src="images/mark.png" width="192" height="194" alt="" />
+        <span class="wordmark-name">Trade<span>Report</span></span>
+      </a>
+      <nav class="footer-links" aria-label="Page">
+        <a href="#benefits">Benefits</a>
+        <a href="#app">The app</a>
+        <a href="#how">How it works</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+        <a href="#pricing">Pricing</a>
+      </nav>
+      <p>Jobs stay on your device. This site loads a typeface from Google and a script from jsDelivr. It does not set analytics cookies.</p>
+    </footer>
+    <script type="module" src="hero-phone.js"></script>
+  </body>
+</html>
