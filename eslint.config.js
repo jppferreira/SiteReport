@@ -6,6 +6,15 @@ module.exports = [
     ignores: ['dist/*', 'node_modules/*', '.expo/*'],
   },
   {
+    files: ['jest.setup.js'],
+    languageOptions: {
+      globals: {
+        jest: 'readonly',
+        require: 'readonly',
+      },
+    },
+  },
+  {
     rules: {
       'import/no-unresolved': 'off',
       // React Compiler's mutability rule doesn't understand Reanimated's

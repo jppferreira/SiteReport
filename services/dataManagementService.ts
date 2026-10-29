@@ -1,16 +1,15 @@
-import * as FileSystem from 'expo-file-system/legacy';
-
 import {
   businessProfileRepository,
   jobsRepository,
+  photoAreasRepository,
   photosRepository,
   reportsRepository,
   signatureRepository,
   workSummaryRepository,
 } from '@/database';
-import { getDatabase } from '@/database/client';
+import { flushWebDatabase, getDatabase } from '@/database/client';
 
-import { deleteAllAppFiles } from './fileService';
+import { deleteAllAppFiles, temporaryFilePath, writeTextFile } from './fileService';
 
 /**
  * Exports structured job data (titles, customer/job metadata, captions,
@@ -25,15 +24,23 @@ export async function exportAppDataToJson(): Promise<string> {
 
   const jobsWithDetails = await Promise.all(
     jobs.map(async (job) => {
-      const [photos, summary, signature, reports] = await Promise.all([
+      const [photos, areas, summary, signature, reports] = await Promise.all([
         photosRepository.listPhotos(job.id),
+        photoAreasRepository.listAreas(job.id),
         workSummaryRepository.getWorkSummary(job.id),
         signatureRepository.getSignature(job.id),
         reportsRepository.listReportsForJob(job.id),
       ]);
+      const areaNames = new Map(areas.map((area) => [area.id, area.name]));
       return {
         ...job,
-        photos: photos.map((p) => ({ type: p.type, caption: p.caption, sortOrder: p.sortOrder })),
+        sections: areas.map((area) => ({ name: area.name, sortOrder: area.sortOrder })),
+        photos: photos.map((p) => ({
+          type: p.type,
+          caption: p.caption,
+          sortOrder: p.sortOrder,
+          section: p.areaId ? areaNames.get(p.areaId) ?? null : null,
+        })),
         workSummary: summary,
         hasSignature: Boolean(signature),
         reports: reports.map((r) => ({ fileName: r.fileName, generatedAt: r.generatedAt, fileSize: r.fileSize })),
@@ -47,10 +54,8 @@ export async function exportAppDataToJson(): Promise<string> {
     jobs: jobsWithDetails,
   };
 
-  const path = `${FileSystem.cacheDirectory}sitereport-export-${Date.now()}.json`;
-  await FileSystem.writeAsStringAsync(path, JSON.stringify(payload, null, 2), {
-    encoding: FileSystem.EncodingType.UTF8,
-  });
+  const path = temporaryFilePath(`sitereport-export-${Date.now()}.json`);
+  await writeTextFile(path, JSON.stringify(payload, null, 2));
   return path;
 }
 
@@ -65,6 +70,7 @@ export async function deleteAllAppData(): Promise<void> {
   const db = await getDatabase();
   await db.execAsync(`
     DELETE FROM photos;
+    DELETE FROM photo_areas;
     DELETE FROM work_summaries;
     DELETE FROM signatures;
     DELETE FROM reports;
@@ -72,4 +78,5 @@ export async function deleteAllAppData(): Promise<void> {
     DELETE FROM business_profile;
   `);
   await deleteAllAppFiles();
+  await flushWebDatabase();
 }

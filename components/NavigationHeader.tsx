@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
 
 import { IconButton } from './IconButton';
@@ -10,27 +10,34 @@ import { Text } from './Text';
 type NavigationHeaderProps = {
   title?: string;
   onBack?: () => void;
+  left?: React.ReactNode;
   right?: React.ReactNode;
   transparent?: boolean;
 };
 
-export function NavigationHeader({ title, onBack, right, transparent = false }: NavigationHeaderProps) {
+/**
+ * Sits inside `Screen`, which already insets the top safe area. Adding
+ * `insets.top` here again drops the bar by a full status-bar height on
+ * notched iPhones and by the window inset inside sheets, where that
+ * overlap is already zero.
+ */
+export function NavigationHeader({ title, onBack, left, right, transparent = false }: NavigationHeaderProps) {
   const { colors, spacing } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { t } = useI18n();
 
   return (
     <View
       style={[
         styles.container,
         {
-          paddingTop: insets.top + spacing.xs,
+          paddingTop: spacing.xs,
           paddingHorizontal: spacing.lg,
           backgroundColor: transparent ? 'transparent' : colors.background,
         },
       ]}
     >
       <View style={styles.side}>
-        {onBack ? <IconButton name="chevron-back" accessibilityLabel="Go back" onPress={onBack} /> : null}
+        {left ?? (onBack ? <IconButton name="chevron-back" accessibilityLabel={t('common.goBack')} onPress={onBack} /> : null)}
       </View>
       <View style={styles.center}>
         {title ? (
@@ -49,17 +56,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingBottom: 12,
+    zIndex: 2,
   },
   side: {
-    width: 44,
+    flex: 1,
+    minWidth: 44,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
   rightSide: {
-    width: undefined,
-    minWidth: 44,
     alignItems: 'flex-end',
   },
   center: {
-    flex: 1,
+    flex: 3,
     alignItems: 'center',
+    paddingHorizontal: 4,
   },
 });

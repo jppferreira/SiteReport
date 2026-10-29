@@ -17,7 +17,7 @@ export function SegmentedControl({ segments, value, onChange }: SegmentedControl
   const { colors, radius } = useTheme();
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surfaceSunken, borderRadius: radius.md }]}>
+    <View style={[styles.container, { backgroundColor: colors.surfaceSunken, borderRadius: radius.pill }]}>
       {segments.map((segment) => {
         const active = segment.key === value;
         return (
@@ -28,10 +28,10 @@ export function SegmentedControl({ segments, value, onChange }: SegmentedControl
             accessibilityState={{ selected: active }}
             style={[
               styles.segment,
-              { borderRadius: radius.sm, backgroundColor: active ? colors.surface : 'transparent' },
+              { borderRadius: radius.pill, backgroundColor: active ? colors.accent : 'transparent' },
             ]}
           >
-            <Text variant="bodyMedium" color={active ? colors.textPrimary : colors.textSecondary}>
+            <Text variant="bodyMedium" color={active ? colors.accentOnAccent : colors.textSecondary}>
               {segment.label}
             </Text>
           </Pressable>

@@ -1,7 +1,7 @@
 import { Redirect } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 
-import { LoadingState } from '@/components';
+import { LoadingPage } from '@/components';
 import { hasCompletedOnboarding } from '@/services/preferencesService';
 
 export default function Index() {
@@ -12,7 +12,7 @@ export default function Index() {
   }, []);
 
   if (status === 'loading') {
-    return <LoadingState />;
+    return <LoadingPage />;
   }
 
   if (status === 'onboarding') {

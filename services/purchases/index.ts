@@ -6,9 +6,8 @@ export type { PurchaseService } from './PurchaseService';
 let instance: PurchaseService | null = null;
 
 /**
- * Returns the active purchase adapter. Centralised here so swapping to a
- * real store-backed implementation for production is a one-line change —
- * see README.md in this folder.
+ * Web and any platform without its own entry use the mock store. iOS and
+ * Android resolve `index.ios.ts` and `index.android.ts` instead.
  */
 export function getPurchaseService(): PurchaseService {
   if (!instance) {

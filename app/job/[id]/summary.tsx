@@ -1,15 +1,20 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import React from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useRef } from 'react';
+import { KeyboardAvoidingView, ScrollView, View } from 'react-native';
 
 import { NavigationHeader, Screen, Text, TextArea, TextButton } from '@/components';
+import { PricingReference, PricingReferenceHandle } from '@/features/jobs/PricingReference';
 import { useAutosaveField } from '@/hooks/useAutosaveField';
 import { useWorkSummary } from '@/hooks/useWorkSummary';
+import { useI18n } from '@/i18n/useI18n';
+import { EMPTY_PRICING, ReportPricing } from '@/models';
 import { useTheme } from '@/theme';
+import { goBack } from '@/utils/goBack';
 
 export default function WorkSummaryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors, spacing } = useTheme();
+  const { t } = useI18n();
   const { summary, loading, save } = useWorkSummary(id);
 
   const workCompleted = useAutosaveField(summary?.workCompleted ?? '', async (value) => {
@@ -24,11 +29,30 @@ export default function WorkSummaryScreen() {
   const notes = useAutosaveField(summary?.notes ?? '', async (value) => {
     await save({ notes: value });
   });
+  const pricingRef = useRef<PricingReferenceHandle>(null);
+  const savePricing = useCallback(
+    async (pricing: ReportPricing) => {
+      const next = await save({ pricing });
+      return next.pricing;
+    },
+    [save]
+  );
+
+  const leave = async () => {
+    await Promise.all([
+      workCompleted.flush(),
+      materials.flush(),
+      recommendations.flush(),
+      notes.flush(),
+      pricingRef.current?.flush(),
+    ]);
+    goBack(`/job/${id}`);
+  };
 
   if (loading) {
     return (
       <Screen>
-        <NavigationHeader title="Work summary" onBack={() => router.back()} />
+        <NavigationHeader title={t('summary.title')} onBack={() => goBack(`/job/${id}`)} />
       </Screen>
     );
   }
@@ -36,22 +60,19 @@ export default function WorkSummaryScreen() {
   return (
     <Screen>
       <NavigationHeader
-        title="Work summary"
-        onBack={async () => {
-          await Promise.all([workCompleted.flush(), materials.flush(), recommendations.flush(), notes.flush()]);
-          router.back();
-        }}
-        right={<TextButton label="Done" onPress={() => router.back()} />}
+        title={t('summary.title')}
+        onBack={() => void leave()}
+        right={<TextButton label={t('summary.save')} tone="accent" onPress={() => void leave()} />}
       />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: spacing.xl }}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: spacing.sm }}
           keyboardShouldPersistTaps="handled"
         >
           <View>
             <TextArea
-              label="Work completed"
-              placeholder="Describe the work carried out…"
+              label={t('summary.fieldSummary')}
+              placeholder={t('summary.fieldSummaryPlaceholder')}
               value={workCompleted.value}
               onChangeText={workCompleted.onChange}
               onBlur={workCompleted.flush}
@@ -62,8 +83,8 @@ export default function WorkSummaryScreen() {
 
           <View>
             <TextArea
-              label="Materials used"
-              placeholder="Optional — list materials used"
+              label={t('summary.fieldMaterials')}
+              placeholder={t('summary.fieldMaterialsPlaceholder')}
               value={materials.value}
               onChangeText={materials.onChange}
               onBlur={materials.flush}
@@ -73,8 +94,8 @@ export default function WorkSummaryScreen() {
 
           <View>
             <TextArea
-              label="Recommendations / next steps"
-              placeholder="Optional — anything the customer should know"
+              label={t('summary.fieldLabour')}
+              placeholder={t('summary.fieldLabourPlaceholder')}
               value={recommendations.value}
               onChangeText={recommendations.onChange}
               onBlur={recommendations.flush}
@@ -84,8 +105,8 @@ export default function WorkSummaryScreen() {
 
           <View>
             <TextArea
-              label="Additional notes"
-              placeholder="Optional — notes for your own records"
+              label={t('summary.fieldPrivateNotes')}
+              placeholder={t('summary.fieldPrivateNotesPlaceholder')}
               value={notes.value}
               onChangeText={notes.onChange}
               onBlur={notes.flush}
@@ -93,8 +114,10 @@ export default function WorkSummaryScreen() {
             />
           </View>
 
+          <PricingReference ref={pricingRef} pricing={summary?.pricing ?? EMPTY_PRICING} onSave={savePricing} />
+
           <Text variant="caption" color={colors.textSecondary}>
-            Your keyboard&rsquo;s microphone button supports speech-to-text for any of these fields.
+            {t('summary.speechHint')}
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -104,10 +127,11 @@ export default function WorkSummaryScreen() {
 
 function SaveStatus({ status }: { status: 'idle' | 'saving' | 'saved' | 'error' }) {
   const { colors } = useTheme();
+  const { t } = useI18n();
   if (status === 'idle') return null;
   return (
     <Text variant="caption" color={status === 'error' ? colors.destructive : colors.textSecondary} style={{ marginTop: 6 }}>
-      {status === 'saving' ? 'Saving…' : status === 'error' ? "Couldn't save — check your storage." : 'Saved'}
+      {status === 'saving' ? t('summary.saving') : status === 'error' ? t('summary.saveError') : t('summary.saved')}
     </Text>
   );
 }

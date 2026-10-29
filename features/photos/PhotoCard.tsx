@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Text } from '@/components';
+import { LocalImage, Text } from '@/components';
+import { useI18n } from '@/i18n/useI18n';
 import { Photo } from '@/models';
 import { useTheme } from '@/theme';
 
@@ -27,15 +27,18 @@ export function PhotoCard({
   canMoveRight = false,
 }: PhotoCardProps) {
   const { colors, radius } = useTheme();
+  const { t } = useI18n();
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={photo.caption ? `Photo: ${photo.caption}` : 'Photo'}
+      accessibilityLabel={
+        photo.caption ? t('photos.photoCardA11yWithCaption', { caption: photo.caption }) : t('photos.photoCardA11y')
+      }
       style={[styles.container, { borderRadius: radius.md, backgroundColor: colors.surfaceSunken }]}
     >
-      <Image source={{ uri: photo.thumbnailUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+      <LocalImage uri={photo.thumbnailUri} style={StyleSheet.absoluteFill} contentFit="cover" />
       {photo.caption ? (
         <View style={[styles.captionBadge, { backgroundColor: 'rgba(16,19,16,0.65)' }]}>
           <Text variant="caption" color="#FFFFFF" numberOfLines={1}>
@@ -50,7 +53,7 @@ export function PhotoCard({
             <Pressable
               onPress={onMoveLeft}
               accessibilityRole="button"
-              accessibilityLabel="Move photo earlier"
+              accessibilityLabel={t('photos.moveEarlier')}
               style={[styles.reorderButton, { left: 6, backgroundColor: colors.surface }]}
             >
               <Ionicons name="chevron-back" size={16} color={colors.textPrimary} />
@@ -60,7 +63,7 @@ export function PhotoCard({
             <Pressable
               onPress={onMoveRight}
               accessibilityRole="button"
-              accessibilityLabel="Move photo later"
+              accessibilityLabel={t('photos.moveLater')}
               style={[styles.reorderButton, { right: 6, backgroundColor: colors.surface }]}
             >
               <Ionicons name="chevron-forward" size={16} color={colors.textPrimary} />

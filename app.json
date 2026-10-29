@@ -14,7 +14,7 @@
     ],
     "ios": {
       "bundleIdentifier": "com.tradesreport.app",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Trade Report uses your camera to take before and after job photos for your reports.",
@@ -53,6 +53,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-localization",
       [
         "expo-splash-screen",
         {
@@ -81,7 +82,8 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-iap",
-      "./plugins/withStoreKitConfig.js"
+      "./plugins/withStoreKitConfig.js",
+      "./plugins/withIcloudDocuments.js"
     ],
     "experiments": {
       "typedRoutes": true

@@ -3,6 +3,7 @@ import React from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { NavigationHeader, Screen, Text } from '@/components';
+import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
 
 function Paragraph({ title, children }: { title: string; children: React.ReactNode }) {
@@ -20,34 +21,20 @@ function Paragraph({ title, children }: { title: string; children: React.ReactNo
 }
 
 export default function TermsScreen() {
-  const { colors, spacing } = useTheme();
+  const { spacing } = useTheme();
+  const { t } = useI18n();
 
   return (
     <Screen>
-      <NavigationHeader title="Terms of use" onBack={() => router.back()} />
+      <NavigationHeader title={t('terms.title')} onBack={() => router.back()} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl }}>
-        <Paragraph title="Using SiteReport">
-          SiteReport is provided to help you capture job photos, notes and signatures, and generate PDF
-          reports from information you enter. You are responsible for the accuracy of the information you
-          record and share with your customers.
-        </Paragraph>
-        <Paragraph title="Your content">
-          Jobs, photos, notes and signatures you create remain yours. SiteReport stores this content locally
-          on your device and does not claim ownership of it.
-        </Paragraph>
-        <Paragraph title="Subscriptions">
-          Pro features are available via auto-renewing subscription or a one-time lifetime purchase, billed
-          through the App Store or Play Store. Subscriptions renew automatically unless cancelled at least 24
-          hours before the end of the current period, managed through your store account settings.
-        </Paragraph>
-        <Paragraph title="No warranty">
-          SiteReport is provided &ldquo;as is&rdquo;. While we aim for reports to be accurate and reliable, you should
-          review each report before sending it to a customer.
-        </Paragraph>
-        <Text variant="caption" color={colors.textSecondary} style={{ marginTop: spacing.sm }}>
-          This is a standard terms template. Replace with terms reviewed by your legal counsel before
-          publishing to the App Store or Google Play.
-        </Text>
+        <Paragraph title={t('terms.usingTitle')}>{t('terms.usingBody')}</Paragraph>
+        <Paragraph title={t('terms.contentTitle')}>{t('terms.contentBody')}</Paragraph>
+        <Paragraph title={t('terms.freeProTitle')}>{t('terms.freeProBody')}</Paragraph>
+        <Paragraph title={t('terms.subscriptionsTitle')}>{t('terms.subscriptionsBody')}</Paragraph>
+        <Paragraph title={t('terms.bugReportsTitle')}>{t('terms.bugReportsBody')}</Paragraph>
+        <Paragraph title={t('terms.asIsTitle')}>{t('terms.asIsBody')}</Paragraph>
+        <Paragraph title={t('terms.contactTitle')}>{t('terms.contactBody')}</Paragraph>
       </ScrollView>
     </Screen>
   );

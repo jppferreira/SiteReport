@@ -1,6 +1,6 @@
 import * as ImageManipulator from 'expo-image-manipulator';
 
-import { generatePhotoFileName, generateThumbnailFileName, copyIntoJobPhotos } from './fileService';
+import { copyFile, copyIntoJobPhotos, generatePhotoFileName, generateThumbnailFileName } from './fileService';
 
 /**
  * Balances PDF quality, device storage and performance:
@@ -72,7 +72,25 @@ export async function processBusinessLogo(sourceUri: string, destinationPath: st
     compress: 0.9,
     format: ImageManipulator.SaveFormat.PNG,
   });
-  const { copyAsync } = await import('expo-file-system/legacy');
-  await copyAsync({ from: result.uri, to: destinationPath });
+  await copyFile(result.uri, destinationPath);
+  return destinationPath;
+}
+
+/** A wide photo for the report cover, stored the same way as the business logo. */
+export async function processReportCover(
+  sourceUri: string,
+  destinationPath: string,
+  sourceWidth = 0,
+  sourceHeight = 0
+): Promise<string> {
+  const knownSize = sourceWidth > 0 && sourceHeight > 0;
+  const resize = knownSize
+    ? resizeArgsFor(sourceWidth, sourceHeight, QUALITY_PRESETS.standard.maxDimension)
+    : { width: QUALITY_PRESETS.standard.maxDimension };
+  const result = await ImageManipulator.manipulateAsync(sourceUri, resize ? [{ resize }] : [], {
+    compress: QUALITY_PRESETS.standard.quality,
+    format: ImageManipulator.SaveFormat.JPEG,
+  });
+  await copyFile(result.uri, destinationPath);
   return destinationPath;
 }

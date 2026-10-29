@@ -1,6 +1,6 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 
 import {
   Button,
@@ -9,25 +9,28 @@ import {
   IconButton,
   LoadingState,
   NavigationHeader,
-  ProgressIndicator,
   Screen,
   Text,
   useToast,
 } from '@/components';
-import { jobsRepository, photosRepository } from '@/database';
+import { jobsRepository, photoAreasRepository, photosRepository } from '@/database';
 import { BottomSheetMenu } from '@/features/jobs/BottomSheetMenu';
 import { JobSectionRow } from '@/features/jobs/JobSectionRow';
 import { nextRecommendedAction } from '@/features/jobs/jobProgress';
 import { useJob } from '@/hooks/useJob';
 import { useSignature } from '@/hooks/useSignature';
 import { useWorkSummary } from '@/hooks/useWorkSummary';
+import { useI18n } from '@/i18n/useI18n';
 import { deleteJobFiles } from '@/services/fileService';
 import { useTheme } from '@/theme';
+import { linesForReport, WorkSummary } from '@/models';
 import { formatDate } from '@/utils/format';
+import { goBack } from '@/utils/goBack';
 
 export default function JobOverviewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors, spacing } = useTheme();
+  const { t } = useI18n();
   const { job, progress, loading, error, refresh } = useJob(id);
   const { summary } = useWorkSummary(id);
   const { signature } = useSignature(id);
@@ -36,18 +39,20 @@ export default function JobOverviewScreen() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [photoCounts, setPhotoCounts] = useState({ before: 0, after: 0 });
+  const [areaCount, setAreaCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
       refresh();
       photosRepository.countPhotos(id).then(setPhotoCounts);
+      photoAreasRepository.countAreas(id).then(setAreaCount);
     }, [refresh, id])
   );
 
   if (loading && !job) {
     return (
       <Screen>
-        <NavigationHeader title="Job" onBack={() => router.back()} />
+        <NavigationHeader title={t('jobDetail.title')} onBack={() => goBack('/(tabs)/jobs')} />
         <LoadingState />
       </Screen>
     );
@@ -56,8 +61,8 @@ export default function JobOverviewScreen() {
   if (error || !job || !progress) {
     return (
       <Screen>
-        <NavigationHeader title="Job" onBack={() => router.back()} />
-        <ErrorState title="This job could not be found" description={error ?? undefined} onAction={refresh} />
+        <NavigationHeader title={t('jobDetail.title')} onBack={() => goBack('/(tabs)/jobs')} />
+        <ErrorState title={t('jobDetail.notFound')} description={error ?? undefined} onAction={refresh} />
       </Screen>
     );
   }
@@ -69,74 +74,112 @@ export default function JobOverviewScreen() {
     try {
       await jobsRepository.deleteJob(job.id);
       await deleteJobFiles(job.id);
-      showToast({ message: 'Job deleted', tone: 'neutral' });
+      showToast({ message: t('jobDetail.toastDeleted'), tone: 'neutral' });
       router.replace('/(tabs)/jobs');
     } finally {
       setDeleting(false);
     }
   };
 
-  const metaParts = [job.customerName, formatDate(job.jobDate)].filter(Boolean);
+  const photoTotal = photoCounts.before + photoCounts.after;
 
   return (
     <Screen>
       <NavigationHeader
-        title="Job overview"
-        onBack={() => router.back()}
-        right={<IconButton name="ellipsis-horizontal" accessibilityLabel="More options" onPress={() => setMenuOpen(true)} />}
+        title=""
+        onBack={() => goBack('/(tabs)/jobs')}
+        right={
+          <IconButton
+            name="ellipsis-horizontal"
+            accessibilityLabel={t('jobDetail.moreOptionsA11y')}
+            onPress={() => setMenuOpen(true)}
+          />
+        }
       />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingTop: 0 }}>
-        <Text variant="h1" style={{ marginTop: spacing.xs }}>
-          {job.title}
-        </Text>
-        {metaParts.length > 0 ? (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg, paddingTop: 0 }}>
+        <Text variant="h1">{job.title}</Text>
+        {job.address ? (
           <Text variant="body" color={colors.textSecondary} style={{ marginTop: 4 }}>
-            {metaParts.join(' · ')}
+            {job.address}
+          </Text>
+        ) : job.customerName ? (
+          <Text variant="body" color={colors.textSecondary} style={{ marginTop: 4 }}>
+            {job.customerName}
           </Text>
         ) : null}
+        <Text variant="bodySmall" color={colors.textTertiary} style={{ marginTop: 2 }}>
+          {formatDate(job.jobDate)}
+        </Text>
 
-        <View style={{ marginTop: spacing.xl }}>
-          <ProgressIndicator completed={progress.completedCount} total={progress.totalCount} />
-        </View>
+        <Pressable
+          onPress={() => router.push('/settings/data')}
+          accessibilityRole="button"
+          accessibilityLabel={t('jobDetail.localOnlyBanner')}
+          style={{
+            marginTop: spacing.lg,
+            paddingVertical: spacing.sm,
+            paddingHorizontal: spacing.md,
+            backgroundColor: colors.surfaceSunken,
+            borderRadius: 12,
+          }}
+        >
+          <Text variant="bodySmall" color={colors.textSecondary}>
+            {t('jobDetail.localOnlyBanner')}
+          </Text>
+        </Pressable>
 
-        <View style={{ marginTop: spacing.xxl }}>
+        <View
+          style={{
+            marginTop: spacing.xl,
+            backgroundColor: colors.surface,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: colors.border,
+            overflow: 'hidden',
+          }}
+        >
           <JobSectionRow
-            icon="document-text-outline"
-            title="Job details"
-            subtitle={job.description ? job.description : 'Title, customer, address and date'}
+            title={t('jobDetail.sectionDetails')}
+            subtitle={job.description ? truncate(job.description) : t('jobDetail.sectionDetailsSubtitle')}
             status={progress.sections.details}
+            showDivider
             onPress={() => router.push(`/job/${job.id}/edit`)}
           />
           <JobSectionRow
-            icon="camera-outline"
-            title="Photos"
-            subtitle={`Before · ${photoCounts.before}   After · ${photoCounts.after}`}
+            title={t('jobDetail.sectionPhotos')}
+            subtitle={photosSubtitle(t, photoTotal, areaCount)}
             status={progress.sections.photos}
+            showDivider
             onPress={() => router.push(`/job/${job.id}/photos`)}
           />
           <JobSectionRow
-            icon="create-outline"
-            title="Work summary"
-            subtitle={summary?.workCompleted ? truncate(summary.workCompleted) : 'Describe the work carried out'}
+            title={t('jobDetail.sectionSummary')}
+            subtitle={summarySubtitle(t, summary)}
             status={progress.sections.summary}
+            showDivider
             onPress={() => router.push(`/job/${job.id}/summary`)}
           />
           <JobSectionRow
-            icon="create-outline"
-            title="Signature"
-            subtitle={signature ? `Signed by ${signature.customerName ?? 'customer'}` : 'Optional customer sign-off'}
+            title={t('jobDetail.sectionSignature')}
+            subtitle={
+              signature
+                ? t('jobDetail.signatureSignedBy', {
+                    name: signature.customerName ?? t('jobDetail.signatureSignedByClientFallback'),
+                  })
+                : t('jobDetail.signatureNotAdded')
+            }
             status={progress.sections.signature}
+            showDivider
             onPress={() => router.push(`/job/${job.id}/signature`)}
           />
           <JobSectionRow
-            icon="document-outline"
-            title="Report"
+            title={t('jobDetail.sectionGenerate')}
             subtitle={
               progress.sections.report === 'complete'
-                ? 'Up to date'
+                ? t('jobDetail.reportPreviewShare')
                 : progress.sections.report === 'in_progress'
-                  ? 'Job changed since last report'
-                  : 'Not generated yet'
+                  ? t('jobDetail.reportChanged')
+                  : t('jobDetail.reportReady')
             }
             status={progress.sections.report}
             onPress={() => router.push(`/job/${job.id}/preview`)}
@@ -146,7 +189,7 @@ export default function JobOverviewScreen() {
 
       <View style={{ padding: spacing.lg, paddingTop: 0 }}>
         <Button
-          label={action.label}
+          label={t('common.continue')}
           onPress={() => {
             if (action.target === 'photos') router.push(`/job/${job.id}/photos`);
             else if (action.target === 'summary') router.push(`/job/${job.id}/summary`);
@@ -160,10 +203,10 @@ export default function JobOverviewScreen() {
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
         items={[
-          { icon: 'create-outline', label: 'Edit job details', onPress: () => router.push(`/job/${job.id}/edit`) },
+          { icon: 'create-outline', label: t('jobDetail.editDetails'), onPress: () => router.push(`/job/${job.id}/edit`) },
           {
             icon: 'trash-outline',
-            label: 'Delete job',
+            label: t('jobDetail.deleteJob'),
             destructive: true,
             onPress: () => setConfirmDelete(true),
           },
@@ -172,15 +215,40 @@ export default function JobOverviewScreen() {
 
       <ConfirmationDialog
         visible={confirmDelete}
-        title="Delete this job?"
-        description="This will permanently remove its information, photos and generated reports from this device."
-        confirmLabel="Delete job"
+        title={t('jobDetail.deleteConfirmTitle')}
+        description={t('jobDetail.deleteConfirmDescription')}
+        confirmLabel={t('jobDetail.deleteConfirmLabel')}
         onConfirm={handleDelete}
         onCancel={() => setConfirmDelete(false)}
         loading={deleting}
       />
     </Screen>
   );
+}
+
+type Translate = (key: string, options?: Record<string, string | number>) => string;
+
+function photosSubtitle(t: Translate, photoTotal: number, areaCount: number): string {
+  if (areaCount > 0) {
+    const sections =
+      areaCount === 1 ? t('jobDetail.photosOneSection') : t('jobDetail.photosSectionsCount', { count: areaCount });
+    if (photoTotal === 0) return sections;
+    const photos =
+      photoTotal === 1 ? t('jobDetail.photosOnePhoto') : t('jobDetail.photosCount', { count: photoTotal });
+    return t('jobDetail.photosSectionsAndPhotos', { sections, photos });
+  }
+  if (photoTotal > 0) {
+    return photoTotal === 1
+      ? t('jobDetail.photosOneAdded')
+      : t('jobDetail.photosCountAdded', { count: photoTotal });
+  }
+  return t('jobDetail.photosEmptyHint');
+}
+
+function summarySubtitle(t: Translate, summary: WorkSummary | null): string {
+  if (summary?.workCompleted?.trim()) return truncate(summary.workCompleted);
+  if (summary && linesForReport(summary.pricing).length > 0) return t('jobDetail.summaryPricingAdded');
+  return t('jobDetail.summaryEmpty');
 }
 
 function truncate(value: string, length = 60): string {

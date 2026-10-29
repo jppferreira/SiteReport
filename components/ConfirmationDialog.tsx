@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
 
 import { Button, ButtonVariant } from './Button';
@@ -24,13 +25,15 @@ export function ConfirmationDialog({
   title,
   description,
   confirmLabel,
-  cancelLabel = 'Cancel',
+  cancelLabel,
   confirmVariant = 'destructive',
   onConfirm,
   onCancel,
   loading = false,
 }: ConfirmationDialogProps) {
   const { colors, radius, spacing, shadows } = useTheme();
+  const { t } = useI18n();
+  const resolvedCancelLabel = cancelLabel ?? t('common.cancel');
 
   return (
     <Modal visible={visible} onRequestClose={onCancel} dismissOnBackdropPress={!loading}>
@@ -51,7 +54,7 @@ export function ConfirmationDialog({
         ) : null}
         <View style={{ marginTop: spacing.xl, gap: spacing.xs }}>
           <Button label={confirmLabel} onPress={onConfirm} variant={confirmVariant} loading={loading} />
-          <Button label={cancelLabel} onPress={onCancel} variant="tertiary" disabled={loading} />
+          <Button label={resolvedCancelLabel} onPress={onCancel} variant="tertiary" disabled={loading} />
         </View>
       </View>
     </Modal>

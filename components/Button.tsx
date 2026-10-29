@@ -1,13 +1,12 @@
 import * as Haptics from 'expo-haptics';
 import React, { useCallback } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 
-import { motionTiming, useTheme } from '@/theme';
+import { useTheme } from '@/theme';
 
 import { Text } from './Text';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'destructive';
+export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'destructive' | 'accent';
 
 type ButtonProps = {
   label: string;
@@ -35,18 +34,7 @@ export function Button({
   testID,
 }: ButtonProps) {
   const { colors, radius, spacing } = useTheme();
-  const scale = useSharedValue(1);
   const isDisabled = disabled || loading;
-
-  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-
-  const handlePressIn = useCallback(() => {
-    scale.value = motionTiming(0.97, { duration: 100 });
-  }, [scale]);
-
-  const handlePressOut = useCallback(() => {
-    scale.value = motionTiming(1, { duration: 150 });
-  }, [scale]);
 
   const handlePress = useCallback(() => {
     if (isDisabled) return;
@@ -59,17 +47,15 @@ export function Button({
   const palette = getPalette(variant, colors);
 
   return (
-    <Animated.View style={[fullWidth && styles.fullWidth, animatedStyle]}>
+    <View style={fullWidth ? styles.fullWidth : undefined}>
       <Pressable
         onPress={handlePress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
         disabled={isDisabled}
         accessibilityRole="button"
         accessibilityState={{ disabled: isDisabled, busy: loading }}
         accessibilityHint={accessibilityHint}
         testID={testID}
-        style={[
+        style={({ pressed }) => [
           styles.base,
           {
             backgroundColor: isDisabled ? palette.disabledBg : palette.bg,
@@ -77,6 +63,8 @@ export function Button({
             borderWidth: palette.border ? 1 : 0,
             paddingHorizontal: spacing.lg,
             borderRadius: radius.md,
+            opacity: pressed && !isDisabled ? 0.92 : 1,
+            transform: [{ scale: pressed && !isDisabled ? 0.97 : 1 }],
           },
           style,
         ]}
@@ -92,7 +80,7 @@ export function Button({
           </>
         )}
       </Pressable>
-    </Animated.View>
+    </View>
   );
 }
 
@@ -133,6 +121,14 @@ function getPalette(variant: ButtonVariant, colors: ReturnType<typeof useTheme>[
     case 'destructive':
       return {
         bg: colors.destructive,
+        fg: colors.textInverse,
+        border: undefined,
+        disabledBg: colors.borderStrong,
+        disabledFg: colors.textTertiary,
+      };
+    case 'accent':
+      return {
+        bg: colors.accent,
         fg: colors.textInverse,
         border: undefined,
         disabledBg: colors.borderStrong,

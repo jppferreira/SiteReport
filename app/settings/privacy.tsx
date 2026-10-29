@@ -3,6 +3,7 @@ import React from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { NavigationHeader, Screen, Text } from '@/components';
+import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
 
 function Paragraph({ title, children }: { title: string; children: React.ReactNode }) {
@@ -21,38 +22,20 @@ function Paragraph({ title, children }: { title: string; children: React.ReactNo
 
 export default function PrivacyScreen() {
   const { spacing } = useTheme();
+  const { t } = useI18n();
 
   return (
     <Screen>
-      <NavigationHeader title="Privacy policy" onBack={() => router.back()} />
+      <NavigationHeader title={t('privacy.title')} onBack={() => router.back()} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl }}>
-        <Paragraph title="Your job data stays on your device">
-          Jobs, customer names, addresses, job notes, photos, signatures and generated PDF reports are stored
-          only in this app&rsquo;s local storage on your phone or tablet. SiteReport does not operate a server that
-          receives, stores, or processes this information, and it is never uploaded automatically.
-        </Paragraph>
-        <Paragraph title="What leaves your device">
-          Information leaves your device only when you explicitly choose to share or export it — for example,
-          sending a report through the share sheet, or exporting your data to send to yourself. SiteReport does
-          not transmit customer names, addresses, job notes, photos, signatures, or report contents to our
-          servers at any point.
-        </Paragraph>
-        <Paragraph title="No account required">
-          SiteReport does not require you to create an account or sign in. There is no server-side user
-          database.
-        </Paragraph>
-        <Paragraph title="Purchases">
-          Subscription and lifetime purchases are processed by Apple&rsquo;s App Store or Google&rsquo;s Play Store. Those
-          providers process your payment information according to their own privacy policies; SiteReport only
-          receives confirmation of your entitlement, never your payment details.
-        </Paragraph>
-        <Paragraph title="Deleting your data">
-          You can delete an individual job, or all app data, at any time from Settings → Data & privacy.
-          Deleting a job removes its photos, signature and generated reports from your device immediately.
-        </Paragraph>
-        <Paragraph title="Analytics">
-          SiteReport does not collect analytics containing any customer or job information.
-        </Paragraph>
+        <Paragraph title={t('privacy.deviceDataTitle')}>{t('privacy.deviceDataBody')}</Paragraph>
+        <Paragraph title={t('privacy.leavesDeviceTitle')}>{t('privacy.leavesDeviceBody')}</Paragraph>
+        <Paragraph title={t('privacy.backupTitle')}>{t('privacy.backupBody')}</Paragraph>
+        <Paragraph title={t('privacy.bugReportsTitle')}>{t('privacy.bugReportsBody')}</Paragraph>
+        <Paragraph title={t('privacy.noAccountTitle')}>{t('privacy.noAccountBody')}</Paragraph>
+        <Paragraph title={t('privacy.purchasesTitle')}>{t('privacy.purchasesBody')}</Paragraph>
+        <Paragraph title={t('privacy.deletingTitle')}>{t('privacy.deletingBody')}</Paragraph>
+        <Paragraph title={t('privacy.analyticsTitle')}>{t('privacy.analyticsBody')}</Paragraph>
       </ScrollView>
     </Screen>
   );

@@ -1,0 +1,234 @@
+diff --git a/node_modules/react-native-reanimated/lib/module/core.js b/node_modules/react-native-reanimated/lib/module/core.js
+index 61463af..2bed482 100644
+--- a/node_modules/react-native-reanimated/lib/module/core.js
++++ b/node_modules/react-native-reanimated/lib/module/core.js
+@@ -63,10 +63,10 @@ export function registerEventHandler(eventHandler, eventName, emitterReactTag =
+         if (globalThis.__mapperRun) {
+           globalThis.__mapperRun();
+         } else {
+-          requestAnimationFrame(runMappers);
++          globalThis.requestAnimationFrame(runMappers);
+         }
+       }
+-      requestAnimationFrame(runMappers);
++      globalThis.requestAnimationFrame(runMappers);
+     }
+   }
+   return ReanimatedModule.registerEventHandler(createSerializable(handleEvent), eventName, emitterReactTag);
+@@ -89,10 +89,10 @@ export function subscribeForKeyboardEvents(eventHandler, options) {
+         if (globalThis.__mapperRun) {
+           globalThis.__mapperRun();
+         } else {
+-          requestAnimationFrame(runMappers);
++          globalThis.requestAnimationFrame(runMappers);
+         }
+       }
+-      requestAnimationFrame(runMappers);
++      globalThis.requestAnimationFrame(runMappers);
+     }
+   }
+   if (__DEV__) {
+diff --git a/node_modules/react-native-reanimated/lib/module/frameCallback/FrameCallbackRegistryUI.js b/node_modules/react-native-reanimated/lib/module/frameCallback/FrameCallbackRegistryUI.js
+index e3dbc6f..4f0cbb1 100644
+--- a/node_modules/react-native-reanimated/lib/module/frameCallback/FrameCallbackRegistryUI.js
++++ b/node_modules/react-native-reanimated/lib/module/frameCallback/FrameCallbackRegistryUI.js
+@@ -42,7 +42,7 @@ export const prepareUIRegistry = () => scheduleOnUI(() => {
+         });
+         if (this.activeFrameCallbacks.size > 0) {
+           this.previousFrameTimestamp = timestamp;
+-          requestAnimationFrame(loop);
++          globalThis.requestAnimationFrame(loop);
+         } else {
+           this.previousFrameTimestamp = null;
+         }
+@@ -52,7 +52,7 @@ export const prepareUIRegistry = () => scheduleOnUI(() => {
+       // so if there is only one active callback, then it means that there were
+       // zero previously and the loop isn't running yet.
+       if (this.activeFrameCallbacks.size === 1 && callId === this.nextCallId) {
+-        requestAnimationFrame(loop);
++        globalThis.requestAnimationFrame(loop);
+       }
+     },
+     registerFrameCallback(callback, callbackId) {
+diff --git a/node_modules/react-native-reanimated/lib/module/hook/useAnimatedStyle.js b/node_modules/react-native-reanimated/lib/module/hook/useAnimatedStyle.js
+index 343c584..3637650 100644
+--- a/node_modules/react-native-reanimated/lib/module/hook/useAnimatedStyle.js
++++ b/node_modules/react-native-reanimated/lib/module/hook/useAnimatedStyle.js
+@@ -78,7 +78,7 @@ animatedValues, adapters, forceUpdate) {
+       updatePropsJestWrapper?.(viewDescriptors, updates, animatedValues, adapters);
+     }
+     if (!allFinished) {
+-      requestAnimationFrame(frame);
++      globalThis.requestAnimationFrame(frame);
+     } else {
+       state.isAnimationRunning = false;
+     }
+diff --git a/node_modules/react-native-reanimated/lib/module/hook/useAnimatedStyleCommon.js b/node_modules/react-native-reanimated/lib/module/hook/useAnimatedStyleCommon.js
+index c91d8de..5583ec5 100644
+--- a/node_modules/react-native-reanimated/lib/module/hook/useAnimatedStyleCommon.js
++++ b/node_modules/react-native-reanimated/lib/module/hook/useAnimatedStyleCommon.js
+@@ -188,7 +188,7 @@ updater, state, animationsActive, isAnimatedProps = false, forceUpdate) {
+         updateProps(viewDescriptors, updates, isAnimatedProps);
+       }
+       if (!allFinished) {
+-        requestAnimationFrame(frame);
++        globalThis.requestAnimationFrame(frame);
+       } else {
+         state.isAnimationRunning = false;
+       }
+diff --git a/node_modules/react-native-reanimated/lib/module/mappers.js b/node_modules/react-native-reanimated/lib/module/mappers.js
+index 67b08b2..f1bc2a0 100644
+--- a/node_modules/react-native-reanimated/lib/module/mappers.js
++++ b/node_modules/react-native-reanimated/lib/module/mappers.js
+@@ -99,7 +99,7 @@ function createMapperRegistry() {
+       }
+     }
+   }
+-  const schedulingFunction = requestAnimationFrame;
++  const schedulingFunction = globalThis.requestAnimationFrame;
+   function scheduledMapperRun() {
+     runRequested = false;
+     mapperRun();
+diff --git a/node_modules/react-native-reanimated/lib/module/screenTransition/swipeSimulator.js b/node_modules/react-native-reanimated/lib/module/screenTransition/swipeSimulator.js
+index 1fe6156..7bde456 100644
+--- a/node_modules/react-native-reanimated/lib/module/screenTransition/swipeSimulator.js
++++ b/node_modules/react-native-reanimated/lib/module/screenTransition/swipeSimulator.js
+@@ -40,7 +40,7 @@ function maybeScheduleNextFrame(step, didScreenReachDestination, screenTransitio
+     const stackTag = screenTransitionConfig.stackTag;
+     const progress = computeProgress(screenTransitionConfig, event, isTransitionCanceled);
+     RNScreensTurboModule.updateTransition(stackTag, progress);
+-    requestAnimationFrame(step);
++    globalThis.requestAnimationFrame(step);
+   } else {
+     screenTransitionConfig.onFinishAnimation?.();
+   }
+diff --git a/node_modules/react-native-reanimated/lib/module/valueSetter.js b/node_modules/react-native-reanimated/lib/module/valueSetter.js
+index 325de6f..57a1a54 100644
+--- a/node_modules/react-native-reanimated/lib/module/valueSetter.js
++++ b/node_modules/react-native-reanimated/lib/module/valueSetter.js
+@@ -44,7 +44,7 @@ export function valueSetter(mutable, value, forceUpdate = false) {
+         animation.finished = true;
+         animation.callback?.(true /* finished */);
+       } else {
+-        requestAnimationFrame(step);
++        globalThis.requestAnimationFrame(step);
+       }
+     };
+     mutable._animation = animation;
+diff --git a/node_modules/react-native-reanimated/src/core.ts b/node_modules/react-native-reanimated/src/core.ts
+index 91a126a..302dfb6 100644
+--- a/node_modules/react-native-reanimated/src/core.ts
++++ b/node_modules/react-native-reanimated/src/core.ts
+@@ -98,10 +98,10 @@ export function registerEventHandler<TEvent>(
+         if (globalThis.__mapperRun) {
+           globalThis.__mapperRun();
+         } else {
+-          requestAnimationFrame(runMappers);
++          globalThis.requestAnimationFrame(runMappers);
+         }
+       }
+-      requestAnimationFrame(runMappers);
++      globalThis.requestAnimationFrame(runMappers);
+     }
+   }
+   return ReanimatedModule.registerEventHandler(
+@@ -132,10 +132,10 @@ export function subscribeForKeyboardEvents(
+         if (globalThis.__mapperRun) {
+           globalThis.__mapperRun();
+         } else {
+-          requestAnimationFrame(runMappers);
++          globalThis.requestAnimationFrame(runMappers);
+         }
+       }
+-      requestAnimationFrame(runMappers);
++      globalThis.requestAnimationFrame(runMappers);
+     }
+   }
+ 
+diff --git a/node_modules/react-native-reanimated/src/frameCallback/FrameCallbackRegistryUI.ts b/node_modules/react-native-reanimated/src/frameCallback/FrameCallbackRegistryUI.ts
+index f7c8f5a..1bfd9d1 100644
+--- a/node_modules/react-native-reanimated/src/frameCallback/FrameCallbackRegistryUI.ts
++++ b/node_modules/react-native-reanimated/src/frameCallback/FrameCallbackRegistryUI.ts
+@@ -74,7 +74,7 @@ export const prepareUIRegistry = () =>
+ 
+           if (this.activeFrameCallbacks.size > 0) {
+             this.previousFrameTimestamp = timestamp;
+-            requestAnimationFrame(loop);
++            globalThis.requestAnimationFrame(loop);
+           } else {
+             this.previousFrameTimestamp = null;
+           }
+@@ -87,7 +87,7 @@ export const prepareUIRegistry = () =>
+           this.activeFrameCallbacks.size === 1 &&
+           callId === this.nextCallId
+         ) {
+-          requestAnimationFrame(loop);
++          globalThis.requestAnimationFrame(loop);
+         }
+       },
+ 
+diff --git a/node_modules/react-native-reanimated/src/hook/useAnimatedStyle.ts b/node_modules/react-native-reanimated/src/hook/useAnimatedStyle.ts
+index afdbec0..3dea125 100644
+--- a/node_modules/react-native-reanimated/src/hook/useAnimatedStyle.ts
++++ b/node_modules/react-native-reanimated/src/hook/useAnimatedStyle.ts
+@@ -136,7 +136,7 @@ function jestStyleUpdater(
+     }
+ 
+     if (!allFinished) {
+-      requestAnimationFrame(frame);
++      globalThis.requestAnimationFrame(frame);
+     } else {
+       state.isAnimationRunning = false;
+     }
+diff --git a/node_modules/react-native-reanimated/src/hook/useAnimatedStyleCommon.ts b/node_modules/react-native-reanimated/src/hook/useAnimatedStyleCommon.ts
+index 6d88b5e..784b4a2 100644
+--- a/node_modules/react-native-reanimated/src/hook/useAnimatedStyleCommon.ts
++++ b/node_modules/react-native-reanimated/src/hook/useAnimatedStyleCommon.ts
+@@ -278,7 +278,7 @@ export function styleUpdater(
+       }
+ 
+       if (!allFinished) {
+-        requestAnimationFrame(frame);
++        globalThis.requestAnimationFrame(frame);
+       } else {
+         state.isAnimationRunning = false;
+       }
+diff --git a/node_modules/react-native-reanimated/src/mappers.ts b/node_modules/react-native-reanimated/src/mappers.ts
+index 711d587..81cbd0e 100644
+--- a/node_modules/react-native-reanimated/src/mappers.ts
++++ b/node_modules/react-native-reanimated/src/mappers.ts
+@@ -112,7 +112,7 @@ function createMapperRegistry() {
+     }
+   }
+ 
+-  const schedulingFunction = requestAnimationFrame;
++  const schedulingFunction = globalThis.requestAnimationFrame;
+ 
+   function scheduledMapperRun() {
+     runRequested = false;
+diff --git a/node_modules/react-native-reanimated/src/screenTransition/swipeSimulator.ts b/node_modules/react-native-reanimated/src/screenTransition/swipeSimulator.ts
+index b1a39d7..728094e 100644
+--- a/node_modules/react-native-reanimated/src/screenTransition/swipeSimulator.ts
++++ b/node_modules/react-native-reanimated/src/screenTransition/swipeSimulator.ts
+@@ -64,7 +64,7 @@ function maybeScheduleNextFrame(
+       isTransitionCanceled
+     );
+     RNScreensTurboModule.updateTransition(stackTag, progress);
+-    requestAnimationFrame(step);
++    globalThis.requestAnimationFrame(step);
+   } else {
+     screenTransitionConfig.onFinishAnimation?.();
+   }
+diff --git a/node_modules/react-native-reanimated/src/valueSetter.ts b/node_modules/react-native-reanimated/src/valueSetter.ts
+index c6a7827..f3ee845 100644
+--- a/node_modules/react-native-reanimated/src/valueSetter.ts
++++ b/node_modules/react-native-reanimated/src/valueSetter.ts
+@@ -60,7 +60,7 @@ export function valueSetter<Value>(
+         animation.finished = true;
+         animation.callback?.(true /* finished */);
+       } else {
+-        requestAnimationFrame(step);
++        globalThis.requestAnimationFrame(step);
+       }
+     };
+ 

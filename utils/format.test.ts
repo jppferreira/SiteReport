@@ -1,4 +1,6 @@
-import { formatFileSize, pluralize, todayIsoDate } from './format';
+import { getLocale, setLocale } from '@/i18n';
+
+import { formatDate, formatFileSize, formatRelativeDate, pluralize, todayIsoDate } from './format';
 
 describe('formatFileSize', () => {
   it('formats bytes', () => {
@@ -33,5 +35,25 @@ describe('pluralize', () => {
 describe('todayIsoDate', () => {
   it('returns a yyyy-MM-dd formatted string', () => {
     expect(todayIsoDate()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe('calendar dates west of UTC', () => {
+  afterEach(() => {
+    setLocale('en-US');
+  });
+
+  it('keeps a date-only job date on that local calendar day', () => {
+    setLocale('en-GB');
+    const formatted = new Intl.DateTimeFormat(getLocale(), {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(new Date(2026, 9, 6));
+    expect(formatDate('2026-10-06')).toBe(formatted);
+  });
+
+  it('calls today "Today" when the stored value is a date-only string', () => {
+    expect(formatRelativeDate(todayIsoDate())).toBe('Today');
   });
 });

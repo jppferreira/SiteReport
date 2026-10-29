@@ -1,24 +1,30 @@
-import * as Print from 'expo-print';
 import { router, useFocusEffect } from 'expo-router';
+import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { ConfirmationDialog, EmptyState, ErrorState, Skeleton, Text, useToast } from '@/components';
+import { ConfirmationDialog, EmptyState, ErrorState, Screen, Skeleton, Text, useToast } from '@/components';
 import { reportsRepository } from '@/database';
 import { BottomSheetMenu } from '@/features/jobs/BottomSheetMenu';
+import { RenameReportDialog } from '@/features/reports/RenameReportDialog';
 import { ReportListItem } from '@/features/reports/ReportListItem';
 import { ReportWithJob, useReports } from '@/hooks/useReports';
+import { useI18n } from '@/i18n/useI18n';
 import { deleteFileSafely } from '@/services/fileService';
-import { shareFile } from '@/services/shareService';
+import { openLocalFile, shareFile } from '@/services/shareService';
 import { useTheme } from '@/theme';
 
 export default function ReportsScreen() {
   const { colors, spacing } = useTheme();
+  const { t } = useI18n();
+  const tabBarHeight = useBottomTabBarHeight();
   const { items, loading, error, refresh } = useReports();
   const { showToast } = useToast();
   const [selected, setSelected] = useState<ReportWithJob | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ReportWithJob | null>(null);
+  const [renamingReport, setRenamingReport] = useState<ReportWithJob | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [renaming, setRenaming] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -42,15 +48,33 @@ export default function ReportsScreen() {
 
   const handlePreview = async (item: ReportWithJob) => {
     try {
-      await Print.printAsync({ uri: item.report.localPdfUri });
+      await openLocalFile(item.report.localPdfUri);
     } catch {
-      showToast({ message: "We couldn't open this report", tone: 'destructive' });
+      showToast({ message: t('reports.toastOpenError'), tone: 'destructive' });
     }
   };
 
   const handleShare = async (item: ReportWithJob) => {
-    const shared = await shareFile(item.report.localPdfUri, item.report.fileName);
-    if (!shared) showToast({ message: 'Sharing is not available on this device', tone: 'warning' });
+    try {
+      const shared = await shareFile(item.report.localPdfUri, item.report.fileName);
+      if (!shared) showToast({ message: t('reports.toastShareError'), tone: 'destructive' });
+    } catch {
+      showToast({ message: t('reports.toastShareError'), tone: 'destructive' });
+    }
+  };
+
+  const handleRename = async (fileName: string) => {
+    if (!renamingReport) return;
+    setRenaming(true);
+    try {
+      await reportsRepository.updateReportFileName(renamingReport.report.id, fileName);
+      setRenamingReport(null);
+      refresh();
+    } catch {
+      showToast({ message: t('reports.toastRenameError'), tone: 'destructive' });
+    } finally {
+      setRenaming(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -59,7 +83,7 @@ export default function ReportsScreen() {
     try {
       await deleteFileSafely(confirmDelete.report.localPdfUri);
       await reportsRepository.deleteReport(confirmDelete.report.id);
-      showToast({ message: 'Report deleted', tone: 'neutral' });
+      showToast({ message: t('reports.toastDeleted'), tone: 'neutral' });
       setConfirmDelete(null);
       refresh();
     } finally {
@@ -68,37 +92,43 @@ export default function ReportsScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
-        <Text variant="display">Reports</Text>
+    <Screen edges={['top', 'left', 'right']}>
+      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.xxl }}>
+        <Text variant="display">{t('reports.title')}</Text>
       </View>
 
       {error ? (
-        <ErrorState title="We couldn't load your reports" description={error} onAction={refresh} />
+        <View style={{ flex: 1, paddingBottom: tabBarHeight }}>
+          <ErrorState title={t('reports.errorLoad')} description={error} onAction={refresh} />
+        </View>
       ) : loading ? (
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
-          <Skeleton height={76} radius={16} style={{ marginBottom: 12 }} />
+          <Skeleton height={276} radius={24} style={{ marginBottom: 12 }} />
           <Skeleton height={76} radius={16} />
         </View>
       ) : items.length === 0 ? (
-        <EmptyState
-          icon="document-text-outline"
-          title="No reports yet"
-          description="Generate your first report from a job to see it here."
-        />
+        <View style={{ flex: 1, paddingBottom: tabBarHeight }}>
+          <EmptyState
+            icon="document-text-outline"
+            title={t('reports.emptyTitle')}
+            description={t('reports.emptyDescription')}
+          />
+        </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.md }}>
+        <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg + tabBarHeight }}>
           {recent.length > 0 ? (
             <View style={{ marginBottom: spacing.lg }}>
               <Text variant="label" color={colors.textSecondary} style={{ marginBottom: spacing.sm }}>
-                RECENT
+                {t('reports.recent')}
               </Text>
               {recent.map((item) => (
                 <ReportListItem
                   key={item.report.id}
                   report={item.report}
-                  jobTitle={item.job?.title ?? 'Deleted job'}
+                  jobTitle={item.job?.title ?? t('reports.deletedJob')}
                   isStale={item.isStale}
+                  featured
+                  coverUri={item.coverUri}
                   onPress={() => setSelected(item)}
                 />
               ))}
@@ -108,13 +138,13 @@ export default function ReportsScreen() {
           {earlier.length > 0 ? (
             <View>
               <Text variant="label" color={colors.textSecondary} style={{ marginBottom: spacing.sm }}>
-                EARLIER
+                {t('reports.earlier')}
               </Text>
               {earlier.map((item) => (
                 <ReportListItem
                   key={item.report.id}
                   report={item.report}
-                  jobTitle={item.job?.title ?? 'Deleted job'}
+                  jobTitle={item.job?.title ?? t('reports.deletedJob')}
                   isStale={item.isStale}
                   onPress={() => setSelected(item)}
                 />
@@ -130,28 +160,37 @@ export default function ReportsScreen() {
         items={
           selected
             ? [
-                { icon: 'eye-outline', label: 'Preview', onPress: () => handlePreview(selected) },
-                { icon: 'share-outline', label: 'Share', onPress: () => handleShare(selected) },
+                { icon: 'eye-outline', label: t('reports.menuPreview'), onPress: () => handlePreview(selected) },
+                { icon: 'pencil-outline', label: t('reports.menuRename'), onPress: () => setRenamingReport(selected) },
+                { icon: 'share-outline', label: t('reports.menuShare'), onPress: () => handleShare(selected) },
                 {
                   icon: 'refresh-outline',
-                  label: 'Regenerate',
-                  onPress: () => router.push(`/job/${selected.report.jobId}/generate`),
+                  label: t('reports.menuRegenerate'),
+                  onPress: () => router.push(`/job/${selected.report.jobId}/preview`),
                 },
-                { icon: 'trash-outline', label: 'Delete', destructive: true, onPress: () => setConfirmDelete(selected) },
+                { icon: 'trash-outline', label: t('reports.menuDelete'), destructive: true, onPress: () => setConfirmDelete(selected) },
               ]
             : []
         }
       />
 
+      <RenameReportDialog
+        visible={renamingReport !== null}
+        fileName={renamingReport?.report.fileName ?? ''}
+        saving={renaming}
+        onCancel={() => setRenamingReport(null)}
+        onSubmit={handleRename}
+      />
+
       <ConfirmationDialog
         visible={confirmDelete !== null}
-        title="Delete this report?"
-        description="The PDF will be permanently removed from this device. The job itself will not be affected."
-        confirmLabel="Delete report"
+        title={t('reports.deleteTitle')}
+        description={t('reports.deleteDescription')}
+        confirmLabel={t('reports.deleteConfirm')}
         onConfirm={handleDelete}
         onCancel={() => setConfirmDelete(null)}
         loading={deleting}
       />
-    </View>
+    </Screen>
   );
 }

@@ -1,10 +1,13 @@
 import { getDatabase } from '@/database/client';
-import { BusinessProfile, DEFAULT_BUSINESS_PROFILE } from '@/models';
+import { BusinessProfile, DEFAULT_BUSINESS_PROFILE, normalizeReportImageMask } from '@/models';
 
 function rowToProfile(row: Record<string, unknown>): BusinessProfile {
   return {
     businessName: (row.businessName as string | null) ?? null,
     logoUri: (row.logoUri as string | null) ?? null,
+    coverImageUri: (row.coverImageUri as string | null) ?? null,
+    thanksImageUri: (row.thanksImageUri as string | null) ?? null,
+    imageMask: normalizeReportImageMask(row.imageMask),
     ownerName: (row.ownerName as string | null) ?? null,
     email: (row.email as string | null) ?? null,
     phone: (row.phone as string | null) ?? null,
@@ -35,11 +38,14 @@ export async function saveBusinessProfile(patch: Partial<Omit<BusinessProfile, '
 
   await db.runAsync(
     `INSERT INTO business_profile
-       (id, businessName, logoUri, ownerName, email, phone, website, address, registrationNumber, vatNumber, accentColor, footerMessage, updatedAt)
-     VALUES (1, $businessName, $logoUri, $ownerName, $email, $phone, $website, $address, $registrationNumber, $vatNumber, $accentColor, $footerMessage, $updatedAt)
+       (id, businessName, logoUri, ownerName, email, phone, website, address, registrationNumber, vatNumber, accentColor, footerMessage, coverImageUri, thanksImageUri, imageMask, updatedAt)
+     VALUES (1, $businessName, $logoUri, $ownerName, $email, $phone, $website, $address, $registrationNumber, $vatNumber, $accentColor, $footerMessage, $coverImageUri, $thanksImageUri, $imageMask, $updatedAt)
      ON CONFLICT(id) DO UPDATE SET
        businessName = excluded.businessName,
        logoUri = excluded.logoUri,
+       coverImageUri = excluded.coverImageUri,
+       thanksImageUri = excluded.thanksImageUri,
+       imageMask = excluded.imageMask,
        ownerName = excluded.ownerName,
        email = excluded.email,
        phone = excluded.phone,
@@ -62,6 +68,9 @@ export async function saveBusinessProfile(patch: Partial<Omit<BusinessProfile, '
       $vatNumber: next.vatNumber,
       $accentColor: next.accentColor,
       $footerMessage: next.footerMessage,
+      $coverImageUri: next.coverImageUri,
+      $thanksImageUri: next.thanksImageUri,
+      $imageMask: next.imageMask,
       $updatedAt: next.updatedAt,
     }
   );

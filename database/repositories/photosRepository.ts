@@ -2,10 +2,11 @@ import { getDatabase } from '@/database/client';
 import { Photo, PhotoType } from '@/models';
 import { generateId } from '@/utils/id';
 
-function rowToPhoto(row: Record<string, unknown>): Photo {
+export function rowToPhoto(row: Record<string, unknown>): Photo {
   return {
     id: row.id as string,
     jobId: row.jobId as string,
+    areaId: (row.areaId as string | null) ?? null,
     localUri: row.localUri as string,
     thumbnailUri: row.thumbnailUri as string,
     type: row.type as PhotoType,
@@ -13,20 +14,27 @@ function rowToPhoto(row: Record<string, unknown>): Photo {
     sortOrder: row.sortOrder as number,
     width: row.width as number,
     height: row.height as number,
+    takenAt: (row.takenAt as string | null) ?? null,
     createdAt: row.createdAt as string,
   };
 }
 
-export type NewPhoto = Omit<Photo, 'id' | 'createdAt' | 'sortOrder'> & { sortOrder?: number };
+export type NewPhoto = Omit<Photo, 'id' | 'createdAt' | 'takenAt' | 'sortOrder' | 'areaId'> & {
+  sortOrder?: number;
+  areaId?: string | null;
+  takenAt?: string | null;
+};
 
 export async function addPhoto(photo: NewPhoto): Promise<Photo> {
   const db = await getDatabase();
-  const existing = await listPhotos(photo.jobId, photo.type);
+  const areaId = photo.areaId ?? null;
+  const existing = await listPhotos(photo.jobId, photo.type, areaId);
   const nextSortOrder = photo.sortOrder ?? existing.length;
 
   const record: Photo = {
     id: generateId(),
     jobId: photo.jobId,
+    areaId,
     localUri: photo.localUri,
     thumbnailUri: photo.thumbnailUri,
     type: photo.type,
@@ -34,15 +42,17 @@ export async function addPhoto(photo: NewPhoto): Promise<Photo> {
     sortOrder: nextSortOrder,
     width: photo.width,
     height: photo.height,
+    takenAt: photo.takenAt ?? null,
     createdAt: new Date().toISOString(),
   };
 
   await db.runAsync(
-    `INSERT INTO photos (id, jobId, localUri, thumbnailUri, type, caption, sortOrder, width, height, createdAt)
-     VALUES ($id, $jobId, $localUri, $thumbnailUri, $type, $caption, $sortOrder, $width, $height, $createdAt)`,
+    `INSERT INTO photos (id, jobId, areaId, localUri, thumbnailUri, type, caption, sortOrder, width, height, takenAt, createdAt)
+     VALUES ($id, $jobId, $areaId, $localUri, $thumbnailUri, $type, $caption, $sortOrder, $width, $height, $takenAt, $createdAt)`,
     {
       $id: record.id,
       $jobId: record.jobId,
+      $areaId: record.areaId,
       $localUri: record.localUri,
       $thumbnailUri: record.thumbnailUri,
       $type: record.type,
@@ -50,6 +60,7 @@ export async function addPhoto(photo: NewPhoto): Promise<Photo> {
       $sortOrder: record.sortOrder,
       $width: record.width,
       $height: record.height,
+      $takenAt: record.takenAt,
       $createdAt: record.createdAt,
     }
   );
@@ -57,17 +68,30 @@ export async function addPhoto(photo: NewPhoto): Promise<Photo> {
   return record;
 }
 
-export async function listPhotos(jobId: string, type?: PhotoType): Promise<Photo[]> {
+/**
+ * Lists photos for a job.
+ * Omit `areaId` to include every section. Pass null for photos that cover the whole job.
+ */
+export async function listPhotos(jobId: string, type?: PhotoType, areaId?: string | null): Promise<Photo[]> {
   const db = await getDatabase();
-  const rows = type
-    ? await db.getAllAsync<Record<string, unknown>>(
-        'SELECT * FROM photos WHERE jobId = ? AND type = ? ORDER BY sortOrder ASC',
-        [jobId, type]
-      )
-    : await db.getAllAsync<Record<string, unknown>>(
-        'SELECT * FROM photos WHERE jobId = ? ORDER BY sortOrder ASC',
-        [jobId]
-      );
+  const clauses = ['jobId = ?'];
+  const params: (string | number)[] = [jobId];
+  if (type) {
+    clauses.push('type = ?');
+    params.push(type);
+  }
+  if (areaId !== undefined) {
+    if (areaId === null) {
+      clauses.push('areaId IS NULL');
+    } else {
+      clauses.push('areaId = ?');
+      params.push(areaId);
+    }
+  }
+  const rows = await db.getAllAsync<Record<string, unknown>>(
+    `SELECT * FROM photos WHERE ${clauses.join(' AND ')} ORDER BY sortOrder ASC`,
+    params
+  );
   return rows.map(rowToPhoto);
 }
 
@@ -79,39 +103,52 @@ export async function getPhoto(id: string): Promise<Photo | null> {
 
 export async function updatePhoto(
   id: string,
-  patch: Partial<Pick<Photo, 'caption' | 'type' | 'sortOrder'>>
+  patch: Partial<Pick<Photo, 'caption' | 'type' | 'sortOrder' | 'areaId'>>
 ): Promise<void> {
   const db = await getDatabase();
   const existing = await getPhoto(id);
   if (!existing) return;
 
   const next = { ...existing, ...patch };
-  await db.runAsync('UPDATE photos SET caption = $caption, type = $type, sortOrder = $sortOrder WHERE id = $id', {
-    $id: id,
-    $caption: next.caption,
-    $type: next.type,
-    $sortOrder: next.sortOrder,
-  });
+  const areaChanged = patch.areaId !== undefined && patch.areaId !== existing.areaId;
+  if (areaChanged && patch.sortOrder === undefined) {
+    const siblings = await listPhotos(existing.jobId, next.type, next.areaId);
+    next.sortOrder = siblings.length;
+  }
+
+  await db.runAsync(
+    'UPDATE photos SET caption = $caption, type = $type, sortOrder = $sortOrder, areaId = $areaId WHERE id = $id',
+    {
+      $id: id,
+      $caption: next.caption,
+      $type: next.type,
+      $sortOrder: next.sortOrder,
+      $areaId: next.areaId,
+    }
+  );
 }
 
-export async function reorderPhotos(jobId: string, type: PhotoType, orderedIds: string[]): Promise<void> {
+export async function reorderPhotos(
+  jobId: string,
+  type: PhotoType,
+  orderedIds: string[],
+  areaId: string | null = null
+): Promise<void> {
   const db = await getDatabase();
+  const areaSql = areaId === null ? 'areaId IS NULL' : 'areaId = ?';
   await db.withTransactionAsync(async () => {
     for (let i = 0; i < orderedIds.length; i += 1) {
       const photoId = orderedIds[i];
       if (!photoId) continue;
-      await db.runAsync('UPDATE photos SET sortOrder = ? WHERE id = ? AND jobId = ? AND type = ?', [
-        i,
-        photoId,
-        jobId,
-        type,
-      ]);
+      const params = areaId === null ? [i, photoId, jobId, type] : [i, photoId, jobId, type, areaId];
+      await db.runAsync(`UPDATE photos SET sortOrder = ? WHERE id = ? AND jobId = ? AND type = ? AND ${areaSql}`, params);
     }
   });
 }
 
 export async function deletePhoto(id: string): Promise<void> {
   const db = await getDatabase();
+  await db.runAsync('UPDATE jobs SET coverPhotoId = NULL WHERE coverPhotoId = ?', [id]);
   await db.runAsync('DELETE FROM photos WHERE id = ?', [id]);
 }
 
@@ -149,6 +186,55 @@ export async function getJobPhotoSummaries(jobIds: string[]): Promise<Record<str
     if (result[row.jobId]) {
       result[row.jobId]!.thumbnailUri = row.thumbnailUri;
     }
+  }
+
+  const covers = await db.getAllAsync<{ jobId: string; thumbnailUri: string }>(
+    `SELECT j.id AS jobId, p.thumbnailUri
+     FROM jobs j
+     INNER JOIN photos p ON p.id = j.coverPhotoId
+     WHERE j.id IN (${placeholders})`,
+    jobIds
+  );
+  for (const row of covers) {
+    if (result[row.jobId]) result[row.jobId]!.thumbnailUri = row.thumbnailUri;
+  }
+  return result;
+}
+
+/**
+ * One photo per job for report covers. A photo the user saved as the cover
+ * wins. Otherwise the first "after" photo, then the first photo of any kind.
+ */
+export async function getJobCoverUris(jobIds: string[]): Promise<Record<string, string | null>> {
+  const result: Record<string, string | null> = {};
+  for (const jobId of jobIds) result[jobId] = null;
+  if (jobIds.length === 0) return result;
+
+  const db = await getDatabase();
+  const placeholders = jobIds.map(() => '?').join(',');
+  const saved = await db.getAllAsync<{ jobId: string; localUri: string }>(
+    `SELECT j.id AS jobId, p.localUri
+     FROM jobs j
+     INNER JOIN photos p ON p.id = j.coverPhotoId
+     WHERE j.id IN (${placeholders})`,
+    jobIds
+  );
+  for (const row of saved) result[row.jobId] = row.localUri;
+
+  const rows = await db.getAllAsync<{ jobId: string; localUri: string }>(
+    `SELECT jobId, localUri FROM (
+       SELECT jobId, localUri,
+              ROW_NUMBER() OVER (
+                PARTITION BY jobId
+                ORDER BY CASE WHEN type = 'after' THEN 0 ELSE 1 END, sortOrder ASC
+              ) AS rn
+       FROM photos
+       WHERE jobId IN (${placeholders})
+     ) WHERE rn = 1`,
+    jobIds
+  );
+  for (const row of rows) {
+    if (result[row.jobId] == null) result[row.jobId] = row.localUri;
   }
   return result;
 }

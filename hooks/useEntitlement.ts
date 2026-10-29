@@ -9,15 +9,21 @@ export function useEntitlement() {
 
   useEffect(() => {
     let mounted = true;
-    getEntitlement().then((value) => {
-      if (mounted) {
-        setEntitlement(value);
-        setLoading(false);
-      }
-    });
-    refreshEntitlement().then((value) => {
-      if (mounted) setEntitlement(value);
-    });
+    getEntitlement()
+      .then((value) => {
+        if (mounted) {
+          setEntitlement(value);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (mounted) setLoading(false);
+      });
+    refreshEntitlement()
+      .then((value) => {
+        if (mounted) setEntitlement(value);
+      })
+      .catch(() => undefined);
     const unsubscribe = subscribeToEntitlement((value) => {
       if (mounted) setEntitlement(value);
     });

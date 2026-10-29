@@ -1,5 +1,5 @@
 import { getDatabase } from '@/database/client';
-import { WorkSummary } from '@/models';
+import { parsePricing, serializePricing, WorkSummary } from '@/models';
 
 function rowToSummary(row: Record<string, unknown>): WorkSummary {
   return {
@@ -8,6 +8,7 @@ function rowToSummary(row: Record<string, unknown>): WorkSummary {
     materials: (row.materials as string | null) ?? null,
     recommendations: (row.recommendations as string | null) ?? null,
     notes: (row.notes as string | null) ?? null,
+    pricing: parsePricing(row.pricingJson),
     updatedAt: row.updatedAt as string,
   };
 }
@@ -23,7 +24,7 @@ export async function getWorkSummary(jobId: string): Promise<WorkSummary | null>
 
 export async function saveWorkSummary(
   jobId: string,
-  patch: Partial<Pick<WorkSummary, 'workCompleted' | 'materials' | 'recommendations' | 'notes'>>
+  patch: Partial<Pick<WorkSummary, 'workCompleted' | 'materials' | 'recommendations' | 'notes' | 'pricing'>>
 ): Promise<WorkSummary> {
   const db = await getDatabase();
   const existing = await getWorkSummary(jobId);
@@ -34,17 +35,19 @@ export async function saveWorkSummary(
     recommendations:
       patch.recommendations !== undefined ? patch.recommendations : existing?.recommendations ?? null,
     notes: patch.notes !== undefined ? patch.notes : existing?.notes ?? null,
+    pricing: patch.pricing !== undefined ? patch.pricing : existing?.pricing ?? { enabled: false, lines: [] },
     updatedAt: new Date().toISOString(),
   };
 
   await db.runAsync(
-    `INSERT INTO work_summaries (jobId, workCompleted, materials, recommendations, notes, updatedAt)
-     VALUES ($jobId, $workCompleted, $materials, $recommendations, $notes, $updatedAt)
+    `INSERT INTO work_summaries (jobId, workCompleted, materials, recommendations, notes, pricingJson, updatedAt)
+     VALUES ($jobId, $workCompleted, $materials, $recommendations, $notes, $pricingJson, $updatedAt)
      ON CONFLICT(jobId) DO UPDATE SET
        workCompleted = excluded.workCompleted,
        materials = excluded.materials,
        recommendations = excluded.recommendations,
        notes = excluded.notes,
+       pricingJson = excluded.pricingJson,
        updatedAt = excluded.updatedAt`,
     {
       $jobId: next.jobId,
@@ -52,6 +55,7 @@ export async function saveWorkSummary(
       $materials: next.materials,
       $recommendations: next.recommendations,
       $notes: next.notes,
+      $pricingJson: serializePricing(next.pricing),
       $updatedAt: next.updatedAt,
     }
   );

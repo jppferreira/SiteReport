@@ -47,7 +47,7 @@ export function SkeletonJobCard() {
     <View
       style={[
         styles.card,
-        { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md },
+        { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.xl, padding: spacing.md },
       ]}
     >
       <Skeleton width={56} height={56} radius={radius.md} />

@@ -1,20 +1,26 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { Input, NavigationHeader, PermissionNotice, Screen, Text, TextButton } from '@/components';
+import { FIELD_STACK_GAP, Input, LocalImage, NavigationHeader, PermissionNotice, Screen, StatusBadge, Text, TextButton } from '@/components';
+import { businessProfileRepository } from '@/database';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
+import { useEntitlement } from '@/hooks/useEntitlement';
+import { useFlushWhenHidden } from '@/hooks/useFlushWhenHidden';
 import { ensureBusinessDirectory } from '@/services/fileService';
 import { processBusinessLogo } from '@/services/imageService';
+import { requestPhotoLibraryAccess } from '@/services/photoLibraryAccess';
+import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
 import { validateEmail } from '@/utils/validation';
 
 export default function BusinessProfileScreen() {
   const { colors, radius, spacing } = useTheme();
+  const { t } = useI18n();
   const { profile, loading, save } = useBusinessProfile();
+  const { isPro } = useEntitlement();
 
   const [businessName, setBusinessName] = useState('');
   const [ownerName, setOwnerName] = useState('');
@@ -31,6 +37,26 @@ export default function BusinessProfileScreen() {
 
   const hydrated = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRef = useRef(false);
+  const draftRef = useRef({ businessName, ownerName, email, phone, website, address, registrationNumber, vatNumber });
+
+  useEffect(() => {
+    draftRef.current = { businessName, ownerName, email, phone, website, address, registrationNumber, vatNumber };
+  }, [businessName, ownerName, email, phone, website, address, registrationNumber, vatNumber]);
+
+  const persistPending = useCallback(() => {
+    if (!pendingRef.current || !hydrated.current) return;
+    const draft = draftRef.current;
+    if (!validateEmail(draft.email).valid) return;
+    pendingRef.current = false;
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    void businessProfileRepository.saveBusinessProfile(draft).catch(() => undefined);
+  }, []);
+
+  useFlushWhenHidden(persistPending);
 
   useEffect(() => {
     if (profile && !hydrated.current) {
@@ -57,8 +83,11 @@ export default function BusinessProfileScreen() {
     // runs; this mirrors the autosave operation itself, not derived state.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSavedState('saving');
+    pendingRef.current = true;
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
+      pendingRef.current = false;
+      timer.current = null;
       await save({ businessName, ownerName, email, phone, website, address, registrationNumber, vatNumber });
       setSavedState('saved');
     }, 500);
@@ -68,9 +97,17 @@ export default function BusinessProfileScreen() {
     };
   }, [businessName, ownerName, email, phone, website, address, registrationNumber, vatNumber, save]);
 
+  const openPaywall = () => {
+    router.push({ pathname: '/paywall', params: { trigger: 'logo' } });
+  };
+
   const handlePickLogo = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
+    if (!isPro) {
+      openPaywall();
+      return;
+    }
+    const allowed = await requestPhotoLibraryAccess();
+    if (!allowed) {
       setPermissionDenied(true);
       return;
     }
@@ -94,39 +131,61 @@ export default function BusinessProfileScreen() {
   return (
     <Screen>
       <NavigationHeader
-        title="Business profile"
+        title={t('businessProfile.title')}
         onBack={() => router.back()}
-        right={<TextButton label="Done" onPress={() => router.back()} />}
+        right={<TextButton label={t('businessProfile.done')} onPress={() => router.back()} />}
       />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: spacing.lg }}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: FIELD_STACK_GAP }}
           keyboardShouldPersistTaps="handled"
         >
-          <Pressable onPress={handlePickLogo} accessibilityRole="button" accessibilityLabel="Choose business logo" style={styles.logoRow}>
+          <Input label={t('businessProfile.businessName')} value={businessName} onChangeText={setBusinessName} placeholder={t('businessProfile.businessNamePlaceholder')} />
+
+          <Pressable
+            onPress={handlePickLogo}
+            accessibilityRole="button"
+            accessibilityLabel={isPro ? t('businessProfile.chooseLogoA11y') : t('businessProfile.logoProA11y')}
+            style={styles.logoRow}
+          >
             <View style={[styles.logo, { backgroundColor: colors.surfaceSunken, borderRadius: radius.lg }]}>
               {logoUri ? (
-                <Image source={{ uri: logoUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                <LocalImage uri={logoUri} style={StyleSheet.absoluteFill} contentFit="cover" />
               ) : (
-                <Ionicons name="business-outline" size={24} color={colors.textSecondary} />
+                <Ionicons name="image-outline" size={22} color={colors.textSecondary} />
               )}
             </View>
-            <Text variant="bodyMedium" color={colors.accentPressed} style={{ marginLeft: spacing.sm }}>
-              {logoUri ? 'Change logo' : 'Add logo'}
-            </Text>
+            <View style={{ marginLeft: spacing.sm, flex: 1 }}>
+              <View style={styles.logoLabelRow}>
+                <Text variant="label" color={colors.textSecondary}>
+                  {t('businessProfile.logo')}
+                </Text>
+                {!isPro ? <StatusBadge label={t('businessProfile.proBadge')} tone="accent" /> : null}
+              </View>
+              <Text variant="bodyMedium" color={colors.accent} style={{ marginTop: 2 }}>
+                {isPro
+                  ? logoUri
+                    ? t('businessProfile.changeLogo')
+                    : t('businessProfile.addLogo')
+                  : t('businessProfile.upgradeForLogo')}
+              </Text>
+            </View>
           </Pressable>
 
-          <Input label="Business name" value={businessName} onChangeText={setBusinessName} placeholder="e.g. Smith Plumbing" />
-          <Input label="Your name" value={ownerName} onChangeText={setOwnerName} />
-          <Input label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" error={emailError ?? undefined} />
-          <Input label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-          <Input label="Website" value={website} onChangeText={setWebsite} autoCapitalize="none" />
-          <Input label="Business address" value={address} onChangeText={setAddress} />
-          <Input label="Registration number" value={registrationNumber} onChangeText={setRegistrationNumber} />
-          <Input label="VAT number" value={vatNumber} onChangeText={setVatNumber} />
+          <Input label={t('businessProfile.phone')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder={t('businessProfile.phonePlaceholder')} />
+          <Input label={t('businessProfile.email')} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" error={emailError ?? undefined} placeholder={t('businessProfile.emailPlaceholder')} />
+          <Input label={t('businessProfile.yourName')} value={ownerName} onChangeText={setOwnerName} />
+          <Input label={t('businessProfile.website')} value={website} onChangeText={setWebsite} autoCapitalize="none" />
+          <Input label={t('businessProfile.businessAddress')} value={address} onChangeText={setAddress} />
+          <Input label={t('businessProfile.registrationNumber')} value={registrationNumber} onChangeText={setRegistrationNumber} />
+          <Input label={t('businessProfile.vatNumber')} value={vatNumber} onChangeText={setVatNumber} />
 
           <Text variant="caption" color={colors.textSecondary}>
-            {savedState === 'saving' ? 'Saving…' : savedState === 'saved' ? 'All changes saved' : ' '}
+            {savedState === 'saving'
+              ? t('businessProfile.saving')
+              : savedState === 'saved'
+                ? t('businessProfile.allChangesSaved')
+                : ' '}
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -140,6 +199,11 @@ const styles = StyleSheet.create({
   logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  logoLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   logo: {
     width: 56,

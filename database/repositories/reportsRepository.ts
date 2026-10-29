@@ -1,5 +1,5 @@
 import { getDatabase } from '@/database/client';
-import { Report } from '@/models';
+import { normalizeReportTemplateId, Report } from '@/models';
 import { generateId } from '@/utils/id';
 
 function rowToReport(row: Record<string, unknown>): Report {
@@ -12,6 +12,7 @@ function rowToReport(row: Record<string, unknown>): Report {
     fileSize: row.fileSize as number,
     version: row.version as number,
     sourceHash: row.sourceHash as string,
+    templateId: normalizeReportTemplateId(row.templateId),
   };
 }
 
@@ -29,11 +30,12 @@ export async function createReport(report: NewReport): Promise<Report> {
     fileSize: report.fileSize,
     version: existingForJob.length + 1,
     sourceHash: report.sourceHash,
+    templateId: report.templateId,
   };
 
   await db.runAsync(
-    `INSERT INTO reports (id, jobId, localPdfUri, fileName, generatedAt, fileSize, version, sourceHash)
-     VALUES ($id, $jobId, $localPdfUri, $fileName, $generatedAt, $fileSize, $version, $sourceHash)`,
+    `INSERT INTO reports (id, jobId, localPdfUri, fileName, generatedAt, fileSize, version, sourceHash, templateId)
+     VALUES ($id, $jobId, $localPdfUri, $fileName, $generatedAt, $fileSize, $version, $sourceHash, $templateId)`,
     {
       $id: record.id,
       $jobId: record.jobId,
@@ -43,6 +45,7 @@ export async function createReport(report: NewReport): Promise<Report> {
       $fileSize: record.fileSize,
       $version: record.version,
       $sourceHash: record.sourceHash,
+      $templateId: record.templateId,
     }
   );
 
@@ -73,6 +76,11 @@ export async function getReport(id: string): Promise<Report | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<Record<string, unknown>>('SELECT * FROM reports WHERE id = ?', [id]);
   return row ? rowToReport(row) : null;
+}
+
+export async function updateReportFileName(id: string, fileName: string): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('UPDATE reports SET fileName = ? WHERE id = ?', [fileName, id]);
 }
 
 export async function deleteReport(id: string): Promise<void> {

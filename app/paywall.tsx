@@ -1,43 +1,70 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { Button, IconButton, LoadingState, PaywallFeature, Screen, Text, TextButton, useToast } from '@/components';
+import { Button, ErrorState, IconButton, LoadingState, PaywallFeature, Screen, Text, TextButton, useToast } from '@/components';
 import { PlanOption } from '@/features/paywall/PlanOption';
+import { useI18n } from '@/i18n/useI18n';
 import { PlanId, ProductInfo } from '@/models';
 import { getProducts, purchase, restorePurchases } from '@/services/entitlementService';
 import { useTheme } from '@/theme';
-
-const BENEFITS = [
-  'Unlimited professional reports',
-  'Your logo and branding',
-  'Customer sign-off',
-  'Custom report styling',
-  'All future Pro features',
-];
-
-const TRIGGER_COPY: Record<string, string> = {
-  free_limit: "You've used all 3 free reports. Upgrade for unlimited reports.",
-  signature: 'Customer sign-off is a Pro feature.',
-  branding: 'Custom branding is a Pro feature.',
-};
+import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/utils/siteUrls';
 
 export default function PaywallScreen() {
   const { trigger } = useLocalSearchParams<{ trigger?: string }>();
   const { colors, radius, spacing } = useTheme();
+  const { t } = useI18n();
   const { showToast } = useToast();
   const [products, setProducts] = useState<ProductInfo[]>([]);
   const [selected, setSelected] = useState<PlanId>('annual');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
 
+  const benefits = useMemo(
+    () => [
+      t('paywall.benefitUnlimited'),
+      t('paywall.benefitBranding'),
+      t('paywall.benefitSignOff'),
+      t('paywall.benefitStyling'),
+      t('paywall.benefitFuture'),
+    ],
+    [t]
+  );
+
+  const triggerCopy = useMemo(
+    () =>
+      ({
+        free_limit: t('paywall.triggerFreeLimit'),
+        signature: t('paywall.triggerSignature'),
+        branding: t('paywall.triggerBranding'),
+        logo: t('paywall.triggerLogo'),
+        colour: t('paywall.triggerColour'),
+        template: t('paywall.triggerTemplate'),
+      }) as Record<string, string>,
+    [t]
+  );
+
   useEffect(() => {
-    getProducts().then((result) => {
-      setProducts(result);
-      setLoading(false);
-    });
+    let cancelled = false;
+    getProducts()
+      .then((result) => {
+        if (cancelled) return;
+        setProducts(result);
+        setLoadError(false);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLoadError(true);
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const selectedProduct = products.find((p) => p.planId === selected);
@@ -47,15 +74,20 @@ export default function PaywallScreen() {
     try {
       const result = await purchase(selected);
       if (result.outcome === 'success') {
-        showToast({ message: 'Welcome to Pro', tone: 'success' });
+        showToast({ message: t('paywall.toastWelcome'), tone: 'success' });
         router.back();
       } else if (result.outcome === 'cancelled') {
         // No toast — a cancelled purchase sheet is not an error.
       } else if (result.outcome === 'pending') {
-        showToast({ message: 'Your purchase is pending approval', tone: 'warning' });
+        showToast({ message: t('paywall.toastPending'), tone: 'warning' });
       } else {
-        showToast({ message: result.message || "We couldn't complete that purchase", tone: 'destructive' });
+        showToast({ message: result.message || t('paywall.toastPurchaseError'), tone: 'destructive' });
       }
+    } catch {
+      showToast({
+        message: t('paywall.toastPurchaseOffline'),
+        tone: 'warning',
+      });
     } finally {
       setPurchasing(false);
     }
@@ -66,13 +98,18 @@ export default function PaywallScreen() {
     try {
       const result = await restorePurchases();
       if (result.outcome === 'restored') {
-        showToast({ message: 'Pro access restored', tone: 'success' });
+        showToast({ message: t('paywall.toastRestored'), tone: 'success' });
         router.back();
       } else if (result.outcome === 'nothing_to_restore') {
-        showToast({ message: 'No previous purchase found', tone: 'neutral' });
+        showToast({ message: t('paywall.toastNothingToRestore'), tone: 'neutral' });
       } else {
-        showToast({ message: result.message || "We couldn't restore your purchase", tone: 'destructive' });
+        showToast({ message: result.message || t('paywall.toastRestoreError'), tone: 'destructive' });
       }
+    } catch {
+      showToast({
+        message: t('paywall.toastRestoreOffline'),
+        tone: 'warning',
+      });
     } finally {
       setRestoring(false);
     }
@@ -81,18 +118,36 @@ export default function PaywallScreen() {
   return (
     <Screen>
       <View style={{ alignItems: 'flex-end', paddingHorizontal: spacing.md, paddingTop: spacing.xs }}>
-        <IconButton name="close" accessibilityLabel="Close" variant="ghost" onPress={() => router.back()} />
+        <IconButton name="close" accessibilityLabel={t('paywall.closeA11y')} variant="ghost" onPress={() => router.back()} />
       </View>
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <ErrorState
+          title={t('paywall.connectionTitle')}
+          description={t('paywall.connectionDescription')}
+          onAction={() => {
+            setLoading(true);
+            setLoadError(false);
+            getProducts()
+              .then((result) => {
+                setProducts(result);
+                setLoading(false);
+              })
+              .catch(() => {
+                setLoadError(true);
+                setLoading(false);
+              });
+          }}
+        />
       ) : (
         <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl }}>
           <View style={[styles(spacing).hero, { backgroundColor: colors.ctaDark, borderRadius: radius.xl }]}>
             <Ionicons name="document-text" size={28} color={colors.accent} />
             <View style={{ marginTop: spacing.sm }}>
               <Text variant="caption" color="rgba(255,255,255,0.6)">
-                PREVIEW
+                {t('paywall.previewLabel')}
               </Text>
               <View style={{ height: 6 }} />
               <View style={{ gap: 6 }}>
@@ -103,17 +158,17 @@ export default function PaywallScreen() {
           </View>
 
           <Text variant="display" style={{ marginTop: spacing.xl }}>
-            Professional reports.{'\n'}Unlimited jobs.
+            {t('paywall.headline')}
           </Text>
 
-          {trigger && TRIGGER_COPY[trigger] ? (
+          {trigger && triggerCopy[trigger] ? (
             <Text variant="body" color={colors.textSecondary} style={{ marginTop: spacing.sm }}>
-              {TRIGGER_COPY[trigger]}
+              {triggerCopy[trigger]}
             </Text>
           ) : null}
 
           <View style={{ marginTop: spacing.xl, gap: spacing.sm }}>
-            {BENEFITS.map((benefit) => (
+            {benefits.map((benefit) => (
               <PaywallFeature key={benefit} label={benefit} />
             ))}
           </View>
@@ -125,26 +180,34 @@ export default function PaywallScreen() {
                 product={product}
                 selected={selected === product.planId}
                 onSelect={() => setSelected(product.planId)}
-                badge={product.planId === 'annual' ? 'BEST VALUE' : undefined}
+                badge={product.planId === 'annual' ? t('paywall.bestValue') : undefined}
               />
             ))}
           </View>
 
-          <View style={{ marginTop: spacing.xl }}>
+          <Text variant="caption" color={colors.textSecondary} style={{ marginTop: spacing.lg, textAlign: 'center' }}>
+            {t('paywall.legal')}
+          </Text>
+
+          <View style={{ marginTop: spacing.lg }}>
             <Button
-              label={selectedProduct ? `Continue — ${selectedProduct.priceFormatted}` : 'Continue'}
+              label={
+                selectedProduct
+                  ? t('paywall.continueWithPrice', { price: selectedProduct.priceFormatted })
+                  : t('paywall.continue')
+              }
               onPress={handlePurchase}
               loading={purchasing}
             />
           </View>
 
           <View style={{ marginTop: spacing.md, alignItems: 'center' }}>
-            <TextButton label="Restore purchases" onPress={handleRestore} disabled={restoring} />
+            <TextButton label={t('paywall.restore')} onPress={handleRestore} disabled={restoring} />
           </View>
 
           <View style={{ flexDirection: 'row', justifyContent: 'center', gap: spacing.md, marginTop: spacing.sm }}>
-            <TextButton label="Terms" onPress={() => router.push('/settings/terms')} />
-            <TextButton label="Privacy" onPress={() => router.push('/settings/privacy')} />
+            <TextButton label={t('paywall.terms')} onPress={() => void Linking.openURL(TERMS_OF_USE_URL)} />
+            <TextButton label={t('paywall.privacy')} onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)} />
           </View>
         </ScrollView>
       )}

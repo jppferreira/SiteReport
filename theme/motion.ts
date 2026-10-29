@@ -2,25 +2,31 @@ import { AccessibilityInfo } from 'react-native';
 import { makeMutable, withTiming, type AnimationCallback, type WithTimingConfig } from 'react-native-reanimated';
 
 /**
- * Tracks the OS "Reduce Motion" accessibility setting so Reanimated
- * transitions can collapse to an instant change instead of animating. Uses a
- * shared value (rather than a plain module variable) so it can be read
- * safely from worklets running on the UI thread, e.g. gesture callbacks.
+ * OS "Reduce Motion" flag, readable from the UI thread.
+ *
+ * Worklets must read `reduceMotion.value` directly. Calling `isMotionReduced`
+ * or `motionTiming` from a worklet makes Worklets throw
+ * "Tried to synchronously call a remote function" on Expo Go. Those helpers
+ * stay plain JS functions because press handlers and effects run on the JS thread.
  */
-const reduceMotionSV = makeMutable(false);
+export const reduceMotion = makeMutable(false);
 
 AccessibilityInfo.isReduceMotionEnabled?.()
   .then((enabled) => {
-    reduceMotionSV.value = enabled;
+    reduceMotion.value = enabled;
   })
   .catch(() => undefined);
 
 AccessibilityInfo.addEventListener('reduceMotionChanged', (enabled) => {
-  reduceMotionSV.value = enabled;
+  reduceMotion.value = enabled;
 });
 
-/** Drop-in replacement for Reanimated's `withTiming` that respects Reduce Motion. Safe to call from worklets. */
+/** Drop-in replacement for Reanimated's `withTiming` that respects Reduce Motion. JS thread only. */
 export function motionTiming(toValue: number, config?: WithTimingConfig, callback?: AnimationCallback) {
-  'worklet';
-  return withTiming(toValue, reduceMotionSV.value ? { ...config, duration: 0 } : config, callback);
+  return withTiming(toValue, reduceMotion.value ? { ...config, duration: 0 } : config, callback);
+}
+
+/** True when the OS asks for reduced motion. JS thread only. */
+export function isMotionReduced() {
+  return reduceMotion.value;
 }

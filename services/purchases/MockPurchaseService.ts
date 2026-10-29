@@ -2,6 +2,7 @@ import { Entitlement, FREE_ENTITLEMENT, PlanId, ProductInfo, PurchaseResult, Res
 import { logger } from '@/utils/logger';
 import { getSecureItem, setSecureItem } from '@/utils/secureStorage';
 
+import { PRO_CATALOG } from './catalog';
 import { PurchaseService } from './PurchaseService';
 
 const STORE_STATE_KEY = 'sitereport.mockStore.state';
@@ -36,32 +37,12 @@ export const EMPTY_STATE: MockStoreState = {
   cancelled: false,
 };
 
-const PRODUCTS: ProductInfo[] = [
-  {
-    planId: 'monthly',
-    productId: 'sitereport.pro.monthly',
-    priceFormatted: '£4.99',
-    priceValue: 4.99,
-    currencyCode: 'GBP',
-    periodLabel: 'per month',
-  },
-  {
-    planId: 'annual',
-    productId: 'sitereport.pro.annual',
-    priceFormatted: '£29.99',
-    priceValue: 29.99,
-    currencyCode: 'GBP',
-    periodLabel: 'per year',
-  },
-  {
-    planId: 'lifetime',
-    productId: 'sitereport.pro.lifetime',
-    priceFormatted: '£59.99',
-    priceValue: 59.99,
-    currencyCode: 'GBP',
-    periodLabel: 'once',
-  },
-];
+const PRODUCTS: ProductInfo[] = PRO_CATALOG.map((item) => ({
+  planId: item.planId,
+  productId: item.productId,
+  periodLabel: item.periodLabel,
+  ...item.mock,
+}));
 
 /** Subscription durations are compressed for the mock so expiry/renewal is observable while testing. */
 const SIMULATED_DURATION_MS: Record<'monthly' | 'annual', number> = {

@@ -1,15 +1,15 @@
 /**
- * SiteReport uses Inter as its primary typeface. Inter is a libre-licensed
- * (OFL) grotesque designed for UI legibility at small sizes, which makes it
- * suitable for a commercial product. Weights are loaded in app/_layout.tsx
- * via `@expo-google-fonts/inter` and referenced here by the family names
- * that package registers.
+ * Trade Report uses Lexend as its primary typeface. Lexend is a libre-licensed
+ * (OFL) grotesque designed for reading fluency, which makes it suitable for
+ * a commercial product. Weights are loaded in app/_layout.tsx via
+ * `@expo-google-fonts/lexend` and referenced here by the family names that
+ * package registers.
  */
 export const fontFamily = {
-  regular: 'Inter_400Regular',
-  medium: 'Inter_500Medium',
-  semibold: 'Inter_600SemiBold',
-  bold: 'Inter_700Bold',
+  regular: 'Lexend_400Regular',
+  medium: 'Lexend_500Medium',
+  semibold: 'Lexend_600SemiBold',
+  bold: 'Lexend_700Bold',
 };
 
 type TypeStyle = {

@@ -11,11 +11,25 @@ type TextButtonProps = {
   destructive?: boolean;
   disabled?: boolean;
   align?: 'left' | 'center';
+  tone?: 'default' | 'accent';
 };
 
-export function TextButton({ label, onPress, destructive = false, disabled = false, align = 'center' }: TextButtonProps) {
+export function TextButton({
+  label,
+  onPress,
+  destructive = false,
+  disabled = false,
+  align = 'center',
+  tone = 'default',
+}: TextButtonProps) {
   const { colors } = useTheme();
-  const color = disabled ? colors.textTertiary : destructive ? colors.destructive : colors.textPrimary;
+  const color = disabled
+    ? colors.textTertiary
+    : destructive
+      ? colors.destructive
+      : tone === 'accent'
+        ? colors.accent
+        : colors.textPrimary;
 
   return (
     <Pressable

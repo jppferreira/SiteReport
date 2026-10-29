@@ -1,6 +1,7 @@
 import type { SQLiteBindValue } from 'expo-sqlite';
 
 import { getDatabase } from '@/database/client';
+import { deleteJobStatements } from '@/database/jobDelete';
 import { Job, JobDraft, JobStatus } from '@/models';
 import { generateId } from '@/utils/id';
 import { todayIsoDate } from '@/utils/format';
@@ -17,6 +18,7 @@ function rowToJob(row: Record<string, unknown>): Job {
     referenceNumber: (row.referenceNumber as string | null) ?? null,
     description: (row.description as string | null) ?? null,
     status: row.status as JobStatus,
+    coverPhotoId: (row.coverPhotoId as string | null) ?? null,
     createdAt: row.createdAt as string,
     updatedAt: row.updatedAt as string,
   };
@@ -34,6 +36,7 @@ export async function createJob(draft: JobDraft): Promise<Job> {
     referenceNumber: draft.referenceNumber?.trim() || null,
     description: draft.description?.trim() || null,
     status: 'draft',
+    coverPhotoId: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -93,6 +96,20 @@ export async function updateJob(id: string, patch: Partial<JobDraft & { status: 
   );
 }
 
+/** Saves which photo leads this job on the reports list and the report cover. */
+export async function setCoverPhoto(jobId: string, photoId: string | null): Promise<void> {
+  const db = await getDatabase();
+  if (photoId) {
+    const photo = await db.getFirstAsync<{ jobId: string }>('SELECT jobId FROM photos WHERE id = ?', [photoId]);
+    if (!photo || photo.jobId !== jobId) return;
+  }
+  await db.runAsync('UPDATE jobs SET coverPhotoId = ?, updatedAt = ? WHERE id = ?', [
+    photoId,
+    new Date().toISOString(),
+    jobId,
+  ]);
+}
+
 export async function getJob(id: string): Promise<Job | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<Record<string, unknown>>('SELECT * FROM jobs WHERE id = ?', [id]);
@@ -126,7 +143,12 @@ export async function listJobs(filter: JobFilter = 'all', search = ''): Promise<
 
 export async function deleteJob(id: string): Promise<void> {
   const db = await getDatabase();
-  await db.runAsync('DELETE FROM jobs WHERE id = ?', [id]);
+  const statements = deleteJobStatements();
+  await db.withTransactionAsync(async () => {
+    for (const statement of statements) {
+      await db.runAsync(statement, [id]);
+    }
+  });
 }
 
 export async function duplicateJob(id: string): Promise<Job | null> {

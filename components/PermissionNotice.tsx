@@ -3,6 +3,7 @@ import * as Linking from 'expo-linking';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
 
 import { Button } from './Button';
@@ -17,11 +18,10 @@ type PermissionNoticeProps = {
 
 export function PermissionNotice({ visible, kind, onDismiss }: PermissionNoticeProps) {
   const { colors, radius, spacing, shadows } = useTheme();
-  const label = kind === 'camera' ? 'Camera access is turned off.' : 'Photo library access is turned off.';
+  const { t } = useI18n();
+  const label = kind === 'camera' ? t('components.permissionCameraTitle') : t('components.permissionLibraryTitle');
   const description =
-    kind === 'camera'
-      ? 'Allow camera access in Settings so you can take before and after job photos.'
-      : 'Allow photo library access in Settings so you can add existing photos to this job.';
+    kind === 'camera' ? t('components.permissionCameraBody') : t('components.permissionLibraryBody');
 
   return (
     <Modal visible={visible} onRequestClose={onDismiss}>
@@ -38,8 +38,8 @@ export function PermissionNotice({ visible, kind, onDismiss }: PermissionNoticeP
           {description}
         </Text>
         <View style={{ marginTop: spacing.xl, gap: spacing.xs }}>
-          <Button label="Open Settings" onPress={() => Linking.openSettings()} />
-          <Button label="Not now" variant="tertiary" onPress={onDismiss} />
+          <Button label={t('components.permissionOpenSettings')} onPress={() => Linking.openSettings()} />
+          <Button label={t('components.permissionNotNow')} variant="tertiary" onPress={onDismiss} />
         </View>
       </View>
     </Modal>

@@ -2,83 +2,80 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { StatusBadge, Text } from '@/components';
+import { Text } from '@/components';
+import { useI18n } from '@/i18n/useI18n';
 import { JobSectionStatus } from '@/models';
 import { useTheme } from '@/theme';
 
 type JobSectionRowProps = {
-  icon: keyof typeof Ionicons.glyphMap;
   title: string;
   subtitle?: string;
   status: JobSectionStatus;
   onPress: () => void;
+  showDivider?: boolean;
 };
 
-export function JobSectionRow({ icon, title, subtitle, status, onPress }: JobSectionRowProps) {
-  const { colors, radius, spacing } = useTheme();
+export function JobSectionRow({ title, subtitle, status, onPress, showDivider = false }: JobSectionRowProps) {
+  const { colors } = useTheme();
+  const { t } = useI18n();
+  const complete = status === 'complete';
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${title}, ${statusLabel(status)}`}
+      accessibilityLabel={t('jobs.sectionRowA11y', {
+        title,
+        status: complete ? t('common.complete') : t('common.notComplete'),
+      })}
       style={({ pressed }) => [
         styles.row,
         {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-          borderRadius: radius.lg,
-          paddingHorizontal: spacing.md,
-          opacity: pressed ? 0.85 : 1,
+          borderBottomColor: colors.border,
+          borderBottomWidth: showDivider ? StyleSheet.hairlineWidth : 0,
+          opacity: pressed ? 0.7 : 1,
         },
       ]}
     >
       <View
         style={[
-          styles.iconWrap,
-          { backgroundColor: status === 'complete' ? colors.accentSoft : colors.surfaceSunken, borderRadius: radius.md },
+          styles.circle,
+          complete
+            ? { backgroundColor: colors.accent, borderColor: colors.accent }
+            : { backgroundColor: 'transparent', borderColor: colors.borderStrong },
         ]}
       >
-        <Ionicons name={icon} size={20} color={status === 'complete' ? colors.accentPressed : colors.textSecondary} />
+        {complete ? <Ionicons name="checkmark" size={16} color={colors.accentOnAccent} /> : null}
       </View>
-      <View style={{ flex: 1, marginLeft: spacing.sm }}>
+      <View style={styles.copy}>
         <Text variant="bodyMedium">{title}</Text>
         {subtitle ? (
-          <Text variant="caption" color={colors.textSecondary} style={{ marginTop: 2 }}>
+          <Text variant="caption" color={colors.textSecondary} numberOfLines={2} style={{ marginTop: 2 }}>
             {subtitle}
           </Text>
         ) : null}
       </View>
-      <StatusBadge label={statusLabel(status)} tone={statusTone(status)} />
-      <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} style={{ marginLeft: spacing.xs }} />
     </Pressable>
   );
-}
-
-function statusLabel(status: JobSectionStatus): string {
-  if (status === 'complete') return 'Complete';
-  if (status === 'in_progress') return 'In progress';
-  return 'Not started';
-}
-
-function statusTone(status: JobSectionStatus): 'success' | 'accent' | 'neutral' {
-  if (status === 'complete') return 'success';
-  if (status === 'in_progress') return 'accent';
-  return 'neutral';
 }
 
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 68,
-    borderWidth: 1,
-    marginBottom: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    gap: 12,
   },
-  iconWrap: {
-    width: 40,
-    height: 40,
+  circle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  copy: {
+    flex: 1,
   },
 });

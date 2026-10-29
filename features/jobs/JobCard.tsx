@@ -1,11 +1,12 @@
-import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Card, StatusBadge, Text } from '@/components';
+import { Card, LocalImage, Text } from '@/components';
+import { useI18n } from '@/i18n/useI18n';
 import { Job } from '@/models';
 import { useTheme } from '@/theme';
-import { formatRelativeDate, pluralize } from '@/utils/format';
+import { formatDate } from '@/utils/format';
 
 type JobCardProps = {
   job: Job;
@@ -16,6 +17,15 @@ type JobCardProps = {
 
 export function JobCard({ job, photoCount, thumbnailUri, onPress }: JobCardProps) {
   const { colors, radius, spacing } = useTheme();
+  const { t } = useI18n();
+  const subtitle = job.address || job.customerName;
+  const photoLabel =
+    photoCount > 0
+      ? `  ·  ${t('jobs.photoCount', {
+          count: photoCount,
+          unit: photoCount === 1 ? t('common.photo') : t('common.photos'),
+        })}`
+      : '';
 
   return (
     <Card onPress={onPress} style={styles.card}>
@@ -23,59 +33,35 @@ export function JobCard({ job, photoCount, thumbnailUri, onPress }: JobCardProps
         <View
           style={[
             styles.thumb,
-            { backgroundColor: colors.surfaceSunken, borderRadius: radius.md, marginRight: spacing.sm },
+            { backgroundColor: colors.surfaceSunken, borderRadius: radius.md, marginRight: spacing.md },
           ]}
         >
           {thumbnailUri ? (
-            <Image source={{ uri: thumbnailUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            <LocalImage uri={thumbnailUri} style={StyleSheet.absoluteFill} contentFit="cover" />
           ) : (
-            <View style={styles.thumbPlaceholder} />
+            <Ionicons name="image-outline" size={22} color={colors.textTertiary} />
           )}
         </View>
 
         <View style={styles.content}>
-          <View style={styles.titleRow}>
-            <Text variant="h3" numberOfLines={1} style={{ flex: 1 }}>
-              {job.title}
-            </Text>
-            <StatusBadge label={statusLabel(job.status)} tone={statusTone(job.status)} />
-          </View>
+          <Text variant="h3" numberOfLines={1}>
+            {job.title}
+          </Text>
 
-          {job.customerName ? (
+          {subtitle ? (
             <Text variant="bodySmall" color={colors.textSecondary} numberOfLines={1} style={{ marginTop: 2 }}>
-              {job.customerName}
+              {subtitle}
             </Text>
           ) : null}
 
-          <View style={[styles.metaRow, { marginTop: spacing.xs }]}>
-            <Text variant="caption" color={colors.textTertiary}>
-              {formatRelativeDate(job.jobDate)}
-            </Text>
-            {photoCount > 0 ? (
-              <>
-                <View style={[styles.dot, { backgroundColor: colors.textTertiary }]} />
-                <Text variant="caption" color={colors.textTertiary}>
-                  {photoCount} {pluralize(photoCount, 'photo')}
-                </Text>
-              </>
-            ) : null}
-          </View>
+          <Text variant="caption" color={colors.textTertiary} style={{ marginTop: spacing.xs }}>
+            {formatDate(job.jobDate)}
+            {photoLabel}
+          </Text>
         </View>
       </View>
     </Card>
   );
-}
-
-function statusLabel(status: Job['status']): string {
-  if (status === 'complete') return 'COMPLETE';
-  if (status === 'in_progress') return 'IN PROGRESS';
-  return 'DRAFT';
-}
-
-function statusTone(status: Job['status']): 'success' | 'accent' | 'neutral' {
-  if (status === 'complete') return 'success';
-  if (status === 'in_progress') return 'accent';
-  return 'neutral';
 }
 
 const styles = StyleSheet.create({
@@ -84,31 +70,16 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+    alignItems: 'center',
   },
   thumb: {
-    width: 56,
-    height: 56,
+    width: 72,
+    height: 72,
     overflow: 'hidden',
-  },
-  thumbPlaceholder: {
-    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  dot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
   },
 });

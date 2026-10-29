@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { StatusBadge, Text } from '@/components';
+import { useI18n } from '@/i18n/useI18n';
 import { ProductInfo } from '@/models';
 import { useTheme } from '@/theme';
 
@@ -14,13 +15,20 @@ type PlanOptionProps = {
 
 export function PlanOption({ product, selected, onSelect, badge }: PlanOptionProps) {
   const { colors, radius, spacing } = useTheme();
+  const { t } = useI18n();
+  const label = planLabel(product.planId, t);
+  const period = periodLabel(product.planId, t);
 
   return (
     <Pressable
       onPress={onSelect}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
-      accessibilityLabel={`${planLabel(product.planId)}, ${product.priceFormatted} ${product.periodLabel}`}
+      accessibilityLabel={t('paywall.planA11y', {
+        planLabel: label,
+        price: product.priceFormatted,
+        period,
+      })}
       style={[
         styles.container,
         {
@@ -38,11 +46,11 @@ export function PlanOption({ product, selected, onSelect, badge }: PlanOptionPro
         </View>
         <View style={{ flex: 1, marginLeft: spacing.sm }}>
           <View style={styles.titleRow}>
-            <Text variant="bodyMedium">{planLabel(product.planId)}</Text>
+            <Text variant="bodyMedium">{label}</Text>
             {badge ? <StatusBadge label={badge} tone="accent" /> : null}
           </View>
           <Text variant="bodySmall" color={colors.textSecondary} style={{ marginTop: 2 }}>
-            {product.priceFormatted} {product.periodLabel}
+            {product.priceFormatted} {period}
           </Text>
         </View>
       </View>
@@ -50,10 +58,16 @@ export function PlanOption({ product, selected, onSelect, badge }: PlanOptionPro
   );
 }
 
-function planLabel(planId: ProductInfo['planId']): string {
-  if (planId === 'monthly') return 'Monthly';
-  if (planId === 'annual') return 'Yearly';
-  return 'Lifetime';
+function planLabel(planId: ProductInfo['planId'], t: (key: string) => string): string {
+  if (planId === 'monthly') return t('paywall.planMonthly');
+  if (planId === 'annual') return t('paywall.planYearly');
+  return t('paywall.planLifetime');
+}
+
+function periodLabel(planId: ProductInfo['planId'], t: (key: string) => string): string {
+  if (planId === 'monthly') return t('purchases.periodMonthly');
+  if (planId === 'annual') return t('purchases.periodYearly');
+  return t('purchases.periodOnce');
 }
 
 const styles = StyleSheet.create({

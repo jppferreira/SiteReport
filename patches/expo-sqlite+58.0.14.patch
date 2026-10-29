@@ -1,8 +1,8 @@
 diff --git a/node_modules/expo-sqlite/web/worker.ts b/node_modules/expo-sqlite/web/worker.ts
-index deaf721..d97ad96 100644
+index 8564322..044e1b9 100644
 --- a/node_modules/expo-sqlite/web/worker.ts
 +++ b/node_modules/expo-sqlite/web/worker.ts
-@@ -263,8 +263,9 @@ async function closeDatabase(nativeDatabaseId: number) {
+@@ -280,8 +280,9 @@ async function closeDatabase(nativeDatabaseId: number) {
  }
  
  async function deleteDatabase(databasePath: string): Promise<void> {
@@ -13,7 +13,7 @@ index deaf721..d97ad96 100644
      vfs.jDelete(databasePath, 0 /* unused arg for AccessHandlePoolVFS */);
    }
  }
-@@ -343,7 +344,8 @@ async function importAssetDatabase(
+@@ -359,7 +360,8 @@ async function importAssetDatabase(
    assetDatabasePath: string,
    forceOverwrite: boolean
  ): Promise<void> {
@@ -23,7 +23,7 @@ index deaf721..d97ad96 100644
    if (!forceOverwrite) {
      const buffer = new DataView(new ArrayBuffer(4));
      await vfs.jAccess(databasePath, 0 /* unused arg for AccessHandlePoolVFS */, buffer);
-@@ -402,7 +404,11 @@ async function openDatabase(
+@@ -418,7 +420,11 @@ async function openDatabase(
      }
  
      const flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
@@ -36,20 +36,17 @@ index deaf721..d97ad96 100644
      pointer = await sqlite3.open_v2(databasePath, flags, vfsName);
    }
  
-@@ -772,28 +778,44 @@ async function maybeFinalizeAllStatements(nativeDatabaseId: number) {
-   if (error) throw error;
+@@ -772,26 +778,39 @@ async function maybeFinalizeAllStatements(sqlite3: SQLiteAPI, dbEntity: Database
+   }
  }
  
 +let _wasmModule: any = null;
 +
 +// The AccessHandlePoolVFS reserves a fixed pool of OPFS sync access handles
-+// for the ORIGIN and holds them exclusively for the lifetime of the worker.
-+// Only one worker per origin can hold that pool at a time (e.g. two tabs, or
-+// an old worker that hasn't released it yet after a reload), so creating it
-+// eagerly for every worker breaks any app that opens ':memory:' databases on
-+// web, which never actually need it. We defer creating/registering it until
-+// a caller actually opens, deletes, or imports a persistent (non-':memory:')
-+// database, so purely in-memory web usage never touches OPFS at all.
++// for the origin and holds them exclusively for the lifetime of the worker.
++// Only one worker per origin can hold that pool at a time, so creating it
++// eagerly breaks any app that opens ':memory:' databases on web. Defer it
++// until a caller opens, deletes, or imports a persistent database.
 +async function ensurePersistentVfs(): Promise<AccessHandlePoolVFS> {
 +  if (_vfs == null) {
 +    if (!_wasmModule || !_sqlite3) {
@@ -70,9 +67,7 @@ index deaf721..d97ad96 100644
    vfsMemory: MemoryVFS;
  }> {
    if (!_sqlite3) {
-     const module = await WaSQLiteFactory({
-       locateFile: () => wasmModule,
-     });
+     const module = await loadWaSQLiteModuleAsync();
 +    _wasmModule = module;
      _sqlite3 = SQLite.Factory(module) as SQLiteAPI;
      if (!_sqlite3) {
@@ -90,7 +85,7 @@ index deaf721..d97ad96 100644
      if (_vfsMemory == null) {
        _vfsMemory = await MemoryVFS.create(VFS_NAME_MEMORY, module);
        if (_vfsMemory == null) {
-@@ -802,10 +824,10 @@ async function maybeInitAsync(): Promise<{
+@@ -800,10 +819,10 @@ async function maybeInitAsync(): Promise<{
      }
      _sqlite3.vfs_register(_vfsMemory, false);
    }
@@ -102,4 +97,4 @@ index deaf721..d97ad96 100644
 +  return { sqlite3: _sqlite3, vfsMemory: _vfsMemory };
  }
  
- //#endregion Internal helpers
+ async function loadWaSQLiteModuleAsync(): Promise<any> {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 
 export type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -54,6 +55,15 @@ export function useAutosaveField(
     },
     [delayMs, flush]
   );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'background' || state === 'inactive') {
+        void flush();
+      }
+    });
+    return () => subscription.remove();
+  }, [flush]);
 
   useEffect(() => {
     return () => {

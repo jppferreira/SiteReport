@@ -1,47 +1,89 @@
-import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, Divider, LoadingState, NavigationHeader, Screen, StatusBadge, Text } from '@/components';
-import { businessProfileRepository, photosRepository, signatureRepository, workSummaryRepository } from '@/database';
-import { useJob } from '@/hooks/useJob';
-import { BusinessProfile, Photo, Signature, WorkSummary } from '@/models';
-import { canGenerateReportForJob } from '@/services/entitlementService';
-import { getReportFreshness } from '@/services/pdfService';
+import {
+  BottomSheet,
+  Button,
+  ErrorState,
+  IconButton,
+  LoadingState,
+  NavigationHeader,
+  Screen,
+  StatusBadge,
+  Text,
+} from '@/components';
+import { reportsRepository } from '@/database';
+import { HtmlReportPreview } from '@/features/reports/HtmlReportPreview';
+import { TemplatePicker } from '@/features/reports/TemplatePicker';
+import { useEntitlement } from '@/hooks/useEntitlement';
+import {
+  DEFAULT_REPORT_TEMPLATE,
+  isFreeReportTemplate,
+  isReportTemplateId,
+  ReportTemplateId,
+  templateAllowedForTier,
+} from '@/models';
+import { canGenerateReportForJob, hasProAccess } from '@/services/entitlementService';
+import {
+  buildReportPreviewHtml,
+  getReportFreshness,
+  loadReportDocument,
+  ReportDocument,
+  ReportGenerationError,
+  reportTemplateLabel,
+} from '@/services/pdfService';
+import { getPreferences, savePreferences } from '@/services/preferencesService';
+import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
-import { formatDate, formatDateTime } from '@/utils/format';
+import { logger } from '@/utils/logger';
 
 export default function ReportPreviewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { colors, spacing } = useTheme();
-  const { job, loading: jobLoading } = useJob(id);
-  const [before, setBefore] = useState<Photo[]>([]);
-  const [after, setAfter] = useState<Photo[]>([]);
-  const [summary, setSummary] = useState<WorkSummary | null>(null);
-  const [signature, setSignature] = useState<Signature | null>(null);
-  const [business, setBusiness] = useState<BusinessProfile | null>(null);
+  const { colors, radius, spacing, shadows } = useTheme();
+  const { t } = useI18n();
+  const insets = useSafeAreaInsets();
+  const { isPro } = useEntitlement();
+  const [template, setTemplate] = useState<ReportTemplateId>(DEFAULT_REPORT_TEMPLATE);
+  const [document, setDocument] = useState<ReportDocument | null>(null);
+  const [savedTemplate, setSavedTemplate] = useState<ReportTemplateId | null>(null);
   const [reportState, setReportState] = useState<'none' | 'stale' | 'fresh'>('none');
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Style tray opens with the preview so users can pick a layout, then drag it
+  // down for a full-screen look at the PDF.
+  const [stylesOpen, setStylesOpen] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [b, a, s, sig, biz, freshness] = await Promise.all([
-      photosRepository.listPhotos(id, 'before'),
-      photosRepository.listPhotos(id, 'after'),
-      workSummaryRepository.getWorkSummary(id),
-      signatureRepository.getSignature(id),
-      businessProfileRepository.getBusinessProfile(),
-      getReportFreshness(id),
-    ]);
-    setBefore(b);
-    setAfter(a);
-    setSummary(s);
-    setSignature(sig);
-    setBusiness(biz);
-    setReportState(freshness);
-    setLoading(false);
-  }, [id]);
+    setErrorMessage(null);
+    try {
+      const [doc, freshness, latest, preferences, pro] = await Promise.all([
+        loadReportDocument(id),
+        getReportFreshness(id),
+        reportsRepository.getLatestReportForJob(id),
+        getPreferences(),
+        hasProAccess(),
+      ]);
+      setDocument(doc);
+      setReportState(freshness);
+      setSavedTemplate(latest?.templateId ?? null);
+      setTemplate(templateAllowedForTier(preferences.reportTemplate, pro));
+      setStylesOpen(true);
+    } catch (error) {
+      logger.error('Report preview failed', error);
+      setDocument(null);
+      setErrorMessage(
+        error instanceof ReportGenerationError
+          ? error.message
+          : t('preview.errorFallback')
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [id, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -49,215 +91,180 @@ export default function ReportPreviewScreen() {
     }, [load])
   );
 
+  const html = useMemo(
+    () => (document ? buildReportPreviewHtml({ ...document.htmlInput, template }) : ''),
+    [document, template]
+  );
+
+  const templateMismatch = reportState === 'fresh' && savedTemplate !== null && savedTemplate !== template;
+
+  const chooseTemplate = (key: string) => {
+    if (!isReportTemplateId(key) || key === template) return;
+    if (!isPro && !isFreeReportTemplate(key)) {
+      router.push({ pathname: '/paywall', params: { trigger: 'template' } });
+      return;
+    }
+    setTemplate(key);
+    void savePreferences({ reportTemplate: key });
+  };
+
   const handleGenerate = async () => {
     const allowed = await canGenerateReportForJob(id);
     if (!allowed) {
       router.push({ pathname: '/paywall', params: { trigger: 'free_limit' } });
       return;
     }
-    router.push(`/job/${id}/generate`);
+    router.push(`/job/${id}/generate?template=${template}`);
   };
 
-  if (jobLoading || loading || !job) {
-    return (
-      <Screen>
-        <NavigationHeader title="Report preview" onBack={() => router.back()} />
-        <LoadingState />
-      </Screen>
-    );
-  }
-
-  const ctaLabel = reportState === 'fresh' ? 'Regenerate report' : reportState === 'stale' ? 'Update report' : 'Generate PDF';
+  const ctaLabel =
+    reportState === 'none'
+      ? t('preview.createPdf')
+      : reportState === 'stale' || templateMismatch
+        ? t('preview.updateReport')
+        : t('preview.regenerateReport');
 
   return (
-    <Screen>
-      <NavigationHeader title="Report preview" onBack={() => router.back()} />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.md }}>
-        <View
-          style={[
-            styles.document,
-            { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, padding: spacing.lg },
-          ]}
-        >
-          <View style={styles.brandRow}>
-            {business?.logoUri ? (
-              <Image source={{ uri: business.logoUri }} style={styles.logo} />
-            ) : (
-              <View style={[styles.logoPlaceholder, { backgroundColor: colors.ctaDark }]}>
-                <Text variant="bodyMedium" color={colors.textInverse}>
-                  {(business?.businessName || 'S').slice(0, 1).toUpperCase()}
-                </Text>
-              </View>
-            )}
-            <Text variant="bodyMedium" style={{ flex: 1, marginLeft: spacing.sm }} numberOfLines={1}>
-              {business?.businessName || 'Your business'}
-            </Text>
-            <Text variant="caption" color={colors.textSecondary}>
-              JOB REPORT
-            </Text>
-          </View>
-
-          <Text variant="h1" style={{ marginTop: spacing.lg }}>
-            {job.title}
-          </Text>
-          <View style={styles.metaRow}>
-            {job.referenceNumber ? (
-              <Text variant="bodySmall" color={colors.textSecondary}>
-                Ref {job.referenceNumber}
-              </Text>
-            ) : null}
-            <Text variant="bodySmall" color={colors.textSecondary}>
-              {formatDate(job.jobDate)}
-            </Text>
-          </View>
-
-          {job.customerName || job.address ? (
-            <Section title="Customer">
-              {job.customerName ? <Text variant="bodyMedium">{job.customerName}</Text> : null}
-              {job.address ? (
-                <Text variant="bodySmall" color={colors.textSecondary}>
-                  {job.address}
-                </Text>
-              ) : null}
-            </Section>
-          ) : null}
-
-          {job.description ? (
-            <Section title="Job summary">
-              <Text variant="body">{job.description}</Text>
-            </Section>
-          ) : null}
-
-          {before.length > 0 ? (
-            <Section title="Before">
-              <PhotoRow photos={before} />
-            </Section>
-          ) : null}
-
-          {summary?.workCompleted ? (
-            <Section title="Work completed">
-              <Text variant="body">{summary.workCompleted}</Text>
-            </Section>
-          ) : null}
-
-          {after.length > 0 ? (
-            <Section title="After">
-              <PhotoRow photos={after} />
-            </Section>
-          ) : null}
-
-          {summary?.materials ? (
-            <Section title="Materials used">
-              <Text variant="body">{summary.materials}</Text>
-            </Section>
-          ) : null}
-
-          {summary?.recommendations ? (
-            <Section title="Recommendations">
-              <Text variant="body">{summary.recommendations}</Text>
-            </Section>
-          ) : null}
-
-          {signature ? (
-            <Section title="Customer sign-off">
-              <Text variant="bodyMedium">{signature.customerName || 'Customer'}</Text>
-              <Text variant="caption" color={colors.textSecondary}>
-                Signed {formatDateTime(signature.signedAt)}
-              </Text>
-            </Section>
-          ) : null}
-
-          <Divider />
-          <Text variant="caption" color={colors.textTertiary} style={{ marginTop: spacing.sm, textAlign: 'center' }}>
-            {business?.footerMessage || 'Generated with SiteReport'}
-          </Text>
-        </View>
-      </ScrollView>
-
-      <View style={{ padding: spacing.lg, paddingTop: spacing.sm }}>
-        {reportState !== 'none' ? (
-          <View style={{ marginBottom: spacing.sm, alignItems: 'center' }}>
-            <StatusBadge
-              label={reportState === 'fresh' ? 'REPORT UP TO DATE' : 'JOB CHANGED SINCE LAST REPORT'}
-              tone={reportState === 'fresh' ? 'success' : 'warning'}
+    <Screen edges={['top', 'left', 'right']}>
+      <NavigationHeader
+        title={t('preview.title')}
+        onBack={() => router.back()}
+        right={
+          document && !loading && !errorMessage ? (
+            <IconButton
+              name="color-palette-outline"
+              accessibilityLabel={t('preview.changeStyleA11y')}
+              onPress={() => setStylesOpen(true)}
             />
+          ) : null
+        }
+      />
+      {loading ? (
+        <LoadingState label={t('preview.preparing')} />
+      ) : errorMessage || !document ? (
+        <ErrorState
+          title={t('preview.errorTitle')}
+          description={errorMessage ?? undefined}
+          onAction={load}
+        />
+      ) : (
+        <View style={styles.body}>
+          <View style={[styles.preview, { backgroundColor: colors.surfaceSunken }]}>
+            <HtmlReportPreview html={html} />
           </View>
-        ) : null}
-        <Button label={ctaLabel} onPress={handleGenerate} />
-      </View>
+
+          {!stylesOpen ? (
+            <View
+              pointerEvents="box-none"
+              style={[
+                styles.dock,
+                {
+                  paddingHorizontal: spacing.lg,
+                  paddingTop: spacing.sm,
+                  paddingBottom: Math.max(insets.bottom, spacing.lg),
+                  backgroundColor: colors.background,
+                  borderTopColor: colors.border,
+                },
+                shadows.floating,
+              ]}
+            >
+              {reportState !== 'none' ? (
+                <View style={{ marginBottom: spacing.sm, alignItems: 'center' }}>
+                  <StatusBadge
+                    label={
+                      reportState === 'stale'
+                        ? t('preview.badgeStale')
+                        : templateMismatch
+                          ? t('preview.badgeNewTemplate')
+                          : t('preview.badgeUpToDate')
+                    }
+                    tone={reportState === 'fresh' && !templateMismatch ? 'success' : 'warning'}
+                  />
+                </View>
+              ) : null}
+
+              <Pressable
+                onPress={() => setStylesOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel={t('preview.styleChipA11y', { style: reportTemplateLabel(template) })}
+                style={({ pressed }) => [
+                  styles.styleChip,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: colors.surface,
+                    borderRadius: radius.md,
+                    opacity: pressed ? 0.85 : 1,
+                    marginBottom: spacing.sm,
+                  },
+                ]}
+              >
+                <View style={styles.styleChipCopy}>
+                  <Text variant="caption" color={colors.textTertiary}>
+                    {t('preview.styleLabel')}
+                  </Text>
+                  <Text variant="bodyMedium" color={colors.textPrimary} numberOfLines={1}>
+                    {reportTemplateLabel(template)}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-up" size={18} color={colors.textSecondary} />
+              </Pressable>
+
+              <Button label={ctaLabel} onPress={handleGenerate} />
+            </View>
+          ) : null}
+
+          <BottomSheet visible={stylesOpen} onClose={() => setStylesOpen(false)}>
+            <Text variant="h3" style={{ marginBottom: spacing.xs }}>
+              {t('preview.stylesTitle')}
+            </Text>
+            <Text variant="body" color={colors.textSecondary} style={{ marginBottom: spacing.md }}>
+              {t('preview.stylesDescription')}
+            </Text>
+            <TemplatePicker
+              compact
+              showDescription
+              value={template}
+              savedId={savedTemplate ?? undefined}
+              onChange={chooseTemplate}
+              isPro={isPro}
+              onLocked={() => router.push({ pathname: '/paywall', params: { trigger: 'template' } })}
+            />
+            <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
+              <Button label={ctaLabel} onPress={handleGenerate} />
+              <Button label={t('preview.done')} variant="secondary" onPress={() => setStylesOpen(false)} />
+            </View>
+          </BottomSheet>
+        </View>
+      )}
     </Screen>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  const { colors, spacing } = useTheme();
-  return (
-    <View style={{ marginTop: spacing.lg }}>
-      <Text
-        variant="caption"
-        color={colors.accentPressed}
-        style={{ textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}
-      >
-        {title}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
-function PhotoRow({ photos }: { photos: Photo[] }) {
-  const { spacing } = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs }}>
-      {photos.slice(0, 6).map((photo) => (
-        <Image key={photo.id} source={{ uri: photo.thumbnailUri }} style={styles.previewPhoto} contentFit="cover" />
-      ))}
-      {photos.length > 6 ? (
-        <View style={styles.morePhotos}>
-          <Text variant="caption">+{photos.length - 6}</Text>
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  document: {
+  body: {
+    flex: 1,
+  },
+  preview: {
+    ...StyleSheet.absoluteFill,
+    overflow: 'hidden',
+  },
+  dock: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  styleChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
-    marginTop: 16,
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logo: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-  },
-  logoPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  metaRow: {
-    flexDirection: 'row',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     gap: 12,
-    marginTop: 4,
   },
-  previewPhoto: {
-    width: 72,
-    height: 72,
-    borderRadius: 8,
-  },
-  morePhotos: {
-    width: 72,
-    height: 72,
-    borderRadius: 8,
-    backgroundColor: '#F1F3F1',
-    alignItems: 'center',
-    justifyContent: 'center',
+  styleChipCopy: {
+    flex: 1,
+    gap: 2,
   },
 });

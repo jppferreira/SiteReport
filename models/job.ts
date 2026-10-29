@@ -9,6 +9,8 @@ export type Job = {
   referenceNumber: string | null;
   description: string | null;
   status: JobStatus;
+  /** Photo the user saved as the cover for this job's reports. */
+  coverPhotoId: string | null;
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
 };

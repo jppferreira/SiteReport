@@ -7,41 +7,43 @@ the store (or this interface) directly whether the user is Pro.
 
 ## What's wired up today
 
-`MockPurchaseService` implements the full interface against a locally
-persisted simulated store (see its file comment for why: this build
-environment has no Apple/Google developer account, no signed native build,
-and no device to run one on, so a real purchase cannot be exercised here).
-It supports every state the real stores do — purchase, cancel, pending,
-restore, lifetime, subscription expiry — so every paywall, entitlement-gated
-feature, and settings screen can be fully built and tested against it.
+Android uses `PlayPurchaseService` (`index.android.ts`) and iOS uses
+`StoreKitPurchaseService` (`index.ios.ts`), both backed by `expo-iap`.
+Web and Expo Go still use `MockPurchaseService`, which simulates purchase,
+cancel, pending, restore, lifetime, and expiry against the same plans.
 
-## Wiring a real store for production
+Product ids live in `catalog.ts` and must match Play Console. Monthly and
+yearly are base plans on one subscription, under package `com.tradesreport.app`.
 
-Swap `createPurchaseService()` in `index.ts` to return a `StorePurchaseService`
-backed by [`react-native-iap`](https://github.com/dooboolab-community/react-native-iap)
-once you have:
+Create subscription `tradesreport.pro` (name: Trade Report Pro):
 
-1. App Store Connect / Google Play Console products configured for
-   `sitereport.pro.monthly`, `sitereport.pro.annual`, `sitereport.pro.lifetime`
-   matching the ids in `MockPurchaseService.ts`.
-2. A custom Expo dev client or EAS build (react-native-iap requires native
-   linking; it will not run in Expo Go or in a browser preview).
-3. An implementation of `PurchaseService` that:
-   - Calls `initConnection()` on `initialize()`.
-   - Calls `getSubscriptions`/`getProducts` for `getProducts()`, mapping the
-     store's localized price string directly into `ProductInfo` — never
-     hard-code a price string in the UI.
-   - Calls `requestSubscription` / `requestPurchase` for `purchase()`, and
-     resolves the returned promise only after `purchaseUpdatedListener`
-     fires, mapping store error codes (`E_USER_CANCELLED`, `E_ALREADY_OWNED`,
-     deferred/pending states) onto `PurchaseResult`.
-   - Always calls `finishTransaction` after acknowledging a purchase.
-   - Calls `getAvailablePurchases` for `restorePurchases()`.
-   - Verifies entitlement server-side or via `expo-in-app-purchases`
-     receipt validation if stronger anti-tampering is required later;
-     until then, local receipt presence is treated as sufficient for a
-     single-user, local-first app with no server component.
+| Base plan ID | Renewal | Price |
+| --- | --- | --- |
+| `monthly` | Every month | £4.99 including VAT |
+| `annual` | Every year | £29.99 including VAT |
 
-Because every consumer of purchases goes through the `PurchaseService`
-interface and `EntitlementService`, this swap requires no changes outside
-this folder.
+Create in-app product `tradesreport.pro.lifetime` at £79.99 including VAT.
+Set these as the price the customer pays, not the amount before tax. Activate
+both base plans, then upload a build to an internal testing track before a
+license-tester purchase will succeed. Paywall prices come from Play.
+
+App Store Connect needs three products, with the two subscriptions in one group:
+
+| Product ID | Type | Price |
+| --- | --- | --- |
+| `tradesreport.pro.monthly` | Auto-renewable subscription | £4.99 including VAT |
+| `tradesreport.pro.annual` | Auto-renewable subscription | £29.99 including VAT |
+| `tradesreport.pro.lifetime` | Non-consumable | £79.99 including VAT |
+
+A StoreKit build reads prices and entitlements from the App Store. An expired
+subscription returns to the free plan. A cancelled subscription stays Pro until
+the period StoreKit reports has ended.
+
+`Manage subscription` on Android opens the Play subscription screen for the
+active plan. Lifetime purchases stay in the app because Play has no
+subscription to manage.
+
+A custom dev client or EAS build is required. Play Billing does not run in
+Expo Go or in the browser preview. Purchases are acknowledged with
+`finishTransaction` after Play reports them. This app has no server, so an
+active Play purchase is treated as Pro.

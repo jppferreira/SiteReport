@@ -1,4 +1,4 @@
-# SiteReport — Final Build Audit
+# Trade Report — Final Build Audit
 
 This document is the end-to-end audit of the implementation against the original brief:
 what was built, what was tested and how, what remains unverified or unfinished, the

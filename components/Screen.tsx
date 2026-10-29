@@ -11,7 +11,7 @@ type ScreenProps = {
   style?: ViewStyle;
 };
 
-export function Screen({ children, edges = ['top', 'left', 'right'], padded = false, style }: ScreenProps) {
+export function Screen({ children, edges = ['top', 'left', 'right', 'bottom'], padded = false, style }: ScreenProps) {
   const { colors, spacing } = useTheme();
   return (
     <SafeAreaView

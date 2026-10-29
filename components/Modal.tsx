@@ -14,7 +14,14 @@ export function Modal({ visible, onRequestClose, children, dismissOnBackdropPres
   const { colors, spacing } = useTheme();
 
   return (
-    <RNModal visible={visible} transparent animationType="fade" onRequestClose={onRequestClose} statusBarTranslucent>
+    <RNModal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onRequestClose}
+      statusBarTranslucent
+      navigationBarTranslucent
+    >
       <Pressable
         style={[styles.backdrop, { backgroundColor: colors.overlay }]}
         onPress={dismissOnBackdropPress ? onRequestClose : undefined}

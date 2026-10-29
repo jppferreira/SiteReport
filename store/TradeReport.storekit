@@ -1,0 +1,152 @@
+{
+  "identifier" : "53A5216B-345D-4880-A8E9-8CCC5D63201A",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "79.99",
+      "familyShareable" : false,
+      "internalID" : "501B4821-BD32-4D5B-A1A3-D3CA575F3E2F",
+      "localizations" : [
+        {
+          "description" : "Unlimited PDF reports, your logo and colours on reports, and customer sign-off.",
+          "displayName" : "Pro Lifetime",
+          "locale" : "en_GB"
+        }
+      ],
+      "productID" : "tradesreport.pro.lifetime",
+      "referenceName" : "Pro Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_GB",
+    "_storefront" : "GBR",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "8A4AE3CC-2C91-4169-A8CB-91903F55B0E2",
+      "localizations" : [
+        {
+          "description" : "Unlimited PDF reports, your logo and colours on reports, and customer sign-off.",
+          "displayName" : "Trades Report Pro",
+          "locale" : "en_GB"
+        }
+      ],
+      "name" : "Trades Report Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "29.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "FC7593B8-4F06-46B0-A0D8-FB22848E33B3",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited PDF reports, your logo and colours on reports, and customer sign-off.",
+              "displayName" : "Pro Annual",
+              "locale" : "en_GB"
+            }
+          ],
+          "productID" : "tradesreport.pro.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Pro Annual",
+          "subscriptionGroupID" : "8A4AE3CC-2C91-4169-A8CB-91903F55B0E2",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "4.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "CF49044F-F115-4975-8075-F5FBEE5C51A0",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited PDF reports, your logo and colours on reports, and customer sign-off.",
+              "displayName" : "Pro Monthly",
+              "locale" : "en_GB"
+            }
+          ],
+          "productID" : "tradesreport.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Pro Monthly",
+          "subscriptionGroupID" : "8A4AE3CC-2C91-4169-A8CB-91903F55B0E2",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

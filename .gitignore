@@ -41,3 +41,12 @@ example
 # generated native folders
 /ios
 /android
+
+# Play upload key and the local release bundle
+/credentials/
+keystore.properties
+*.aab
+
+# Google Play API service account (never commit)
+store/play-service-account.json
+**/play-service-account.json

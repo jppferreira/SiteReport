@@ -1,5 +1,5 @@
 /**
- * SiteReport color tokens.
+ * Trade Report color tokens.
  *
  * The design system is light-first. Every token below is grouped by role
  * (not by raw hue) so the app can later grow a `dark` palette with the same
@@ -40,22 +40,22 @@ export type ColorScheme = {
 };
 
 const light: ColorScheme = {
-  background: '#F7F8F7',
-  backgroundElevated: '#FBFCFB',
+  background: '#F6FAF7',
+  backgroundElevated: '#FFFFFF',
   surface: '#FFFFFF',
-  surfaceSunken: '#F1F3F1',
-  border: '#E6E9E6',
-  borderStrong: '#D4D8D4',
+  surfaceSunken: '#F2F4F2',
+  border: '#E6E8E6',
+  borderStrong: '#D5D8D5',
 
-  textPrimary: '#101310',
-  textSecondary: '#66706A',
-  textTertiary: '#9AA39D',
+  textPrimary: '#121412',
+  textSecondary: '#5E6862',
+  textTertiary: '#8E9791',
   textInverse: '#FFFFFF',
 
-  accent: '#34D058',
-  accentPressed: '#28AC46',
-  accentSoft: '#E7F8EC',
-  accentOnAccent: '#0B1F10',
+  accent: '#1FA84A',
+  accentPressed: '#178A3C',
+  accentSoft: '#E7F6EC',
+  accentOnAccent: '#FFFFFF',
 
   ctaDark: '#101310',
   ctaDarkPressed: '#262B26',

@@ -2,15 +2,17 @@ import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 
-import { Button, Input, NavigationHeader, Screen, TextArea, TextButton } from '@/components';
+import { Button, FIELD_STACK_GAP, Input, NavigationHeader, Screen, TextArea, TextButton } from '@/components';
 import { DateField } from '@/features/jobs/DateField';
 import { jobsRepository } from '@/database';
+import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
 import { todayIsoDate } from '@/utils/format';
 import { validateJobTitle } from '@/utils/validation';
 
 export default function NewJobScreen() {
   const { spacing } = useTheme();
+  const { t } = useI18n();
   const [title, setTitle] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [address, setAddress] = useState('');
@@ -36,7 +38,8 @@ export default function NewJobScreen() {
         referenceNumber,
         description,
       });
-      router.replace(`/job/${job.id}`);
+      router.dismiss();
+      router.push(`/job/${job.id}`);
     } finally {
       setSubmitting(false);
     }
@@ -45,22 +48,23 @@ export default function NewJobScreen() {
   return (
     <Screen>
       <NavigationHeader
-        title="New job"
-        right={<TextButton label="Cancel" onPress={() => router.back()} />}
+        title={t('newJob.title')}
+        left={<TextButton label={t('newJob.cancel')} align="left" onPress={() => router.back()} />}
+        right={<TextButton label={t('newJob.save')} tone="accent" onPress={handleCreate} />}
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={16}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 16 : 0}
       >
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: spacing.lg }}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: FIELD_STACK_GAP }}
           keyboardShouldPersistTaps="handled"
         >
           <Input
-            label="Job title"
+            label={t('newJob.jobTitle')}
             required
-            placeholder="e.g. Bathroom repair"
+            placeholder={t('newJob.jobTitlePlaceholder')}
             value={title}
             onChangeText={(value) => {
               setTitle(value);
@@ -71,29 +75,34 @@ export default function NewJobScreen() {
             autoFocus
           />
           <Input
-            label="Customer name"
-            placeholder="e.g. James Wilson"
+            label={t('newJob.clientName')}
+            placeholder={t('newJob.clientNamePlaceholder')}
             value={customerName}
             onChangeText={setCustomerName}
           />
-          <Input label="Address" placeholder="Job site address" value={address} onChangeText={setAddress} />
-          <DateField label="Date" value={jobDate} onChange={setJobDate} />
           <Input
-            label="Reference number"
-            placeholder="Optional"
-            value={referenceNumber}
-            onChangeText={setReferenceNumber}
+            label={t('newJob.address')}
+            placeholder={t('newJob.addressPlaceholder')}
+            value={address}
+            onChangeText={setAddress}
           />
+          <DateField label={t('newJob.date')} value={jobDate} onChange={setJobDate} />
           <TextArea
-            label="Job description"
-            placeholder="What's the job about?"
+            label={t('newJob.notes')}
+            placeholder={t('newJob.notesPlaceholder')}
             value={description}
             onChangeText={setDescription}
             minHeight={100}
           />
+          <Input
+            label={t('newJob.reference')}
+            placeholder={t('newJob.referencePlaceholder')}
+            value={referenceNumber}
+            onChangeText={setReferenceNumber}
+          />
 
           <View style={{ marginTop: spacing.sm }}>
-            <Button label="Create job" onPress={handleCreate} loading={submitting} />
+            <Button label={t('newJob.continue')} onPress={handleCreate} loading={submitting} />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -20,10 +20,10 @@ export function Card({ children, onPress, style, padded = true }: CardProps) {
         {
           backgroundColor: colors.surface,
           borderColor: colors.border,
-          borderRadius: radius.lg,
+          borderRadius: radius.xl,
           padding: padded ? spacing.md : 0,
         },
-        shadows.subtle,
+        shadows.card,
         style,
       ]}
     >

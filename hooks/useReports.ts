@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { jobsRepository, reportsRepository } from '@/database';
+import { jobsRepository, photosRepository, reportsRepository } from '@/database';
 import { Job, Report } from '@/models';
 import { getReportFreshness } from '@/services/pdfService';
 import { logger } from '@/utils/logger';
 
-export type ReportWithJob = { report: Report; job: Job | null; isStale: boolean };
+export type ReportWithJob = { report: Report; job: Job | null; isStale: boolean; coverUri: string | null };
 
 export function useReports() {
   const [items, setItems] = useState<ReportWithJob[]>([]);
@@ -24,18 +24,27 @@ export function useReports() {
         }
       }
 
-      const results = await Promise.all(
-        Array.from(latestPerJob.values()).map(async (report) => {
-          const [job, freshness] = await Promise.all([
-            jobsRepository.getJob(report.jobId),
-            getReportFreshness(report.jobId),
-          ]);
-          return { report, job, isStale: freshness === 'stale' };
-        })
-      );
+      const jobIds = Array.from(latestPerJob.keys());
+      const [covers, results] = await Promise.all([
+        photosRepository.getJobCoverUris(jobIds),
+        Promise.all(
+          Array.from(latestPerJob.values()).map(async (report) => {
+            const [job, freshness] = await Promise.all([
+              jobsRepository.getJob(report.jobId),
+              getReportFreshness(report.jobId),
+            ]);
+            return { report, job, isStale: freshness === 'stale' };
+          })
+        ),
+      ]);
 
-      results.sort((a, b) => (a.report.generatedAt < b.report.generatedAt ? 1 : -1));
-      setItems(results);
+      const withCovers = results.map((item) => ({
+        ...item,
+        coverUri: covers[item.report.jobId] ?? null,
+      }));
+
+      withCovers.sort((a, b) => (a.report.generatedAt < b.report.generatedAt ? 1 : -1));
+      setItems(withCovers);
     } catch (err) {
       logger.error('Failed to load reports', err);
       setError("We couldn't load your reports. Try again.");

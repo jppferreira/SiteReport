@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
 
 import { Button } from './Button';
@@ -12,10 +13,23 @@ type ErrorStateProps = {
   description?: string;
   actionLabel?: string;
   onAction?: () => void;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
+  secondaryDisabled?: boolean;
 };
 
-export function ErrorState({ title, description, actionLabel = 'Try again', onAction }: ErrorStateProps) {
+export function ErrorState({
+  title,
+  description,
+  actionLabel,
+  onAction,
+  secondaryLabel,
+  onSecondary,
+  secondaryDisabled = false,
+}: ErrorStateProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useI18n();
+  const resolvedActionLabel = actionLabel ?? t('common.tryAgain');
 
   return (
     <View style={[styles.container, { paddingHorizontal: spacing.xl }]}>
@@ -30,9 +44,18 @@ export function ErrorState({ title, description, actionLabel = 'Try again', onAc
           {description}
         </Text>
       ) : null}
-      {onAction ? (
+      {onAction || onSecondary ? (
         <View style={styles.action}>
-          <Button label={actionLabel} onPress={onAction} variant="secondary" fullWidth={false} />
+          {onAction ? <Button label={resolvedActionLabel} onPress={onAction} variant="secondary" fullWidth={false} /> : null}
+          {onSecondary && secondaryLabel ? (
+            <Button
+              label={secondaryLabel}
+              onPress={onSecondary}
+              variant="tertiary"
+              fullWidth={false}
+              disabled={secondaryDisabled}
+            />
+          ) : null}
         </View>
       ) : null}
     </View>
@@ -44,5 +67,5 @@ const styles = StyleSheet.create({
   iconWrap: { width: 64, height: 64, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   title: { textAlign: 'center' },
   description: { textAlign: 'center', marginTop: 8, maxWidth: 280 },
-  action: { marginTop: 24 },
+  action: { marginTop: 24, alignItems: 'center', gap: 8 },
 });

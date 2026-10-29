@@ -2,54 +2,38 @@ import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 
-import { useTheme } from '@/theme';
+import { PillTabBar } from '@/components/PillTabBar';
+import { useI18n } from '@/i18n/useI18n';
 
 export default function TabsLayout() {
-  const { colors, typography } = useTheme();
+  const { t } = useI18n();
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.textPrimary,
-        tabBarInactiveTintColor: colors.textTertiary,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          height: 64,
-          paddingTop: 8,
-          paddingBottom: 10,
-        },
-        tabBarLabelStyle: {
-          fontFamily: typography.caption.fontFamily,
-          fontSize: 11,
-        },
-      }}
-    >
+    <Tabs tabBar={(props) => <PillTabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen
         name="jobs"
         options={{
-          title: 'Jobs',
+          title: t('tabs.jobs'),
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'briefcase' : 'briefcase-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'briefcase' : 'briefcase-outline'} size={22} color={typeof color === 'string' ? color : undefined} />
           ),
         }}
       />
       <Tabs.Screen
         name="reports"
         options={{
-          title: 'Reports',
+          title: t('tabs.reports'),
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'document-text' : 'document-text-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'document-text' : 'document-text-outline'} size={22} color={typeof color === 'string' ? color : undefined} />
           ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          title: t('tabs.settings'),
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'settings' : 'settings-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'settings' : 'settings-outline'} size={22} color={typeof color === 'string' ? color : undefined} />
           ),
         }}
       />

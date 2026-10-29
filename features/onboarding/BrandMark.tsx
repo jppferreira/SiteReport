@@ -1,32 +1,44 @@
+import { Image } from 'expo-image';
 import React from 'react';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import { View } from 'react-native';
 
-import { useTheme } from '@/theme';
+import { useI18n } from '@/i18n/useI18n';
 
 /**
- * Minimal brand mark: a document with a confirming checkmark and a camera
- * aperture dot, standing in for "proof of work" without any trade-specific
- * iconography (no helmets/hammers), so it reads as useful across trades.
+ * App mark from the Trade Report icon (Figma node 1:17).
+ * The exported image is larger than the frame; these offsets reproduce that crop.
  */
-export function BrandMark({ size = 96 }: { size?: number }) {
-  const { colors, radius } = useTheme();
+const SOURCE = require('../../assets/images/brand-mark.png');
+
+const FRAME_W = 1056;
+const FRAME_H = 1068;
+const IMAGE_PX = 1254;
+const CROP_X = 98;
+const CROP_Y = 87;
+
+export function BrandMark({ size = 72 }: { size?: number }) {
+  const { t } = useI18n();
+  const height = size;
+  const width = (size * FRAME_W) / FRAME_H;
+  const scale = height / FRAME_H;
 
   return (
-    <Svg width={size} height={size} viewBox="0 0 96 96" fill="none">
-      <Rect x="2" y="2" width="92" height="92" rx={radius.xl} fill={colors.ctaDark} />
-      <Rect x="28" y="22" width="40" height="52" rx="4" fill="#FFFFFF" />
-      <Rect x="34" y="32" width="20" height="3" rx="1.5" fill={colors.border} />
-      <Rect x="34" y="40" width="28" height="3" rx="1.5" fill={colors.border} />
-      <Rect x="34" y="48" width="22" height="3" rx="1.5" fill={colors.border} />
-      <Circle cx="64" cy="64" r="16" fill={colors.accent} />
-      <Path
-        d="M57 64.5 L62 69.5 L71 58.5"
-        stroke="#0B1F10"
-        strokeWidth="3.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
+    <View
+      accessibilityRole="image"
+      accessibilityLabel={t('onboarding.brandMarkA11y')}
+      style={{ width, height, overflow: 'hidden', position: 'relative' }}
+    >
+      <Image
+        source={SOURCE}
+        contentFit="fill"
+        style={{
+          position: 'absolute',
+          width: IMAGE_PX * scale,
+          height: IMAGE_PX * scale,
+          left: -CROP_X * scale,
+          top: -CROP_Y * scale,
+        }}
       />
-    </Svg>
+    </View>
   );
 }

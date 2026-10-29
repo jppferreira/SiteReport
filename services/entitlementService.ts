@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { reportsRepository } from '@/database';
 import { countDistinctReportedJobs, isReportGenerationAllowed } from '@/features/entitlement/freeReportQuota';
 import {
@@ -15,11 +17,13 @@ import { getSecureItem, setSecureItem } from '@/utils/secureStorage';
 import { getPurchaseService } from './purchases';
 
 const ENTITLEMENT_CACHE_KEY = 'sitereport.entitlement.cache';
+const PRODUCTS_CACHE_KEY = 'sitereport.products.cache';
 
 type Listener = (entitlement: Entitlement) => void;
 const listeners = new Set<Listener>();
 
 let cached: Entitlement | null = null;
+let cachedProducts: ProductInfo[] | null = null;
 
 async function readCache(): Promise<Entitlement> {
   if (cached) return cached;
@@ -70,9 +74,28 @@ export function subscribeToEntitlement(listener: Listener): () => void {
 }
 
 export async function getProducts(): Promise<ProductInfo[]> {
-  const store = getPurchaseService();
-  await store.initialize();
-  return store.getProducts();
+  try {
+    const store = getPurchaseService();
+    await store.initialize();
+    const products = await store.getProducts();
+    cachedProducts = products;
+    await AsyncStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(products)).catch(() => undefined);
+    return products;
+  } catch (error) {
+    logger.warn('Product lookup failed, using last known prices', { error: String(error) });
+    if (cachedProducts && cachedProducts.length > 0) return cachedProducts;
+    try {
+      const raw = await AsyncStorage.getItem(PRODUCTS_CACHE_KEY);
+      const parsed = raw ? (JSON.parse(raw) as ProductInfo[]) : [];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        cachedProducts = parsed;
+        return parsed;
+      }
+    } catch {
+      // A missing price cache still leaves jobs, photos and reports usable.
+    }
+    throw error;
+  }
 }
 
 export async function purchase(planId: PlanId): Promise<PurchaseResult> {

@@ -3,6 +3,7 @@ import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { BottomSheet, Text } from '@/components';
+import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
 
 type PhotoCaptureSheetProps = {
@@ -15,20 +16,21 @@ type PhotoCaptureSheetProps = {
 
 export function PhotoCaptureSheet({ visible, onClose, onTakePhoto, onChooseFromLibrary, label }: PhotoCaptureSheetProps) {
   const { colors, spacing } = useTheme();
+  const { t } = useI18n();
 
   return (
     <BottomSheet visible={visible} onClose={onClose}>
       <Text variant="h3" style={{ marginBottom: spacing.xs }}>
-        Add {label} photo
+        {t('photos.captureSheetTitle', { label })}
       </Text>
       <Text variant="bodySmall" color={colors.textSecondary} style={{ marginBottom: spacing.lg }}>
-        Take a new photo or choose one you already have.
+        {t('photos.captureSheetSubtitle')}
       </Text>
 
       <View style={{ gap: spacing.xs }}>
         <SheetAction
           icon="camera"
-          label="Take photo"
+          label={t('photos.captureTakePhoto')}
           onPress={() => {
             onClose();
             onTakePhoto();
@@ -36,7 +38,7 @@ export function PhotoCaptureSheet({ visible, onClose, onTakePhoto, onChooseFromL
         />
         <SheetAction
           icon="images"
-          label="Choose from library"
+          label={t('photos.captureChoosePhotos')}
           onPress={() => {
             onClose();
             onChooseFromLibrary();

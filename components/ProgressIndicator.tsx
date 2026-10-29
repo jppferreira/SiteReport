@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
+import { useI18n } from '@/i18n/useI18n';
 import { motionTiming, useTheme } from '@/theme';
 
 import { Text } from './Text';
@@ -14,6 +15,7 @@ type ProgressIndicatorProps = {
 
 export function ProgressIndicator({ completed, total, label }: ProgressIndicatorProps) {
   const { colors, radius, spacing } = useTheme();
+  const { t } = useI18n();
   const progress = useSharedValue(0);
   const ratio = total > 0 ? completed / total : 0;
 
@@ -29,10 +31,10 @@ export function ProgressIndicator({ completed, total, label }: ProgressIndicator
     <View>
       <View style={[styles.row, { marginBottom: spacing.xs }]}>
         <Text variant="caption" color={colors.textSecondary}>
-          {label ?? 'REPORT PROGRESS'}
+          {label ?? t('components.progressDefaultLabel')}
         </Text>
         <Text variant="caption" color={colors.textSecondary}>
-          {completed} of {total} sections complete
+          {t('components.progressSectionsComplete', { completed, total })}
         </Text>
       </View>
       <View style={[styles.track, { backgroundColor: colors.surfaceSunken, borderRadius: radius.pill }]}>
@@ -51,7 +53,6 @@ const styles = StyleSheet.create({
   },
   track: {
     height: 8,
-    width: '100%',
     overflow: 'hidden',
   },
   fill: {

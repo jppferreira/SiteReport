@@ -1,11 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, {
+  type DateTimePickerChangeEvent,
+} from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
-import { Text } from '@/components';
+import { FLOATING_FIELD_HEIGHT, FloatingField, Modal, Text } from '@/components';
 import { useTheme } from '@/theme';
 import { formatDate } from '@/utils/format';
+
+import { JobCalendar } from './MonthCalendar';
 
 type DateFieldProps = {
   label: string;
@@ -16,64 +20,69 @@ type DateFieldProps = {
 export function DateField({ label, value, onChange }: DateFieldProps) {
   const { colors, radius, spacing } = useTheme();
   const [open, setOpen] = useState(false);
-
   const dateValue = value ? new Date(value) : new Date();
+  const interactive = Platform.OS !== 'web';
 
-  if (Platform.OS === 'web') {
-    // @react-native-community/datetimepicker has no web implementation; the
-    // native iOS/Android pickers below are this field's primary experience.
-    return (
-      <View>
-        <Text variant="label" color={colors.textSecondary} style={{ marginBottom: 6 }}>
-          {label}
-        </Text>
-        <View
-          style={[
-            styles.field,
-            { borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md },
-          ]}
-        >
-          <Text variant="body">{formatDate(value)}</Text>
-        </View>
-      </View>
-    );
-  }
+  const commitDate = (selectedDate: Date) => {
+    const offsetMs = selectedDate.getTimezoneOffset() * 60_000;
+    onChange(new Date(selectedDate.getTime() - offsetMs).toISOString().slice(0, 10));
+  };
+
+  const handleValueChange = (_event: DateTimePickerChangeEvent, selectedDate: Date) => {
+    commitDate(selectedDate);
+  };
+
+  const handleDismiss = () => {
+    setOpen(false);
+  };
 
   return (
     <View>
-      <Text variant="label" color={colors.textSecondary} style={{ marginBottom: 6 }}>
-        {label}
-      </Text>
-      <Pressable
-        onPress={() => setOpen(true)}
-        accessibilityRole="button"
-        accessibilityLabel={`${label}: ${formatDate(value)}`}
-        style={[
-          styles.field,
-          { borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md },
-        ]}
+      <FloatingField
+        eyebrow={label}
+        floated
+        restingColor={colors.textTertiary}
+        floatedColor={open ? colors.textPrimary : colors.textSecondary}
+        borderColor={open ? colors.textPrimary : colors.border}
+        backgroundColor={colors.surface}
+        radius={radius.md}
+        restOffset={(FLOATING_FIELD_HEIGHT - 20) / 2}
       >
-        <Text variant="body">{formatDate(value)}</Text>
-        <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
-      </Pressable>
-      {open ? (
+        <Pressable
+          onPress={interactive ? () => setOpen(true) : undefined}
+          disabled={!interactive}
+          hitSlop={{ top: 12 }}
+          accessibilityRole="button"
+          accessibilityLabel={`${label}: ${formatDate(value)}`}
+          style={[styles.field, { paddingHorizontal: spacing.md }]}
+        >
+          <Text variant="body">{formatDate(value)}</Text>
+          {interactive ? <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} /> : null}
+        </Pressable>
+      </FloatingField>
+      {open && Platform.OS === 'ios' ? (
         <DateTimePicker
           value={dateValue}
           mode="date"
-          display={Platform.OS === 'ios' ? 'inline' : 'default'}
-          onChange={(event, selectedDate) => {
-            setOpen(Platform.OS === 'ios');
-            if (event.type === 'dismissed') {
-              setOpen(false);
-              return;
-            }
-            if (selectedDate) {
-              const offsetMs = selectedDate.getTimezoneOffset() * 60_000;
-              onChange(new Date(selectedDate.getTime() - offsetMs).toISOString().slice(0, 10));
-            }
-            if (Platform.OS === 'android') setOpen(false);
-          }}
+          display="inline"
+          themeVariant="light"
+          accentColor={colors.accent}
+          // Inline ignores textColor. accentColor tints the selection and today marker.
+          style={{ backgroundColor: colors.surface }}
+          onValueChange={handleValueChange}
+          onDismiss={handleDismiss}
         />
+      ) : null}
+      {open && Platform.OS === 'android' ? (
+        <Modal visible onRequestClose={handleDismiss}>
+          <JobCalendar
+            value={value}
+            onSelect={(iso) => {
+              onChange(iso);
+              setOpen(false);
+            }}
+          />
+        </Modal>
       ) : null}
     </View>
   );
@@ -81,8 +90,7 @@ export function DateField({ label, value, onChange }: DateFieldProps) {
 
 const styles = StyleSheet.create({
   field: {
-    height: 52,
-    borderWidth: 1,
+    height: FLOATING_FIELD_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

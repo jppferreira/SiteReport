@@ -1,32 +1,52 @@
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useMemo } from 'react';
 
-import { Text } from '@/components';
-import { BrandMark } from '@/features/onboarding/BrandMark';
-import { OnboardingScreen } from '@/features/onboarding/OnboardingScreen';
-import { setOnboardingComplete } from '@/services/preferencesService';
-import { useTheme } from '@/theme';
+import { HeroOnboardingScreen, type HeroOnboardingStep } from '@/features/onboarding/HeroOnboardingScreen';
+import { useI18n } from '@/i18n/useI18n';
 
 export default function OnboardingWelcome() {
-  const { colors } = useTheme();
+  const { t } = useI18n();
 
-  return (
-    <OnboardingScreen
-      step={0}
-      totalSteps={3}
-      illustration={<BrandMark />}
-      title="Professional proof of every job."
-      description={
-        <Text variant="body" color={colors.textSecondary}>
-          Capture your work and create professional job reports in minutes.
-        </Text>
-      }
-      ctaLabel="Get started"
-      onCta={() => router.push('/onboarding/privacy')}
-      onSkip={async () => {
-        await setOnboardingComplete();
-        router.replace('/(tabs)/jobs');
-      }}
-    />
+  const steps: HeroOnboardingStep[] = useMemo(
+    () => [
+      {
+        image: require('../../assets/images/onboarding-welcome-hero.png'),
+        imageLabel: t('onboarding.welcomeImageLabel'),
+        title: t('onboarding.welcomeTitle'),
+        subtitle: t('onboarding.welcomeSubtitle'),
+        body: t('onboarding.welcomeBody'),
+      },
+      {
+        image: require('../../assets/images/onboarding-capture-hero.jpg'),
+        imageLabel: t('onboarding.captureImageLabel'),
+        title: t('onboarding.captureTitle'),
+        subtitle: t('onboarding.captureSubtitle'),
+        body: t('onboarding.captureBody'),
+      },
+      {
+        image: require('../../assets/images/onboarding-document-hero.jpg'),
+        imageLabel: t('onboarding.documentImageLabel'),
+        title: t('onboarding.documentTitle'),
+        subtitle: t('onboarding.documentSubtitle'),
+        body: t('onboarding.documentBody'),
+      },
+      {
+        image: require('../../assets/images/onboarding-share-hero.jpg'),
+        imageLabel: t('onboarding.shareImageLabel'),
+        title: t('onboarding.shareTitle'),
+        subtitle: t('onboarding.shareSubtitle'),
+        body: t('onboarding.shareBody'),
+      },
+      {
+        image: require('../../assets/images/onboarding-privacy-hero.jpg'),
+        imageLabel: t('onboarding.privacyImageLabel'),
+        title: t('onboarding.privacyTitle'),
+        subtitle: t('onboarding.privacySubtitle'),
+        body: t('onboarding.privacyBody'),
+      },
+    ],
+    [t]
   );
+
+  return <HeroOnboardingScreen steps={steps} onComplete={() => router.push('/onboarding/profile')} />;
 }
