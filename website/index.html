@@ -11,14 +11,6 @@
     <meta name="theme-color" content="#ffffff" />
     <link rel="icon" href="favicon.png" type="image/png" />
     <link rel="stylesheet" href="styles.css" />
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
-        }
-      }
-    </script>
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
@@ -57,24 +49,14 @@
 
         <figure class="hero-visual">
           <div class="hero-stage">
-            <div class="hero-photo-wrap">
-              <img
-                class="hero-photo"
-                src="images/carpenter-on-site.jpg"
-                width="1280"
-                height="720"
-                alt="A carpenter on a fit-out checks the job on his phone, one hand resting on a length of timber."
-              />
-              <div class="hero-device">
-                <canvas
-                  class="hero-phone-canvas"
-                  role="img"
-                  aria-label="Trade Report splash screen on a phone. Trade Report. Professional job reports in minutes."
-                ></canvas>
-              </div>
-            </div>
+            <img
+              class="hero-crew"
+              src="images/hero-crew.png"
+              width="1272"
+              height="652"
+              alt="Three Trade Report characters beside an open van: an electrician with a coil of cable, a tradesperson checking a tablet, and a carpenter carrying timber."
+            />
           </div>
-          <figcaption>A finished job, ready to become a report.</figcaption>
         </figure>
       </section>
 
@@ -155,7 +137,7 @@
                     <span class="chip">Complete</span>
                   </div>
                   <div class="job-card">
-                    <span class="thumb after"></span>
+                    <span class="thumb"><img src="images/job-bathroom-after.jpg" alt="" /></span>
                     <span>
                       <strong>Bathroom refit</strong>
                       <em>14 Oak Lane</em>
@@ -163,7 +145,7 @@
                     </span>
                   </div>
                   <div class="job-card">
-                    <span class="thumb rough"></span>
+                    <span class="thumb"><img src="images/job-boiler.jpg" alt="" /></span>
                     <span>
                       <strong>Boiler service</strong>
                       <em>8 Harbour Street</em>
@@ -171,7 +153,7 @@
                     </span>
                   </div>
                   <div class="job-card">
-                    <span class="thumb tile"></span>
+                    <span class="thumb"><img src="images/job-kitchen-tiles.jpg" alt="" /></span>
                     <span>
                       <strong>Kitchen leak</strong>
                       <em>22 Mill Road</em>
@@ -209,9 +191,9 @@
                     <span class="seg">After</span>
                   </div>
                   <div class="photo-grid">
-                    <div class="frame rough"><span>Strip-out</span></div>
-                    <div class="frame rough alt"><span>Old suite</span></div>
-                    <div class="frame rough deep"><span>Pipework</span></div>
+                    <div class="frame"><img src="images/job-bathroom-strip.jpg" alt="" /><span>Strip-out</span></div>
+                    <div class="frame"><img src="images/job-old-suite.jpg" alt="" /><span>Old suite</span></div>
+                    <div class="frame"><img src="images/job-pipework.jpg" alt="" /><span>Pipework</span></div>
                     <div class="frame add">+</div>
                   </div>
                 </div>
@@ -243,11 +225,11 @@
               <div class="compare">
                 <div>
                   <p class="paper-label">Before</p>
-                  <div class="frame rough small"></div>
+                  <div class="frame small"><img src="images/job-bathroom-strip.jpg" alt="" /></div>
                 </div>
                 <div>
                   <p class="paper-label">After</p>
-                  <div class="frame after small"></div>
+                  <div class="frame small"><img src="images/job-bathroom-after.jpg" alt="" /></div>
                 </div>
               </div>
               <div class="signoff">
@@ -291,15 +273,25 @@
 
       <section class="privacy" id="privacy">
         <div class="privacy-inner">
-          <p class="eyebrow">Privacy</p>
-          <h2>The job never leaves the phone.</h2>
-          <p>
-            Trade Report has no sign-in and no cloud database. Customer names, addresses, notes,
-            photos, signatures, and reports stay in the app’s storage on that device unless you
-            share a PDF or save a backup yourself. A backup is a zip you confirm first, then save
-            to a folder you pick, such as your own Google Drive. The app does not sign in to Google.
-            <a href="privacy.html">Privacy policy</a>.
-          </p>
+          <div class="privacy-copy">
+            <p class="eyebrow">Privacy</p>
+            <h2>The job never leaves the phone.</h2>
+            <p>
+              Trade Report has no sign-in and no cloud database. Customer names, addresses, notes,
+              photos, signatures, and reports stay in the app’s storage on that device unless you
+              share a PDF or save a backup yourself. A backup is a zip you confirm first, then save
+              to a folder you pick, such as your own Google Drive. The app does not sign in to Google.
+              <a href="privacy.html">Privacy policy</a>.
+            </p>
+          </div>
+          <figure class="privacy-visual">
+            <img
+              src="images/privacy-device.jpg"
+              width="1024"
+              height="1024"
+              alt="A clay-style phone with a lock shield and job photos staying on the device."
+            />
+          </figure>
         </div>
       </section>
 
@@ -438,9 +430,18 @@
       </div>
       <form class="contact-form" action="https://formsubmit.co/hello@jppferreira.com" method="POST">
         <input type="hidden" name="_subject" value="Trade Report website message" />
-        <input type="hidden" name="_captcha" value="false" />
-        <input type="hidden" name="_template" value="box" />
-        <input type="text" name="_honey" class="contact-honey" tabindex="-1" autocomplete="off" aria-hidden="true" />
+        <input type="hidden" name="_template" value="table" />
+        <input type="hidden" name="_next" value="https://tradereportapp.com/thanks.html" />
+        <input type="hidden" name="_autoresponse" value="Thanks for writing to Trade Report. This is a receipt that your message was sent. Don’t include customer names, addresses, or photos in a follow-up." />
+        <label>
+          What is this about?
+          <select name="topic" required>
+            <option value="Support">Support</option>
+            <option value="Bug">Bug</option>
+            <option value="Feature request">Feature request</option>
+            <option value="Something else">Something else</option>
+          </select>
+        </label>
         <label>
           Name
           <input type="text" name="name" autocomplete="name" required maxlength="120" />
@@ -453,7 +454,9 @@
           Message
           <textarea name="message" required maxlength="4000" rows="5"></textarea>
         </label>
+        <input type="text" name="_honey" class="contact-honey" tabindex="-1" autocomplete="off" aria-hidden="true" />
         <button class="btn" type="submit">Send message</button>
+        <p class="contact-status" id="contact-status" role="status" hidden></p>
       </form>
       </section>
     </main>
@@ -472,8 +475,10 @@
         <a href="#pricing">Pricing</a>
         <a href="#contact">Contact</a>
       </nav>
-      <p>Jobs stay on your device. A typeface from Google and a script from jsDelivr load only if you allow them. This site does not set analytics cookies.</p>
+      <p>Jobs stay on your device. A typeface from Google loads only if you allow it. This site does not set analytics cookies.</p>
     </footer>
+    <script src="contact.js"></script>
+    <script src="motion.js"></script>
     <script src="consent.js"></script>
   </body>
 </html>
