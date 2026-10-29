@@ -21,14 +21,23 @@
           <img class="mark" src="images/mark.png" width="192" height="194" alt="" />
           <span class="wordmark-name">Trade <span>Report</span></span>
         </a>
-        <nav class="nav-links" aria-label="Page">
-          <a href="index.html#benefits">Benefits</a>
-          <a href="index.html#app">The app</a>
-          <a href="index.html#pricing">Pricing</a>
-          <a href="privacy.html">Privacy</a>
-          <a href="terms.html" aria-current="page">Terms</a>
-        </nav>
+        <button
+          class="nav-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="nav-menu"
+          aria-label="Open menu"
+        >
+          <span class="nav-toggle-bars" aria-hidden="true"></span>
+        </button>
       </div>
+      <nav class="nav-links" id="nav-menu" aria-label="Page">
+        <a href="index.html#benefits">Benefits</a>
+        <a href="index.html#app">The app</a>
+        <a href="index.html#pricing">Pricing</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html" aria-current="page">Terms</a>
+      </nav>
     </header>
 
     <main id="terms" class="policy">
@@ -134,6 +143,7 @@
       </nav>
       <p>Jobs stay on your device. A typeface from Google loads only if you allow it. This site does not set analytics cookies.</p>
     </footer>
+    <script src="nav.js"></script>
     <script src="consent.js"></script>
   </body>
 </html>

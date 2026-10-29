@@ -85,20 +85,48 @@ h3 {
 
 .nav {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 16px;
+  left: 50%;
   z-index: 50;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(230, 232, 230, 0.9);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(var(--content), calc(100% - var(--gutter) * 2));
+  min-height: 56px;
+  padding: 8px 10px 8px 18px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 10px 40px rgba(16, 19, 16, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(22px) saturate(1.45);
+  -webkit-backdrop-filter: blur(22px) saturate(1.45);
+  transition:
+    top 0.25s ease,
+    width 0.25s ease,
+    min-height 0.25s ease,
+    padding 0.25s ease,
+    background 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.nav.is-scrolled {
+  top: 10px;
+  width: min(calc(var(--content) - 48px), calc(100% - var(--gutter) * 2 - 24px));
+  min-height: 44px;
+  padding: 4px 8px 4px 14px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow:
+    0 8px 28px rgba(16, 19, 16, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 main {
-  padding-top: 76px;
+  padding-top: 0;
 }
 
-.nav-inner,
 .section,
 .privacy-inner,
 .launch-inner,
@@ -111,8 +139,9 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 76px;
-  gap: 24px;
+  gap: 20px;
+  flex: 1;
+  min-width: 0;
 }
 
 .wordmark {
@@ -121,6 +150,11 @@ main {
   gap: 10px;
   text-decoration: none;
   color: var(--ink);
+  transition: gap 0.25s ease;
+}
+
+.nav.is-scrolled .wordmark {
+  gap: 8px;
 }
 
 .mark {
@@ -128,12 +162,87 @@ main {
   height: 32px;
   flex: none;
   object-fit: contain;
+  transition: width 0.25s ease, height 0.25s ease;
+}
+
+.nav.is-scrolled .mark {
+  width: 26px;
+  height: 26px;
 }
 
 .wordmark-name {
   font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.03em;
+  transition: font-size 0.25s ease;
+}
+
+.nav.is-scrolled .wordmark-name {
+  font-size: 16px;
+}
+
+.nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--ink);
+  cursor: pointer;
+  flex: none;
+}
+
+.nav-toggle:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.nav-toggle-bars,
+.nav-toggle-bars::before,
+.nav-toggle-bars::after {
+  display: block;
+  width: 16px;
+  height: 1.5px;
+  border-radius: 999px;
+  background: currentColor;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.nav-toggle-bars {
+  position: relative;
+}
+
+.nav-toggle-bars::before,
+.nav-toggle-bars::after {
+  content: "";
+  position: absolute;
+  left: 0;
+}
+
+.nav-toggle-bars::before {
+  top: -5px;
+}
+
+.nav-toggle-bars::after {
+  top: 5px;
+}
+
+.nav.is-open .nav-toggle-bars {
+  background: transparent;
+}
+
+.nav.is-open .nav-toggle-bars::before {
+  top: 0;
+  transform: rotate(45deg);
+}
+
+.nav.is-open .nav-toggle-bars::after {
+  top: 0;
+  transform: rotate(-45deg);
 }
 
 .wordmark-name span,
@@ -143,7 +252,10 @@ main {
 
 .nav-links {
   display: flex;
-  gap: 28px;
+  align-items: center;
+  gap: 8px;
+  padding-right: 8px;
+  pointer-events: auto;
 }
 
 .nav-links a {
@@ -151,11 +263,23 @@ main {
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  transition: color 0.2s ease;
+  padding: 8px 12px;
+  border-radius: 999px;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    padding 0.25s ease,
+    font-size 0.25s ease;
+}
+
+.nav.is-scrolled .nav-links a {
+  padding: 6px 10px;
+  font-size: 13px;
 }
 
 .nav-links a:hover {
   color: var(--ink);
+  background: rgba(255, 255, 255, 0.45);
 }
 
 .hero {
@@ -167,7 +291,9 @@ main {
   max-width: 100%;
   margin: 0;
   box-sizing: border-box;
-  padding: clamp(56px, 8vw, 104px) max(var(--gutter), calc((100% - var(--content)) / 2))
+  padding:
+    calc(16px + 56px + clamp(40px, 6vw, 72px))
+    max(var(--gutter), calc((100% - var(--content)) / 2))
     clamp(40px, 6vw, 72px);
   background: #e7fcee;
   overflow-x: clip;
@@ -1214,8 +1340,87 @@ button.btn:disabled {
 }
 
 @media (max-width: 720px) {
+  .nav {
+    top: 12px;
+    width: calc(100% - 24px);
+    min-height: 0;
+    padding: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .nav.is-scrolled {
+    top: 8px;
+    width: calc(100% - 32px);
+    min-height: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .nav-inner {
+    min-height: 52px;
+    padding: 6px 8px 6px 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow:
+      0 10px 40px rgba(16, 19, 16, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(22px) saturate(1.45);
+    -webkit-backdrop-filter: blur(22px) saturate(1.45);
+    transition:
+      min-height 0.25s ease,
+      padding 0.25s ease,
+      background 0.25s ease;
+  }
+
+  .nav.is-scrolled .nav-inner {
+    min-height: 44px;
+    padding: 4px 6px 4px 12px;
+    background: rgba(255, 255, 255, 0.82);
+  }
+
+  .nav-toggle {
+    display: inline-flex;
+  }
+
   .nav-links {
     display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    width: 100%;
+    margin: 0;
+    padding: 10px;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.52);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    box-shadow:
+      0 16px 40px rgba(16, 19, 16, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(28px) saturate(1.5);
+    -webkit-backdrop-filter: blur(28px) saturate(1.5);
+  }
+
+  .nav.is-open .nav-links {
+    display: flex;
+  }
+
+  .nav-links a {
+    padding: 12px 14px;
+    font-size: 15px;
+  }
+
+  .nav.is-scrolled .nav-links a {
+    padding: 12px 14px;
+    font-size: 15px;
   }
 
   .price-grid {
@@ -1307,7 +1512,7 @@ button.btn:disabled {
 }
 
 .policy {
-  padding: clamp(40px, 6vw, 72px) 0 clamp(72px, 10vw, 120px);
+  padding: calc(16px + 56px + clamp(40px, 6vw, 72px)) 0 clamp(72px, 10vw, 120px);
 }
 
 .policy-inner {
