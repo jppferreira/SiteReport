@@ -4,7 +4,7 @@
 
   const toggle = nav.querySelector(".nav-toggle");
   const links = nav.querySelector(".nav-links");
-  const mq = window.matchMedia("(max-width: 720px)");
+  const mq = window.matchMedia("(max-width: 1080px)");
 
   const setOpen = (open) => {
     nav.classList.toggle("is-open", open);
