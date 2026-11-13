@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+Disallow: /thanks.html
+
+Sitemap: https://tradereportapp.com/sitemap.xml
