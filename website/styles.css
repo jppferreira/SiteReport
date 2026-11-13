@@ -342,8 +342,15 @@ main {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0;
+  gap: 8px;
   margin-top: 28px;
+}
+
+.hero-store-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
 }
 
 .btn {
@@ -384,7 +391,7 @@ button.btn:disabled {
 }
 
 .hero .play-badge {
-  margin: 0 0 -4px -14px;
+  margin: 0 0 -4px -10px;
 }
 
 .hero-visual {
@@ -1203,38 +1210,13 @@ button.btn:disabled {
 .stores {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 4px 10px;
   margin-top: 28px;
   flex-wrap: wrap;
 }
 
-.stores div {
-  min-width: 180px;
-  padding: 16px 18px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-}
-
 .stores .play-badge {
-  margin: -6px 0 -6px -14px;
-}
-
-.stores span {
-  display: block;
-  color: var(--faint);
-  font-size: 12px;
-}
-
-.stores strong {
-  font-weight: 600;
-}
-
-.store-soon em {
-  display: block;
-  margin-top: 6px;
-  color: var(--faint);
-  font-size: 13px;
-  font-style: normal;
+  margin: -6px 0 -6px -10px;
 }
 
 .footer {
