@@ -4,9 +4,11 @@ import { Platform } from 'react-native';
 
 import {
   businessProfileRepository,
+  jobChecklistsRepository,
   jobsRepository,
   photoAreasRepository,
   photosRepository,
+  reportEventsRepository,
   reportsRepository,
   signatureRepository,
   workSummaryRepository,
@@ -158,6 +160,8 @@ async function buildBackup(): Promise<Uint8Array> {
   const summaries = [];
   const signatures = [];
   const reports = [];
+  const checklists = [];
+  const events = await reportEventsRepository.listAllEvents();
   const uriByPath = new Map<string, string>();
 
   const claim = (uri: string | null | undefined): string | null => {
@@ -178,12 +182,13 @@ async function buildBackup(): Promise<Uint8Array> {
   };
 
   for (const job of jobs) {
-    const [jobPhotos, jobAreas, summary, signature, jobReports] = await Promise.all([
+    const [jobPhotos, jobAreas, summary, signature, jobReports, checklist] = await Promise.all([
       photosRepository.listPhotos(job.id),
       photoAreasRepository.listAreas(job.id),
       workSummaryRepository.getWorkSummary(job.id),
       signatureRepository.getSignature(job.id),
       reportsRepository.listReportsForJob(job.id),
+      jobChecklistsRepository.getChecklist(job.id),
     ]);
     for (const photo of jobPhotos) {
       const localUri = claim(photo.localUri);
@@ -203,6 +208,7 @@ async function buildBackup(): Promise<Uint8Array> {
       if (!localPdfUri) throw new Error(t('backup.reportCouldNotBeAdded'));
       reports.push({ ...report, localPdfUri });
     }
+    if (checklist) checklists.push(checklist);
   }
 
   const business = relativizeProfile(await businessProfileRepository.getBusinessProfile(), claim);
@@ -228,6 +234,8 @@ async function buildBackup(): Promise<Uint8Array> {
     summaries,
     signatures,
     reports,
+    checklists,
+    events,
     businessProfile: business,
   };
   return packArchive(manifest, files);

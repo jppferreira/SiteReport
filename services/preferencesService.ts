@@ -34,6 +34,12 @@ export type AppPreferences = {
   /** The one-time note about where that zip lives in the Files app. */
   icloudBackupTipSeen: boolean;
   lastIcloudBackupAt: string | null;
+  /** Overlay date & time on photos (Figma Field Proof · 06). */
+  stampDateTime: boolean;
+  /** Overlay job postcode / address on photos. */
+  stampAddress: boolean;
+  /** Print the evidence stamp under each photo on the PDF. */
+  stampShowOnPdf: boolean;
 };
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -47,6 +53,9 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   icloudAutoBackup: true,
   icloudBackupTipSeen: false,
   lastIcloudBackupAt: null,
+  stampDateTime: true,
+  stampAddress: true,
+  stampShowOnPdf: true,
 };
 
 export async function hasCompletedOnboarding(): Promise<boolean> {
@@ -75,6 +84,9 @@ export async function getPreferences(): Promise<AppPreferences> {
     if (typeof parsed.icloudAutoBackup !== 'boolean') parsed.icloudAutoBackup = true;
     if (typeof parsed.icloudBackupTipSeen !== 'boolean') parsed.icloudBackupTipSeen = false;
     if (typeof parsed.lastIcloudBackupAt !== 'string') parsed.lastIcloudBackupAt = null;
+    if (typeof parsed.stampDateTime !== 'boolean') parsed.stampDateTime = true;
+    if (typeof parsed.stampAddress !== 'boolean') parsed.stampAddress = true;
+    if (typeof parsed.stampShowOnPdf !== 'boolean') parsed.stampShowOnPdf = true;
     return parsed;
   } catch {
     return DEFAULT_PREFERENCES;

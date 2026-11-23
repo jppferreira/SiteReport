@@ -27,6 +27,7 @@ import {
 } from '@/features/photos/PhotoCaptureAnnotateModal';
 import { PhotoCaptureSheet } from '@/features/photos/PhotoCaptureSheet';
 import { PhotoGrid } from '@/features/photos/PhotoGrid';
+import { useEntitlement } from '@/hooks/useEntitlement';
 import { usePhotoArea } from '@/hooks/usePhotoAreas';
 import { usePhotoCapture } from '@/hooks/usePhotoCapture';
 import { usePhotos } from '@/hooks/usePhotos';
@@ -46,6 +47,7 @@ export default function SectionPhotosScreen() {
   const wholeJob = isWholeJobArea(areaId);
   const { colors, spacing } = useTheme();
   const { t } = useI18n();
+  const { isPro } = useEntitlement();
   const { showToast } = useToast();
   const { area, loading: areaLoading, missing, setArea } = usePhotoArea(wholeJob ? null : areaId);
   const [type, setType] = useState<PhotoType>('before');
@@ -79,6 +81,10 @@ export default function SectionPhotosScreen() {
       active.refresh();
       // Library picks still open the markup screen; camera uses the live modal.
       if (meta.source === 'library' && meta.total === 1 && meta.index === 0) {
+        if (!isPro) {
+          router.push({ pathname: '/paywall', params: { trigger: 'photo_markup' } });
+          return;
+        }
         router.push(`/job/${id}/annotate/${photo.id}`);
       }
     }

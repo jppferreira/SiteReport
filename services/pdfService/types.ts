@@ -90,6 +90,8 @@ export type ReportHtmlInput = {
   workCompleted: string | null;
   materials: string | null;
   recommendations: string | null;
+  /** Optional job checklist printed as a ticked list when includeInPdf is on. */
+  checklist?: { label: string; checked: boolean }[] | null;
   /** Optional cost figures. Omitted from the document when off or empty. */
   pricing: ReportPricing | null;
   /** How pricing is titled. Defaults to reference. */

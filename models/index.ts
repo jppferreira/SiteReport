@@ -1,4 +1,5 @@
 export * from './job';
+export * from './jobChecklist';
 export * from './photo';
 export * from './photoAnnotation';
 export * from './photoArea';
@@ -11,4 +12,5 @@ export * from './businessProfile';
 export * from './coverDesign';
 export * from './reportImageMask';
 export * from './report';
+export * from './reportEvent';
 export * from './entitlement';

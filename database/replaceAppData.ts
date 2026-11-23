@@ -1,5 +1,5 @@
 import { getDatabase } from '@/database/client';
-import { serializePhotoAnnotations, serializePricing } from '@/models';
+import { serializeChecklistItems, serializePhotoAnnotations, serializePricing } from '@/models';
 
 import { BackupManifest } from '@/services/backup/archive';
 import { isSafeRelativePath } from '@/services/backup/paths';
@@ -19,7 +19,9 @@ export async function replaceAppData(manifest: BackupManifest, root: string): Pr
       DELETE FROM photo_areas;
       DELETE FROM work_summaries;
       DELETE FROM signatures;
+      DELETE FROM report_events;
       DELETE FROM reports;
+      DELETE FROM job_checklists;
       DELETE FROM jobs;
       DELETE FROM business_profile;
     `);
@@ -128,6 +130,36 @@ export async function replaceAppData(manifest: BackupManifest, root: string): Pr
           $sourceHash: report.sourceHash,
           $templateId: report.templateId,
           $status: report.status,
+        }
+      );
+    }
+
+    for (const checklist of manifest.checklists ?? []) {
+      await db.runAsync(
+        `INSERT INTO job_checklists (jobId, templateId, includeInPdf, itemsJson, updatedAt)
+         VALUES ($jobId, $templateId, $includeInPdf, $itemsJson, $updatedAt)`,
+        {
+          $jobId: checklist.jobId,
+          $templateId: checklist.templateId,
+          $includeInPdf: checklist.includeInPdf ? 1 : 0,
+          $itemsJson: serializeChecklistItems(checklist.items),
+          $updatedAt: checklist.updatedAt,
+        }
+      );
+    }
+
+    for (const event of manifest.events ?? []) {
+      await db.runAsync(
+        `INSERT INTO report_events (id, reportId, jobId, kind, label, recipient, createdAt)
+         VALUES ($id, $reportId, $jobId, $kind, $label, $recipient, $createdAt)`,
+        {
+          $id: event.id,
+          $reportId: event.reportId,
+          $jobId: event.jobId,
+          $kind: event.kind,
+          $label: event.label,
+          $recipient: event.recipient,
+          $createdAt: event.createdAt,
         }
       );
     }

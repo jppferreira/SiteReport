@@ -177,6 +177,8 @@ describe('iCloud auto-backup', () => {
             status: 'active',
           },
         ],
+        checklists: [],
+        events: [],
         businessProfile: null,
       },
       files

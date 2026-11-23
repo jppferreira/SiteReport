@@ -13,10 +13,12 @@ import {
   Text,
   useToast,
 } from '@/components';
-import { jobsRepository, photoAreasRepository, photosRepository } from '@/database';
+import { jobChecklistsRepository, jobsRepository, photoAreasRepository, photosRepository } from '@/database';
+import { checklistProgress } from '@/models';
 import { BottomSheetMenu } from '@/features/jobs/BottomSheetMenu';
 import { JobSectionRow } from '@/features/jobs/JobSectionRow';
 import { nextRecommendedAction } from '@/features/jobs/jobProgress';
+import { useEntitlement } from '@/hooks/useEntitlement';
 import { useJob } from '@/hooks/useJob';
 import { useSignature } from '@/hooks/useSignature';
 import { useWorkSummary } from '@/hooks/useWorkSummary';
@@ -31,6 +33,7 @@ export default function JobOverviewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors, spacing } = useTheme();
   const { t } = useI18n();
+  const { isPro } = useEntitlement();
   const { job, progress, loading, error, refresh } = useJob(id);
   const { summary } = useWorkSummary(id);
   const { signature } = useSignature(id);
@@ -38,14 +41,25 @@ export default function JobOverviewScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [photoCounts, setPhotoCounts] = useState({ before: 0, after: 0 });
+  const [photoCounts, setPhotoCounts] = useState({ before: 0, during: 0, after: 0 });
   const [areaCount, setAreaCount] = useState(0);
+  const [checklistStatus, setChecklistStatus] = useState<'not_started' | 'in_progress' | 'complete'>('not_started');
 
   useFocusEffect(
     useCallback(() => {
       refresh();
       photosRepository.countPhotos(id).then(setPhotoCounts);
       photoAreasRepository.countAreas(id).then(setAreaCount);
+      jobChecklistsRepository.getChecklist(id).then((list) => {
+        if (!list || list.items.length === 0) {
+          setChecklistStatus('not_started');
+          return;
+        }
+        const progress = checklistProgress(list.items);
+        if (progress.checked === 0) setChecklistStatus('not_started');
+        else if (progress.checked >= progress.total) setChecklistStatus('complete');
+        else setChecklistStatus('in_progress');
+      });
     }, [refresh, id])
   );
 
@@ -81,7 +95,7 @@ export default function JobOverviewScreen() {
     }
   };
 
-  const photoTotal = photoCounts.before + photoCounts.after;
+  const photoTotal = photoCounts.before + photoCounts.during + photoCounts.after;
 
   return (
     <Screen>
@@ -151,6 +165,19 @@ export default function JobOverviewScreen() {
             status={progress.sections.photos}
             showDivider
             onPress={() => router.push(`/job/${job.id}/photos`)}
+          />
+          <JobSectionRow
+            title={t('jobDetail.sectionChecklist')}
+            subtitle={t('jobDetail.sectionChecklistSubtitle')}
+            status={checklistStatus}
+            showDivider
+            onPress={() => {
+              if (!isPro) {
+                router.push({ pathname: '/paywall', params: { trigger: 'checklist' } });
+                return;
+              }
+              router.push(`/job/${job.id}/checklist`);
+            }}
           />
           <JobSectionRow
             title={t('jobDetail.sectionSummary')}

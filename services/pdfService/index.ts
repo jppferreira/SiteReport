@@ -1,7 +1,7 @@
 import * as Print from 'expo-print';
 import { Platform } from 'react-native';
 
-import { businessProfileRepository, jobsRepository, photoAreasRepository, photosRepository, reportsRepository, signatureRepository, workSummaryRepository } from '@/database';
+import { businessProfileRepository, jobChecklistsRepository, jobsRepository, photoAreasRepository, photosRepository, reportsRepository, signatureRepository, workSummaryRepository } from '@/database';
 import {
   DEFAULT_DOCUMENT_TYPE,
   DEFAULT_REPORT_TEMPLATE,
@@ -18,6 +18,8 @@ import {
 function formatProvisionalInvoice(sequence: number): string {
   return formatInvoiceNumber(sequence);
 }
+import { formatStampCaptionParts } from '@/services/evidenceStamp';
+import { resolveStampAddress } from '@/services/locationStamp';
 import { hasProAccess } from '@/services/entitlementService';
 import { getPreferences } from '@/services/preferencesService';
 import { buildReportFileName } from '@/utils/fileNaming';
@@ -81,21 +83,36 @@ async function toDataUri(uri: string): Promise<string | null> {
   return `data:${mime};base64,${base64}`;
 }
 
-async function toPhotoData(photo: {
-  id: string;
-  localUri: string;
-  caption: string | null;
-  width: number;
-  height: number;
-  takenAt?: string | null;
-  annotations?: PhotoAnnotations | null;
-}): Promise<ReportPhotoData | null> {
+async function toPhotoData(
+  photo: {
+    id: string;
+    localUri: string;
+    caption: string | null;
+    width: number;
+    height: number;
+    takenAt?: string | null;
+    annotations?: PhotoAnnotations | null;
+  },
+  stamp: {
+    address: string | null;
+    stampDateTime: boolean;
+    stampAddress: boolean;
+    stampShowOnPdf: boolean;
+  }
+): Promise<ReportPhotoData | null> {
   const dataUri = await toDataUri(photo.localUri);
   if (!dataUri) return null;
   return {
     id: photo.id,
     dataUri,
-    caption: photo.caption,
+    caption: formatStampCaptionParts({
+      caption: photo.caption,
+      takenAt: photo.takenAt,
+      address: stamp.address,
+      stampDateTime: stamp.stampDateTime,
+      stampAddress: stamp.stampAddress,
+      stampShowOnPdf: stamp.stampShowOnPdf,
+    }) || null,
     width: photo.width,
     height: photo.height,
     takenAt: photo.takenAt ?? null,
@@ -115,7 +132,7 @@ export async function loadReportDocument(jobId: string): Promise<ReportDocument>
     throw new ReportGenerationError('This job no longer exists.');
   }
 
-  const [areas, beforePhotos, duringPhotos, afterPhotos, summary, signature, business] = await Promise.all([
+  const [areas, beforePhotos, duringPhotos, afterPhotos, summary, signature, business, checklist] = await Promise.all([
     photoAreasRepository.listAreas(jobId),
     photosRepository.listPhotos(jobId, 'before'),
     photosRepository.listPhotos(jobId, 'during'),
@@ -123,11 +140,20 @@ export async function loadReportDocument(jobId: string): Promise<ReportDocument>
     workSummaryRepository.getWorkSummary(jobId),
     signatureRepository.getSignature(jobId),
     businessProfileRepository.getBusinessProfile(),
+    jobChecklistsRepository.getChecklist(jobId),
   ]);
 
   const allPhotos = [...beforePhotos, ...duringPhotos, ...afterPhotos];
   const preferences = await getPreferences();
   const isPro = await hasProAccess();
+  const stampAddressEnabled = isPro && preferences.stampAddress;
+  const stampAddressLabel = stampAddressEnabled ? await resolveStampAddress(job.address) : null;
+  const stampOptions = {
+    address: stampAddressLabel,
+    stampDateTime: preferences.stampDateTime,
+    stampAddress: stampAddressEnabled,
+    stampShowOnPdf: preferences.stampShowOnPdf,
+  };
   const sourceHash = await computeJobContentHash(
     job,
     allPhotos,
@@ -140,7 +166,7 @@ export async function loadReportDocument(jobId: string): Promise<ReportDocument>
   const [taggedPhotos, logoDataUri, signatureSvg, brandCoverDataUri, brandThanksDataUri] = await Promise.all([
     Promise.all(
       allPhotos.map(async (photo) => {
-        const data = await toPhotoData(photo);
+        const data = await toPhotoData(photo, stampOptions);
         if (!data) return null;
         return { ...data, type: photo.type, areaId: photo.areaId, sortOrder: photo.sortOrder };
       })
@@ -200,6 +226,10 @@ export async function loadReportDocument(jobId: string): Promise<ReportDocument>
       workCompleted: summary?.workCompleted ?? null,
       materials: summary?.materials ?? null,
       recommendations: summary?.recommendations ?? null,
+      checklist:
+        checklist?.includeInPdf && checklist.items.length > 0
+          ? checklist.items.map((item) => ({ label: item.label, checked: item.checked }))
+          : null,
       // summary.notes stays on the device. It is not part of the customer PDF.
       pricing: summary?.pricing ?? null,
       documentType: effectiveType,

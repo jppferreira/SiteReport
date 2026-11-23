@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { IconButton, LoadingState, NavigationHeader, Screen, useToast } from '@/components';
 import { photoAreasRepository, photosRepository } from '@/database';
 import { PhotoAnnotationEditor } from '@/features/photos/PhotoAnnotationEditor';
+import { useEntitlement } from '@/hooks/useEntitlement';
 import { useI18n } from '@/i18n/useI18n';
 import { emptyAnnotations, Photo, PhotoAnnotations } from '@/models';
 import { useTheme } from '@/theme';
@@ -20,6 +21,7 @@ export default function PhotoAnnotateScreen() {
   const { id, photoId } = useLocalSearchParams<{ id: string; photoId: string }>();
   const { spacing } = useTheme();
   const { t } = useI18n();
+  const { isPro } = useEntitlement();
   const { showToast } = useToast();
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [areaName, setAreaName] = useState<string | null>(null);
@@ -28,6 +30,10 @@ export default function PhotoAnnotateScreen() {
   const annotationsRef = useRef<PhotoAnnotations>(emptyAnnotations());
 
   useEffect(() => {
+    if (!isPro) {
+      router.replace({ pathname: '/paywall', params: { trigger: 'photo_markup' } });
+      return;
+    }
     photosRepository.getPhoto(photoId).then((next) => {
       setPhoto(next);
       setCaption(next?.caption ?? '');
@@ -38,7 +44,7 @@ export default function PhotoAnnotateScreen() {
         setAreaName(t('photos.wholeJob'));
       }
     });
-  }, [photoId, t]);
+  }, [photoId, t, isPro]);
 
   const stageBadge = useMemo(() => {
     if (!photo) return null;

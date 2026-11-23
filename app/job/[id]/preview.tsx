@@ -167,12 +167,16 @@ export default function ReportPreviewScreen() {
     if (!event.photoId) return;
     if (event.action === 'annotate') {
       setStylesOpen(false);
+      if (!isPro) {
+        router.push({ pathname: '/paywall', params: { trigger: 'photo_markup' } });
+        return;
+      }
       router.push(`/job/${id}/annotate/${event.photoId}`);
       return;
     }
     setStylesOpen(false);
     setPhotoMenuId(event.photoId);
-  }, [id]);
+  }, [id, isPro]);
 
   const documentType = (summary?.documentType ?? 'reference') as DocumentType;
   const ctaLabel = (() => {
@@ -372,7 +376,13 @@ export default function ReportPreviewScreen() {
                     {
                       icon: 'pencil',
                       label: t('preview.editMarkup'),
-                      onPress: () => router.push(`/job/${id}/annotate/${photoMenuId}`),
+                      onPress: () => {
+                        if (!isPro) {
+                          router.push({ pathname: '/paywall', params: { trigger: 'photo_markup' } });
+                          return;
+                        }
+                        router.push(`/job/${id}/annotate/${photoMenuId}`);
+                      },
                     },
                   ]
                 : []

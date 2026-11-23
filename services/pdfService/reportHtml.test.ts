@@ -1,6 +1,4 @@
 import { COVER_DESIGN_IDS, imageMaskClipPath, normalizeReportTemplateId, ReportTemplateId } from '@/models';
-import { formatTakenAt } from '@/services/photoTakenAt';
-
 import { DEFAULT_COVER_SCENE, DEFAULT_THANKS_SCENE } from './defaultScenes';
 import { buildReportHtml, buildReportPreviewHtml, prepareAndroidPrintHtml } from './reportHtml';
 import { ReportHtmlInput } from './types';
@@ -570,16 +568,25 @@ describe('buildReportHtml', () => {
     expect(prepareAndroidPrintHtml(html)).toContain(formatted);
   });
 
-  it('prints the capture time under the photo', () => {
-    const takenAt = '2026-10-04T14:30:00';
+  it('prints the evidence stamp baked into the photo caption', () => {
+    const stamp = '4 Oct 2026 · 14:30 GMT · 14 Oak Street';
     const html = buildReportHtml(
       sample('modern', {
-        before: [{ ...photo('before-1', 'Old boiler'), takenAt }],
+        before: [{ ...photo('before-1', `Old boiler — ${stamp}`), takenAt: '2026-10-04T14:30:00' }],
       })
     );
-    expect(html).toContain(`Taken ${formatTakenAt(takenAt)}`);
-    const trade = buildReportHtml(sample('trade', { before: [{ ...photo('before-1', 'Old boiler'), takenAt }] }));
-    expect(trade).toContain(`Taken ${formatTakenAt(takenAt)}`);
+    expect(html).toContain(stamp);
+    const withChecklist = buildReportHtml(
+      sample('modern', {
+        checklist: [
+          { label: 'Visual inspection of boiler & flue', checked: true },
+          { label: 'Customer sign-off & handover', checked: false },
+        ],
+      })
+    );
+    expect(withChecklist).toContain('Job checklist');
+    expect(withChecklist).toContain('Visual inspection of boiler &amp; flue');
+    expect(withChecklist).toContain('Customer sign-off &amp; handover');
   });
 
   it('adds a review card with a QR when a review URL is set', () => {

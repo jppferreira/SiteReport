@@ -5,4 +5,6 @@ export * as photoAreasRepository from './repositories/photoAreasRepository';
 export * as workSummaryRepository from './repositories/workSummaryRepository';
 export * as signatureRepository from './repositories/signatureRepository';
 export * as reportsRepository from './repositories/reportsRepository';
+export * as reportEventsRepository from './repositories/reportEventsRepository';
+export * as jobChecklistsRepository from './repositories/jobChecklistsRepository';
 export * as businessProfileRepository from './repositories/businessProfileRepository';

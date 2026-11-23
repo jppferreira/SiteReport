@@ -27,7 +27,6 @@ import {
   REVIEW_PROVIDER_LABELS,
   VAT_RATE_PERCENT,
 } from '@/models';
-import { formatTakenAt } from '@/services/photoTakenAt';
 import { formatDate, formatDateTime } from '@/utils/format';
 
 import { DEFAULT_COVER_SCENE, DEFAULT_THANKS_SCENE } from './defaultScenes';
@@ -357,11 +356,20 @@ function cardRow(sections: string[]): string {
 }
 
 function photoCaption(photo: ReportPhotoData, fallback = ''): string {
-  const caption = photo.caption?.trim() ?? '';
-  const taken = formatTakenAt(photo.takenAt);
-  const takenLabel = taken ? `Taken ${taken}` : '';
-  if (caption && takenLabel) return `${caption} — ${takenLabel}`;
-  return caption || takenLabel || fallback;
+  // Date / address stamps are baked into `caption` upstream from preferences.
+  return photo.caption?.trim() || fallback;
+}
+
+function jobChecklistSection(input: ReportHtmlInput): string {
+  const items = input.checklist ?? [];
+  if (items.length === 0) return '';
+  const rows = items
+    .map((item) => {
+      const mark = item.checked ? '✓' : '○';
+      return `<li><span class="box">${mark}</span><span>${escapeHtml(item.label)}</span></li>`;
+    })
+    .join('');
+  return `<section class="block section-checklist"><h2 class="block-title">Job checklist</h2><ul class="checks">${rows}</ul></section>`;
 }
 
 /** Content-area frame used to decide if a marked photo letterboxes (side bands). */
@@ -910,6 +918,19 @@ function renderTrade(input: ReportHtmlInput, theme: Theme): string {
   const scopeItems = listItems(input.workCompleted);
   parts.push(tradeSection(number++, 'Project overview', overview));
   if (scopeItems) parts.push(tradeSection(number++, 'Scope of work', checkList(scopeItems)));
+  if ((input.checklist ?? []).length > 0) {
+    const rows = (input.checklist ?? []).map((item) => item.label);
+    const marks = (input.checklist ?? []).map((item) => (item.checked ? '✓' : '○'));
+    parts.push(
+      tradeSection(
+        number++,
+        'Job checklist',
+        `<ul class="checks">${rows
+          .map((label, index) => `<li><span class="box">${marks[index]}</span><span>${escapeHtml(label)}</span></li>`)
+          .join('')}</ul>`
+      )
+    );
+  }
 
   const areas = (input.areas ?? []).filter(hasPhotos);
   if (areas.length > 0) {
@@ -942,6 +963,8 @@ function renderTrade(input: ReportHtmlInput, theme: Theme): string {
     tradeSection(number++, 'Client sign-off', tradeClientBody(input), { sectionClass: 'section-signature' }) +
       tradeSection(number++, 'Company sign-off', tradeCompanyBody(input))
   );
+  const review = reviewCardBlock(input);
+  if (review) parts.push(review);
 
   // One flowing article. Short sections share a page; a long section continues
   // on the next page instead of forcing a blank one.
@@ -953,6 +976,7 @@ function renderModern(input: ReportHtmlInput, theme: Theme): string {
   const photos = photosMarkup(input, (pair) => compareBlock(pair, { tags: true, layout: input.photoAnnotationLayout }));
   const overview = proseSection('Overview', input.job.description, 'section-overview');
   const work = proseSection('Work summary', input.workCompleted, 'section-work');
+  const checklist = jobChecklistSection(input);
   const notes = cardRow([
     listSection('Materials used', input.materials, 'section-materials'),
     proseSection('Labour details', input.recommendations, 'section-labour'),
@@ -990,6 +1014,7 @@ function renderModern(input: ReportHtmlInput, theme: Theme): string {
     </div>
     ${overview}
     ${work}
+    ${checklist}
     ${photos}
     ${notes}
     ${pricingSection(input)}
@@ -1198,6 +1223,7 @@ function renderMinimal(input: ReportHtmlInput, theme: Theme): string {
       proseSection('Labour details', input.recommendations, 'section-labour'),
     ])}
     ${pricingSection(input)}
+    ${reviewCardBlock(input)}
     <footer class="min-foot">
       <div>
         <div class="brand-name">${escapeHtml(input.business.name)}</div>

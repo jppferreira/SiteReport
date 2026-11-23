@@ -12,7 +12,7 @@ import { readDatabaseSnapshot, writeDatabaseSnapshot } from './webSnapshot';
 // holds an exclusive lock per origin and breaks hot reload — and copies that
 // database into IndexedDB after each write so jobs survive reloads offline.
 const DATABASE_NAME = Platform.OS === 'web' ? ':memory:' : 'sitereport.db';
-const CURRENT_SCHEMA_VERSION = 12;
+const CURRENT_SCHEMA_VERSION = 13;
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 let snapshotTimer: ReturnType<typeof setTimeout> | null = null;
@@ -247,6 +247,31 @@ async function migrate(db: SQLite.SQLiteDatabase) {
       await db.execAsync('ALTER TABLE work_summaries ADD COLUMN invoiceNumber TEXT');
     }
     await db.execAsync('PRAGMA user_version = 12');
+    version = 12;
+  }
+
+  if (version < 13) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS job_checklists (
+        jobId TEXT PRIMARY KEY NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+        templateId TEXT NOT NULL,
+        includeInPdf INTEGER NOT NULL DEFAULT 1,
+        itemsJson TEXT NOT NULL,
+        updatedAt TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS report_events (
+        id TEXT PRIMARY KEY NOT NULL,
+        reportId TEXT NOT NULL,
+        jobId TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        label TEXT NOT NULL,
+        recipient TEXT,
+        createdAt TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_report_events_jobId ON report_events(jobId);
+      CREATE INDEX IF NOT EXISTS idx_report_events_reportId ON report_events(reportId);
+    `);
+    await db.execAsync('PRAGMA user_version = 13');
   }
 
   logger.debug('Database schema ready', { version: CURRENT_SCHEMA_VERSION });

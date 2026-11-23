@@ -72,6 +72,8 @@ async function manifest(): Promise<BackupManifest> {
       },
     ],
     reports: [],
+    checklists: [],
+    events: [],
     businessProfile: null,
   };
 }
