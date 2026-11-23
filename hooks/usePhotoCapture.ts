@@ -14,11 +14,17 @@ export type CaptureSource = 'camera' | 'library';
 
 export type PermissionDenialReason = 'camera' | 'library' | null;
 
+export type PhotoCaptureMeta = {
+  source: CaptureSource;
+  index: number;
+  total: number;
+};
+
 export function usePhotoCapture(
   jobId: string,
   type: PhotoType,
   areaId: string | null,
-  onAdded: (photo: Photo) => void
+  onAdded: (photo: Photo, meta: PhotoCaptureMeta) => void
 ) {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +71,9 @@ export function usePhotoCapture(
 
         setProcessing(true);
         const { defaultPhotoQuality } = await getPreferences();
-        for (const asset of result.assets) {
+        const total = result.assets.length;
+        for (let index = 0; index < result.assets.length; index += 1) {
+          const asset = result.assets[index]!;
           const photoId = generateId();
           const takenAt = resolveTakenAt({ source, exif: asset.exif, capturedAt });
           const processed = await processJobPhoto(jobId, photoId, asset.uri, asset.width, asset.height, defaultPhotoQuality);
@@ -80,7 +88,7 @@ export function usePhotoCapture(
             height: processed.height,
             takenAt,
           });
-          onAdded(photo);
+          onAdded(photo, { source, index, total });
         }
       } catch (err) {
         logger.error('Photo capture failed', err);

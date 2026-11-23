@@ -257,7 +257,10 @@ function photosInArea(photos: Photo[], areaId: string | null): Photo[] {
   return photos
     .filter((photo) => (photo.areaId ?? null) === areaId)
     .sort((a, b) => {
-      if (a.type !== b.type) return a.type === 'before' ? -1 : 1;
+      if (a.type !== b.type) {
+        const order = { before: 0, during: 1, after: 2 } as const;
+        return order[a.type] - order[b.type];
+      }
       return a.sortOrder - b.sortOrder;
     });
 }
@@ -266,17 +269,18 @@ type Translate = (key: string, options?: Record<string, string | number>) => str
 
 function photoSummary(t: Translate, photos: Photo[]): string {
   const before = photos.filter((photo) => photo.type === 'before').length;
+  const during = photos.filter((photo) => photo.type === 'during').length;
   const after = photos.filter((photo) => photo.type === 'after').length;
-  if (before === 0 && after === 0) return t('photos.summaryEmpty');
+  if (before === 0 && during === 0 && after === 0) return t('photos.summaryEmpty');
   const parts: string[] = [];
   if (before > 0) {
     parts.push(before === 1 ? t('photos.summaryOneBefore') : t('photos.summaryBeforeCount', { count: before }));
   }
+  if (during > 0) {
+    parts.push(during === 1 ? t('photos.summaryOneDuring') : t('photos.summaryDuringCount', { count: during }));
+  }
   if (after > 0) {
     parts.push(after === 1 ? t('photos.summaryOneAfter') : t('photos.summaryAfterCount', { count: after }));
   }
-  if (parts.length === 2) {
-    return t('photos.summaryJoin', { before: parts[0]!, after: parts[1]! });
-  }
-  return parts[0] ?? '';
+  return parts.join(' · ');
 }

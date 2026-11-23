@@ -64,4 +64,16 @@ describe('groupReportPhotos', () => {
     );
     expect(groups?.map((group) => group.name)).toEqual(['Bathroom']);
   });
+
+  it('keeps annotation markup and notes when photos are grouped by section', () => {
+    const annotated = {
+      ...photo('kitchen-before', 'before', 'kitchen', 0),
+      annotations: {
+        version: 1 as const,
+        shapes: [{ kind: 'callout' as const, color: '#FF5A36' as const, at: { x: 0.4, y: 0.3 }, note: 'Leak' }],
+      },
+    };
+    const groups = groupReportPhotos([kitchen], [annotated]);
+    expect(groups?.[0]?.before[0]?.annotations?.shapes).toEqual(annotated.annotations.shapes);
+  });
 });

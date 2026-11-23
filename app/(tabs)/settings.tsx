@@ -7,6 +7,7 @@ import React, { useCallback, useState } from 'react';
 import { Platform, ScrollView, View } from 'react-native';
 
 import { Screen, SettingRow, Text, ToggleRow } from '@/components';
+import { ContactSheet } from '@/features/settings/ContactSheet';
 import { SettingsGroup } from '@/features/settings/SettingsGroup';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { useEntitlement } from '@/hooks/useEntitlement';
@@ -28,6 +29,7 @@ export default function SettingsScreen() {
   const { profile } = useBusinessProfile();
   const { entitlement, isPro } = useEntitlement();
   const [layoutLabel, setLayoutLabel] = useState<string>();
+  const [contactOpen, setContactOpen] = useState(false);
   const [icloudAutoBackup, setIcloudAutoBackup] = useIcloudAutoBackupSetting();
 
   useFocusEffect(
@@ -103,7 +105,11 @@ export default function SettingsScreen() {
 
         <SettingsGroup title={t('settings.groupSupport')}>
           <SettingRow label={t('settings.help')} icon="help-circle-outline" onPress={() => router.push('/settings/help')} />
-          <SettingRow label={t('settings.reportABug')} icon="bug-outline" onPress={() => router.push('/settings/bug-report')} />
+          <SettingRow
+            label={t('settings.contactUs')}
+            icon="chatbubble-ellipses-outline"
+            onPress={() => setContactOpen(true)}
+          />
           <SettingRow
             label={t('settings.termsOfUse')}
             icon="document-text-outline"
@@ -142,6 +148,7 @@ export default function SettingsScreen() {
           ) : null}
         </SettingsGroup>
       </ScrollView>
+      <ContactSheet visible={contactOpen} onClose={() => setContactOpen(false)} />
     </Screen>
   );
 }

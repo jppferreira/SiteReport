@@ -44,6 +44,9 @@ export default function PaywallScreen() {
         logo: t('paywall.triggerLogo'),
         colour: t('paywall.triggerColour'),
         template: t('paywall.triggerTemplate'),
+        review_link: t('paywall.triggerReviewLink'),
+        voice_notes: t('paywall.triggerVoiceNotes'),
+        quote_invoice: t('paywall.triggerQuoteInvoice'),
       }) as Record<string, string>,
     [t]
   );

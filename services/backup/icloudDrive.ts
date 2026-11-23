@@ -21,10 +21,23 @@ export function icloudDriveAvailable(): IcloudAvailability {
   return native.availability() === 'ready' ? 'ready' : 'signed-out';
 }
 
+export function assertIcloudReady(): void {
+  const availability = icloudDriveAvailable();
+  if (availability === 'missing') throw new Error(t('backup.icloudNeedsIosApp'));
+  if (availability === 'signed-out') throw new Error(t('backup.icloudSignedOut'));
+}
+
+/** Copies the zip into this app's iCloud Drive folder. Uses the Apple ID already on the iPhone. */
 export async function saveZipToIcloudDrive(sourcePath: string, fileName: string): Promise<void> {
+  assertIcloudReady();
   const native = nativeModule();
-  if (!native) {
-    throw new Error(t('backup.icloudNeedsIosApp'));
+  if (!native) throw new Error(t('backup.icloudNeedsIosApp'));
+  try {
+    await native.saveZip(sourcePath, fileName);
+  } catch (error) {
+    const text = String(error).toLowerCase();
+    if (text.includes('signed')) throw new Error(t('backup.icloudSignedOut'));
+    if (text.includes('not available') || text.includes('container')) throw new Error(t('backup.icloudNotReady'));
+    throw new Error(t('backup.icloudWriteFailed'));
   }
-  await native.saveZip(sourcePath, fileName);
 }

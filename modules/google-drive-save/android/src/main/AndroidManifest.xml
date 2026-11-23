@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <queries>
+    <package android:name="com.google.android.apps.docs" />
+    <intent>
+      <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+    </intent>
+  </queries>
+</manifest>

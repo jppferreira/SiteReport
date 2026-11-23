@@ -13,8 +13,10 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { ConfirmationDialog, EmptyState, ErrorState, LoadingPage, Screen, SearchInput, Skeleton, Text, TextButton, useToast } from '@/components';
+import { PILL_TAB_BAR_WASH_ABOVE } from '@/components/PillTabBar';
 import { jobsRepository } from '@/database';
 import { FilterChips } from '@/features/jobs/FilterChips';
+import { FirstReportPromptCard } from '@/features/jobs/FirstReportPromptCard';
 import { JobCard } from '@/features/jobs/JobCard';
 import { Wordmark } from '@/features/onboarding/Wordmark';
 import { useJobs } from '@/hooks/useJobs';
@@ -24,12 +26,11 @@ import { deleteJobFiles } from '@/services/fileService';
 import { resetOnboarding } from '@/services/preferencesService';
 import { motionTiming, reduceMotion, useTheme } from '@/theme';
 
-const NO_JOBS_YET = require('../../assets/images/no-jobs-yet.png');
 const NO_MATCHING_JOBS = require('../../assets/images/no-matching-jobs.png');
 const NOTHING_HERE_YET = require('../../assets/images/nothing-here-yet.png');
 
 export default function JobsScreen() {
-  const { colors, radius, spacing } = useTheme();
+  const { colors, radius, spacing, shadows } = useTheme();
   const { t } = useI18n();
   const tabBarHeight = useBottomTabBarHeight();
   const { jobs, photoSummaries, filter, setFilter, search, setSearch, loading, error, refresh } = useJobs();
@@ -126,30 +127,7 @@ export default function JobsScreen() {
             },
           ]}
         >
-          <View style={styles.searchRow}>
-            <View style={styles.searchSlot}>
-              <SearchInput value={search} onChangeText={setSearch} placeholder={t('jobs.searchPlaceholder')} />
-            </View>
-            <Pressable
-              onPress={() => {
-                if (Platform.OS !== 'web') {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }
-                router.push('/job/new');
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={t('jobs.newJobA11y')}
-              style={({ pressed }) => [
-                styles.addButton,
-                {
-                  backgroundColor: pressed ? colors.ctaDarkPressed : colors.ctaDark,
-                  borderRadius: radius.xl,
-                },
-              ]}
-            >
-              <Ionicons name="add" size={28} color={colors.textInverse} />
-            </Pressable>
-          </View>
+          <SearchInput value={search} onChangeText={setSearch} placeholder={t('jobs.searchPlaceholder')} />
 
           <View style={{ marginTop: spacing.sm }}>
             <FilterChips value={filter} onChange={setFilter} />
@@ -179,29 +157,33 @@ export default function JobsScreen() {
             <Skeleton height={76} radius={16} />
           </View>
         ) : jobs.length === 0 ? (
-          <View style={{ flexGrow: 1, paddingBottom: tabBarHeight }}>
-            {search.length > 0 ? (
-              <EmptyState
-                illustration={NO_MATCHING_JOBS}
-                title={t('jobs.emptyNoMatchTitle')}
-                description={t('jobs.emptyNoMatchDescription')}
-              />
-            ) : filter !== 'all' ? (
-              <EmptyState
-                illustration={NOTHING_HERE_YET}
-                title={t('jobs.emptyFilteredTitle')}
-                description={t('jobs.emptyFilteredDescription')}
-              />
-            ) : (
-              <EmptyState
-                illustration={NO_JOBS_YET}
-                title={t('jobs.emptyTitle')}
-                description={t('jobs.emptyDescription')}
-                actionLabel={t('jobs.createJob')}
-                onAction={() => router.push('/job/new')}
-              />
-            )}
-          </View>
+          search.length > 0 || filter !== 'all' ? (
+            <View style={{ flexGrow: 1, paddingBottom: tabBarHeight }}>
+              {search.length > 0 ? (
+                <EmptyState
+                  illustration={NO_MATCHING_JOBS}
+                  title={t('jobs.emptyNoMatchTitle')}
+                  description={t('jobs.emptyNoMatchDescription')}
+                />
+              ) : (
+                <EmptyState
+                  illustration={NOTHING_HERE_YET}
+                  title={t('jobs.emptyFilteredTitle')}
+                  description={t('jobs.emptyFilteredDescription')}
+                />
+              )}
+            </View>
+          ) : (
+            <View
+              style={{
+                paddingHorizontal: spacing.lg,
+                paddingTop: spacing.md,
+                paddingBottom: spacing.lg + tabBarHeight,
+              }}
+            >
+              <FirstReportPromptCard onPress={() => router.push('/job/new')} />
+            </View>
+          )
         ) : (
           <View
             style={{
@@ -224,6 +206,29 @@ export default function JobsScreen() {
           </View>
         )}
       </Animated.ScrollView>
+
+      <Pressable
+        onPress={() => {
+          if (Platform.OS !== 'web') {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }
+          router.push('/job/new');
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={t('jobs.newJobA11y')}
+        style={({ pressed }) => [
+          styles.addButton,
+          shadows.floating,
+          {
+            right: spacing.lg,
+            bottom: tabBarHeight - PILL_TAB_BAR_WASH_ABOVE + spacing.sm,
+            backgroundColor: pressed ? colors.ctaDarkPressed : colors.ctaDark,
+            borderRadius: radius.pill,
+          },
+        ]}
+      >
+        <Ionicons name="add" size={28} color={colors.textInverse} />
+      </Pressable>
 
       <ConfirmationDialog
         visible={jobToDelete !== null}
@@ -318,16 +323,9 @@ const styles = StyleSheet.create({
   toolbar: {
     zIndex: 1,
   },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  searchSlot: {
-    flex: 1,
-    minWidth: 0,
-  },
   addButton: {
+    position: 'absolute',
+    zIndex: 3,
     width: 56,
     height: 56,
     alignItems: 'center',

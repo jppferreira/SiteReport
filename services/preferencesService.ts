@@ -5,7 +5,11 @@ import {
   DEFAULT_COVER_DESIGN,
   DEFAULT_REPORT_TEMPLATE,
   normalizeCoverDesignId,
+  normalizePhotoAnnotationLayout,
+  normalizePhotoBrowseLayout,
   normalizeReportTemplateId,
+  PhotoAnnotationLayout,
+  PhotoBrowseLayout,
   ReportTemplateId,
 } from '@/models';
 
@@ -19,6 +23,12 @@ export type AppPreferences = {
   includeSignatureByDefault: boolean;
   reportTemplate: ReportTemplateId;
   coverDesign: CoverDesignId;
+  /** Annotated photo cards: stacked full width, or image beside the note cards. */
+  photoAnnotationLayout: PhotoAnnotationLayout;
+  /** Section photo list: full-width cards with notes, or compact thumbnails. */
+  photoBrowseLayout: PhotoBrowseLayout;
+  /** When on and a review URL is set, the PDF ends with a review card. */
+  includeReviewLink: boolean;
   /** Copies the backup zip into iCloud Drive on iPhone. On until the user turns it off. */
   icloudAutoBackup: boolean;
   /** The one-time note about where that zip lives in the Files app. */
@@ -31,6 +41,9 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   includeSignatureByDefault: true,
   reportTemplate: DEFAULT_REPORT_TEMPLATE,
   coverDesign: DEFAULT_COVER_DESIGN,
+  photoAnnotationLayout: 'fullWidth',
+  photoBrowseLayout: 'fullWidth',
+  includeReviewLink: true,
   icloudAutoBackup: true,
   icloudBackupTipSeen: false,
   lastIcloudBackupAt: null,
@@ -56,6 +69,9 @@ export async function getPreferences(): Promise<AppPreferences> {
     const parsed = { ...DEFAULT_PREFERENCES, ...JSON.parse(raw) } as AppPreferences;
     parsed.reportTemplate = normalizeReportTemplateId(parsed.reportTemplate);
     parsed.coverDesign = normalizeCoverDesignId(parsed.coverDesign);
+    parsed.photoAnnotationLayout = normalizePhotoAnnotationLayout(parsed.photoAnnotationLayout);
+    parsed.photoBrowseLayout = normalizePhotoBrowseLayout(parsed.photoBrowseLayout);
+    if (typeof parsed.includeReviewLink !== 'boolean') parsed.includeReviewLink = true;
     if (typeof parsed.icloudAutoBackup !== 'boolean') parsed.icloudAutoBackup = true;
     if (typeof parsed.icloudBackupTipSeen !== 'boolean') parsed.icloudBackupTipSeen = false;
     if (typeof parsed.lastIcloudBackupAt !== 'string') parsed.lastIcloudBackupAt = null;

@@ -8,8 +8,12 @@ import {
   Report,
   Signature,
   WorkSummary,
+  coerceBusinessProfileFields,
+  coercePhotoAnnotations,
   isReportTemplateId,
+  normalizeDocumentType,
   normalizeReportImageMask,
+  normalizeReportStatus,
   normalizeReportTemplateId,
   parsePricing,
 } from '@/models';
@@ -250,6 +254,7 @@ function parsePhotos(value: unknown, jobIds: Set<string>): Photo[] | null {
       width: typeof row.width === 'number' ? row.width : 0,
       height: typeof row.height === 'number' ? row.height : 0,
       takenAt: textOrNull(row.takenAt),
+      annotations: coercePhotoAnnotations(row.annotations),
       createdAt: typeof row.createdAt === 'string' ? row.createdAt : '',
     });
   }
@@ -289,6 +294,8 @@ function parseSummaries(value: unknown, jobIds: Set<string>): WorkSummary[] | nu
       recommendations: textOrNull(row.recommendations),
       notes: textOrNull(row.notes),
       pricing: parsePricing(row.pricing),
+      documentType: normalizeDocumentType(row.documentType),
+      invoiceNumber: textOrNull(row.invoiceNumber),
       updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : '',
     });
   }
@@ -335,6 +342,7 @@ function parseReports(value: unknown, jobIds: Set<string>): Report[] | null {
       version: typeof row.version === 'number' ? row.version : 1,
       sourceHash: row.sourceHash,
       templateId,
+      status: normalizeReportStatus(row.status),
     });
   }
   return reports;
@@ -363,6 +371,7 @@ function parseProfile(value: unknown): BusinessProfile | null | undefined {
     vatNumber: textOrNull(row.vatNumber),
     accentColor: textOrNull(row.accentColor),
     footerMessage: textOrNull(row.footerMessage),
+    ...coerceBusinessProfileFields(row),
     updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : '',
   };
 }

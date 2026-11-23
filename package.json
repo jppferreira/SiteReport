@@ -1,15 +1,21 @@
 {
   "name": "tradesreport",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "dependencies": {
     "@expo-google-fonts/lexend": "^0.4.1",
     "@expo/vector-icons": "^15.0.2",
+    "@fugood/react-native-audio-pcm-stream": "^1.1.4",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "9.2.1",
+    "apple-foundation-models": "file:./modules/apple-foundation-models",
+    "buffer": "^6.0.3",
     "expo": "~58.0.20",
     "expo-application": "~58.1.2",
+    "expo-asset": "~58.0.21",
+    "expo-audio": "~58.0.11",
     "expo-blur": "~58.0.5",
+    "expo-camera": "~58.0.14",
     "expo-constants": "~58.0.13",
     "expo-crypto": "~58.0.7",
     "expo-file-system": "~58.0.12",
@@ -31,8 +37,10 @@
     "expo-system-ui": "~58.0.6",
     "expo-web-browser": "~58.0.7",
     "fflate": "^0.8.3",
+    "google-drive-save": "file:./modules/google-drive-save",
     "i18n-js": "^4.5.4",
     "icloud-backup": "file:./modules/icloud-backup",
+    "qrcode": "^1.5.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.0",
@@ -43,10 +51,12 @@
     "react-native-svg": "15.16.0",
     "react-native-web": "^0.21.4",
     "react-native-webview": "14.0.1",
-    "react-native-worklets": "0.13.0"
+    "react-native-worklets": "0.13.0",
+    "whisper.rn": "^0.7.4"
   },
   "devDependencies": {
     "@types/jest": "30.0.0",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "~19.3.0",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~58.0.4",
@@ -63,9 +73,20 @@
     "lint": "expo lint . database hooks services theme utils features",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "voice:model": "node ./scripts/download-whisper-model.js",
+    "eas-build-post-install": "node ./scripts/download-whisper-model.js"
   },
   "private": true,
+  "expo": {
+    "autolinking": {
+      "buildFromSource": [
+        "expo-camera",
+        "ExpoCamera",
+        "ExpoCameraBarcodeScanning"
+      ]
+    }
+  },
   "jest": {
     "preset": "jest-expo",
     "setupFiles": [

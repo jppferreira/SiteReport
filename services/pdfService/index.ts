@@ -2,7 +2,22 @@ import * as Print from 'expo-print';
 import { Platform } from 'react-native';
 
 import { businessProfileRepository, jobsRepository, photoAreasRepository, photosRepository, reportsRepository, signatureRepository, workSummaryRepository } from '@/database';
-import { DEFAULT_REPORT_TEMPLATE, normalizeReportImageMask, Report, ReportTemplateId, templateAllowedForTier } from '@/models';
+import {
+  DEFAULT_DOCUMENT_TYPE,
+  DEFAULT_REPORT_TEMPLATE,
+  dueDateFromJob,
+  formatInvoiceNumber,
+  normalizeDocumentType,
+  normalizeReportImageMask,
+  PhotoAnnotations,
+  Report,
+  ReportTemplateId,
+  templateAllowedForTier,
+} from '@/models';
+
+function formatProvisionalInvoice(sequence: number): string {
+  return formatInvoiceNumber(sequence);
+}
 import { hasProAccess } from '@/services/entitlementService';
 import { getPreferences } from '@/services/preferencesService';
 import { buildReportFileName } from '@/utils/fileNaming';
@@ -24,14 +39,35 @@ const DEFAULT_ACCENT = '#34D058';
 
 function brandStamp(
   coverPhotoId: string | null,
-  business: { coverImageUri: string | null; thanksImageUri: string | null; imageMask: string },
-  coverDesign: string
+  business: {
+    coverImageUri: string | null;
+    thanksImageUri: string | null;
+    imageMask: string;
+    reviewUrl: string | null;
+    reviewProvider: string;
+    bankName: string | null;
+    sortCode: string | null;
+    accountNumber: string | null;
+    paymentTerms: string | null;
+    defaultDueDays: number;
+  },
+  coverDesign: string,
+  includeReviewLink: boolean,
+  isPro: boolean
 ): ReportBrandStamp {
   return {
     coverUri: coverPhotoId ? null : business.coverImageUri,
     thanksUri: business.thanksImageUri,
     imageMask: business.imageMask,
     coverDesign,
+    includeReviewLink: isPro && includeReviewLink,
+    reviewUrl: business.reviewUrl,
+    reviewProvider: business.reviewProvider,
+    bankName: business.bankName,
+    sortCode: business.sortCode,
+    accountNumber: business.accountNumber,
+    paymentTerms: business.paymentTerms,
+    defaultDueDays: business.defaultDueDays,
   };
 }
 
@@ -52,6 +88,7 @@ async function toPhotoData(photo: {
   width: number;
   height: number;
   takenAt?: string | null;
+  annotations?: PhotoAnnotations | null;
 }): Promise<ReportPhotoData | null> {
   const dataUri = await toDataUri(photo.localUri);
   if (!dataUri) return null;
@@ -62,6 +99,7 @@ async function toPhotoData(photo: {
     width: photo.width,
     height: photo.height,
     takenAt: photo.takenAt ?? null,
+    annotations: photo.annotations ?? null,
   };
 }
 
@@ -77,27 +115,27 @@ export async function loadReportDocument(jobId: string): Promise<ReportDocument>
     throw new ReportGenerationError('This job no longer exists.');
   }
 
-  const [areas, beforePhotos, afterPhotos, summary, signature, business] = await Promise.all([
+  const [areas, beforePhotos, duringPhotos, afterPhotos, summary, signature, business] = await Promise.all([
     photoAreasRepository.listAreas(jobId),
     photosRepository.listPhotos(jobId, 'before'),
+    photosRepository.listPhotos(jobId, 'during'),
     photosRepository.listPhotos(jobId, 'after'),
     workSummaryRepository.getWorkSummary(jobId),
     signatureRepository.getSignature(jobId),
     businessProfileRepository.getBusinessProfile(),
   ]);
 
-  const allPhotos = [...beforePhotos, ...afterPhotos];
+  const allPhotos = [...beforePhotos, ...duringPhotos, ...afterPhotos];
   const preferences = await getPreferences();
+  const isPro = await hasProAccess();
   const sourceHash = await computeJobContentHash(
     job,
     allPhotos,
     summary,
     signature,
     areas,
-    brandStamp(job.coverPhotoId, business, preferences.coverDesign)
+    brandStamp(job.coverPhotoId, business, preferences.coverDesign, preferences.includeReviewLink, isPro)
   );
-
-  const isPro = await hasProAccess();
 
   const [taggedPhotos, logoDataUri, signatureSvg, brandCoverDataUri, brandThanksDataUri] = await Promise.all([
     Promise.all(
@@ -114,6 +152,15 @@ export async function loadReportDocument(jobId: string): Promise<ReportDocument>
   ]);
   const readyPhotos = taggedPhotos.filter((photo): photo is NonNullable<typeof photo> => photo !== null);
   const photoGroups = groupReportPhotos(areas, readyPhotos);
+
+  const documentType = normalizeDocumentType(summary?.documentType ?? DEFAULT_DOCUMENT_TYPE);
+  const effectiveType = isPro || documentType === 'reference' ? documentType : DEFAULT_DOCUMENT_TYPE;
+  const invoiceNumber =
+    summary?.invoiceNumber ??
+    (effectiveType === 'invoice' ? formatProvisionalInvoice(business.nextInvoiceSequence) : null);
+
+  const reviewUrl = business.reviewUrl?.trim() || null;
+  const includeReview = isPro && preferences.includeReviewLink && Boolean(reviewUrl);
 
   return {
     sourceHash,
@@ -141,18 +188,34 @@ export async function loadReportDocument(jobId: string): Promise<ReportDocument>
         status: job.status,
       },
       before: readyPhotos.filter((photo) => photo.type === 'before'),
+      during: readyPhotos.filter((photo) => photo.type === 'during'),
       after: readyPhotos.filter((photo) => photo.type === 'after'),
       coverDataUri: job.coverPhotoId ? readyPhotos.find((photo) => photo.id === job.coverPhotoId)?.dataUri ?? null : null,
       ...(!job.coverPhotoId && brandCoverDataUri ? { brandCoverDataUri } : {}),
       ...(brandThanksDataUri ? { brandThanksDataUri } : {}),
       imageMask: normalizeReportImageMask(business.imageMask),
       coverDesign: preferences.coverDesign,
+      photoAnnotationLayout: preferences.photoAnnotationLayout,
       ...(photoGroups ? { areas: photoGroups } : {}),
       workCompleted: summary?.workCompleted ?? null,
       materials: summary?.materials ?? null,
       recommendations: summary?.recommendations ?? null,
       // summary.notes stays on the device. It is not part of the customer PDF.
       pricing: summary?.pricing ?? null,
+      documentType: effectiveType,
+      invoice:
+        effectiveType === 'invoice' && invoiceNumber
+          ? {
+              invoiceNumber,
+              dueDays: business.defaultDueDays,
+              dueDate: dueDateFromJob(job.jobDate, business.defaultDueDays),
+              bankName: business.bankName,
+              sortCode: business.sortCode,
+              accountNumber: business.accountNumber,
+              paymentTerms: business.paymentTerms,
+            }
+          : null,
+      review: includeReview && reviewUrl ? { url: reviewUrl, provider: business.reviewProvider } : null,
       signature:
         signature && signatureSvg
           ? { svgMarkup: signatureSvg, customerName: signature.customerName, signedAt: signature.signedAt }
@@ -165,13 +228,29 @@ export async function loadReportDocument(jobId: string): Promise<ReportDocument>
 export async function generateReportPdf(jobId: string, template: ReportTemplateId = DEFAULT_REPORT_TEMPLATE): Promise<Report> {
   const document = await loadReportDocument(jobId);
   const allowed = templateAllowedForTier(template, await hasProAccess());
-  const html = buildReportHtml({ ...document.htmlInput, template: allowed });
+  let htmlInput = document.htmlInput;
+  if (htmlInput.documentType === 'invoice' && (await hasProAccess())) {
+    const summary = await workSummaryRepository.getWorkSummary(jobId);
+    let invoiceNumber = summary?.invoiceNumber ?? null;
+    if (!invoiceNumber) {
+      invoiceNumber = await businessProfileRepository.allocateInvoiceNumber();
+      await workSummaryRepository.saveWorkSummary(jobId, { invoiceNumber, documentType: 'invoice' });
+    }
+    if (htmlInput.invoice) {
+      htmlInput = {
+        ...htmlInput,
+        invoice: { ...htmlInput.invoice, invoiceNumber },
+      };
+    }
+  }
+  const html = buildReportHtml({ ...htmlInput, template: allowed });
 
   const { reports: reportsDir } = await ensureJobDirectories(jobId);
   const fileName = buildReportFileName(
-    document.htmlInput.job.title,
-    document.htmlInput.job.customerName,
-    document.htmlInput.job.jobDate
+    htmlInput.job.title,
+    htmlInput.job.customerName,
+    htmlInput.job.jobDate,
+    htmlInput.documentType
   );
 
   // Native builds render a PDF on device. The web preview has no PDF engine,
@@ -246,13 +325,14 @@ export async function getReportFreshness(jobId: string): Promise<'none' | 'stale
   ]);
 
   if (!latest || !job) return 'none';
+  const isPro = await hasProAccess();
   const currentHash = await computeJobContentHash(
     job,
     photos,
     summary,
     signature,
     areas,
-    brandStamp(job.coverPhotoId, business, preferences.coverDesign)
+    brandStamp(job.coverPhotoId, business, preferences.coverDesign, preferences.includeReviewLink, isPro)
   );
   return currentHash === latest.sourceHash ? 'fresh' : 'stale';
 }

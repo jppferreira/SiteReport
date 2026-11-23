@@ -38,6 +38,13 @@ module.exports = ({ config }) => ({
   ...config,
   name: config.name ?? 'Trade Report',
   slug: config.slug ?? 'tradesreport',
+  extra: {
+    ...(config.extra ?? {}),
+    // Fine-grained PAT with Issues: Write on jppferreira/SiteReport. Set via
+    // EAS secret / env GITHUB_BUG_REPORT_TOKEN before store builds.
+    githubBugReportToken:
+      process.env.GITHUB_BUG_REPORT_TOKEN || process.env.EXPO_PUBLIC_GITHUB_BUG_TOKEN || '',
+  },
   plugins: (config.plugins ?? []).map((plugin) => {
     const name = typeof plugin === 'string' ? plugin : plugin[0];
     if (name !== '@react-native-community/datetimepicker') return plugin;

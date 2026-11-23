@@ -1,8 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
-import { Dimensions, FlatList, KeyboardAvoidingView, Pressable, StyleSheet, View } from 'react-native';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Dimensions,
+  FlatList,
+  KeyboardAvoidingView,
+  type LayoutChangeEvent,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 
 import {
   ConfirmationDialog,
@@ -18,10 +26,12 @@ import {
 } from '@/components';
 import { jobsRepository, photosRepository } from '@/database';
 import { BottomSheetMenu } from '@/features/jobs/BottomSheetMenu';
+import { PhotoAnnotationShapes } from '@/features/photos/PhotoAnnotationShapes';
+import { fitContainRect } from '@/features/photos/fitContainRect';
 import { useAutosaveField } from '@/hooks/useAutosaveField';
 import { usePhotoAreas } from '@/hooks/usePhotoAreas';
 import { usePhotos } from '@/hooks/usePhotos';
-import { Photo, PhotoType } from '@/models';
+import { hasAnnotations, listCallouts, Photo, PhotoType } from '@/models';
 import { deleteFileSafely } from '@/services/fileService';
 import { requestPhotoLibraryAccess } from '@/services/photoLibraryAccess';
 import { processJobPhoto } from '@/services/imageService';
@@ -46,12 +56,22 @@ export default function PhotoDetailScreen() {
   const [coverPhotoId, setCoverPhotoId] = useState<string | null>(null);
   const { areas } = usePhotoAreas(id);
 
-  useEffect(() => {
+  const loadPhoto = useCallback(() => {
     photosRepository.getPhoto(photoId).then((photo) => {
       setCurrentPhoto(photo);
       setType(photo?.type ?? null);
     });
   }, [photoId]);
+
+  useEffect(() => {
+    loadPhoto();
+  }, [loadPhoto]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadPhoto();
+    }, [loadPhoto])
+  );
 
   useEffect(() => {
     jobsRepository.getJob(id).then((job) => setCoverPhotoId(job?.coverPhotoId ?? null));
@@ -80,10 +100,17 @@ export default function PhotoDetailScreen() {
   }
 
   const handleToggleCategory = async () => {
-    const nextType: PhotoType = type === 'before' ? 'after' : 'before';
+    const nextType: PhotoType =
+      type === 'before' ? 'during' : type === 'during' ? 'after' : 'before';
     await flush();
     await photosRepository.updatePhoto(photoId, { type: nextType });
-    showToast({ message: nextType === 'before' ? t('photoDetail.toastMovedToBefore') : t('photoDetail.toastMovedToAfter'), tone: 'success' });
+    const message =
+      nextType === 'before'
+        ? t('photoDetail.toastMovedToBefore')
+        : nextType === 'during'
+          ? t('photoDetail.toastMovedToDuring')
+          : t('photoDetail.toastMovedToAfter');
+    showToast({ message, tone: 'success' });
     router.back();
   };
 
@@ -181,7 +208,16 @@ export default function PhotoDetailScreen() {
             router.back();
           }}
         />
-        <StatusBadge label={type === 'before' ? t('photoDetail.beforeBadge') : t('photoDetail.afterBadge')} tone={type === 'before' ? 'warning' : 'success'} />
+        <StatusBadge
+          label={
+            type === 'before'
+              ? t('photoDetail.beforeBadge')
+              : type === 'during'
+                ? t('photoDetail.duringBadge')
+                : t('photoDetail.afterBadge')
+          }
+          tone={type === 'before' ? 'warning' : type === 'during' ? 'neutral' : 'success'}
+        />
         <IconButton
           name="trash-outline"
           accessibilityLabel={t('photoDetail.deleteA11y')}
@@ -206,16 +242,47 @@ export default function PhotoDetailScreen() {
             router.setParams({ photoId: next.id });
           }
         }}
-        renderItem={({ item }) => (
-          <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
-            <LocalImage uri={item.localUri} style={StyleSheet.absoluteFill} contentFit="contain" />
-          </View>
-        )}
+        renderItem={({ item }) => <AnnotatedPhotoSlide photo={item} />}
         style={{ flex: 1 }}
       />
 
       <KeyboardAvoidingView behavior="padding">
         <View style={[styles.footer, { padding: spacing.lg, backgroundColor: '#101310' }]}>
+          {listCallouts(currentPhoto.annotations).length > 0 ? (
+            <View style={{ gap: spacing.sm, marginBottom: spacing.sm }}>
+              {listCallouts(currentPhoto.annotations).map((item) => (
+                <View
+                  key={item.number}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'flex-start',
+                    gap: 10,
+                    padding: 10,
+                    borderRadius: 12,
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 11,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: item.shape.color,
+                    }}
+                  >
+                    <Text variant="caption" color={item.shape.color === '#FFFFFF' ? '#101310' : '#FFFFFF'}>
+                      {item.number}
+                    </Text>
+                  </View>
+                  <Text variant="bodySmall" color="#FFFFFF" style={{ flex: 1 }}>
+                    {item.shape.note.trim() || t('photoAnnotate.cardPlaceholder')}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
           <Input
             placeholder={t('photoDetail.captionPlaceholder')}
             placeholderTextColor="rgba(255,255,255,0.5)"
@@ -230,7 +297,27 @@ export default function PhotoDetailScreen() {
             </Text>
           ) : null}
           <View style={[styles.actionsRow, { marginTop: spacing.sm, gap: spacing.sm }]}>
-            <FooterAction icon="swap-horizontal" label={type === 'before' ? t('photoDetail.markAsAfter') : t('photoDetail.markAsBefore')} onPress={handleToggleCategory} />
+            <FooterAction
+              icon="pencil"
+              label={hasAnnotations(currentPhoto.annotations) ? t('photoDetail.editMarkup') : t('photoDetail.markup')}
+              onPress={async () => {
+                await flush();
+                router.push(`/job/${id}/annotate/${currentPhoto.id}`);
+              }}
+            />
+            <FooterAction
+              icon="swap-horizontal"
+              label={
+                type === 'before'
+                  ? t('photoDetail.markAsDuring')
+                  : type === 'during'
+                    ? t('photoDetail.markAsAfter')
+                    : t('photoDetail.markAsBefore')
+              }
+              onPress={handleToggleCategory}
+            />
+          </View>
+          <View style={[styles.actionsRow, { marginTop: spacing.sm, gap: spacing.sm }]}>
             <FooterAction icon="images-outline" label={replacing ? t('photoDetail.replacing') : t('photoDetail.replace')} onPress={handleReplace} disabled={replacing} />
           </View>
           <View style={{ marginTop: spacing.sm }}>
@@ -261,6 +348,36 @@ export default function PhotoDetailScreen() {
 
       <BottomSheetMenu visible={moveOpen} onClose={() => setMoveOpen(false)} items={moveTargets} />
     </Screen>
+  );
+}
+
+function AnnotatedPhotoSlide({ photo }: { photo: Photo }) {
+  const [box, setBox] = useState({ width: SCREEN_WIDTH, height: 0 });
+  const rect = fitContainRect(box.width, box.height, photo.width, photo.height);
+
+  const onLayout = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    setBox({ width, height });
+  };
+
+  return (
+    <View style={{ width: SCREEN_WIDTH, flex: 1 }} onLayout={onLayout}>
+      <LocalImage uri={photo.localUri} style={StyleSheet.absoluteFill} contentFit="contain" />
+      {rect && hasAnnotations(photo.annotations) ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: rect.x,
+            top: rect.y,
+            width: rect.width,
+            height: rect.height,
+          }}
+        >
+          <PhotoAnnotationShapes annotations={photo.annotations} width={rect.width} height={rect.height} />
+        </View>
+      ) : null}
+    </View>
   );
 }
 

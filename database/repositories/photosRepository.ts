@@ -1,5 +1,5 @@
 import { getDatabase } from '@/database/client';
-import { Photo, PhotoType } from '@/models';
+import { parsePhotoAnnotations, Photo, PhotoType, serializePhotoAnnotations } from '@/models';
 import { generateId } from '@/utils/id';
 
 export function rowToPhoto(row: Record<string, unknown>): Photo {
@@ -15,14 +15,16 @@ export function rowToPhoto(row: Record<string, unknown>): Photo {
     width: row.width as number,
     height: row.height as number,
     takenAt: (row.takenAt as string | null) ?? null,
+    annotations: parsePhotoAnnotations(row.annotations as string | null | undefined),
     createdAt: row.createdAt as string,
   };
 }
 
-export type NewPhoto = Omit<Photo, 'id' | 'createdAt' | 'takenAt' | 'sortOrder' | 'areaId'> & {
+export type NewPhoto = Omit<Photo, 'id' | 'createdAt' | 'takenAt' | 'sortOrder' | 'areaId' | 'annotations'> & {
   sortOrder?: number;
   areaId?: string | null;
   takenAt?: string | null;
+  annotations?: Photo['annotations'];
 };
 
 export async function addPhoto(photo: NewPhoto): Promise<Photo> {
@@ -43,12 +45,13 @@ export async function addPhoto(photo: NewPhoto): Promise<Photo> {
     width: photo.width,
     height: photo.height,
     takenAt: photo.takenAt ?? null,
+    annotations: photo.annotations ?? null,
     createdAt: new Date().toISOString(),
   };
 
   await db.runAsync(
-    `INSERT INTO photos (id, jobId, areaId, localUri, thumbnailUri, type, caption, sortOrder, width, height, takenAt, createdAt)
-     VALUES ($id, $jobId, $areaId, $localUri, $thumbnailUri, $type, $caption, $sortOrder, $width, $height, $takenAt, $createdAt)`,
+    `INSERT INTO photos (id, jobId, areaId, localUri, thumbnailUri, type, caption, sortOrder, width, height, takenAt, annotations, createdAt)
+     VALUES ($id, $jobId, $areaId, $localUri, $thumbnailUri, $type, $caption, $sortOrder, $width, $height, $takenAt, $annotations, $createdAt)`,
     {
       $id: record.id,
       $jobId: record.jobId,
@@ -61,6 +64,7 @@ export async function addPhoto(photo: NewPhoto): Promise<Photo> {
       $width: record.width,
       $height: record.height,
       $takenAt: record.takenAt,
+      $annotations: serializePhotoAnnotations(record.annotations),
       $createdAt: record.createdAt,
     }
   );
@@ -103,7 +107,7 @@ export async function getPhoto(id: string): Promise<Photo | null> {
 
 export async function updatePhoto(
   id: string,
-  patch: Partial<Pick<Photo, 'caption' | 'type' | 'sortOrder' | 'areaId'>>
+  patch: Partial<Pick<Photo, 'caption' | 'type' | 'sortOrder' | 'areaId' | 'annotations'>>
 ): Promise<void> {
   const db = await getDatabase();
   const existing = await getPhoto(id);
@@ -117,13 +121,14 @@ export async function updatePhoto(
   }
 
   await db.runAsync(
-    'UPDATE photos SET caption = $caption, type = $type, sortOrder = $sortOrder, areaId = $areaId WHERE id = $id',
+    'UPDATE photos SET caption = $caption, type = $type, sortOrder = $sortOrder, areaId = $areaId, annotations = $annotations WHERE id = $id',
     {
       $id: id,
       $caption: next.caption,
       $type: next.type,
       $sortOrder: next.sortOrder,
       $areaId: next.areaId,
+      $annotations: serializePhotoAnnotations(next.annotations),
     }
   );
 }
@@ -239,15 +244,16 @@ export async function getJobCoverUris(jobIds: string[]): Promise<Record<string, 
   return result;
 }
 
-export async function countPhotos(jobId: string): Promise<{ before: number; after: number }> {
+export async function countPhotos(jobId: string): Promise<{ before: number; during: number; after: number }> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<{ type: PhotoType; count: number }>(
     'SELECT type, COUNT(*) as count FROM photos WHERE jobId = ? GROUP BY type',
     [jobId]
   );
-  const result = { before: 0, after: 0 };
+  const result = { before: 0, during: 0, after: 0 };
   for (const row of rows) {
     if (row.type === 'before') result.before = row.count;
+    if (row.type === 'during') result.during = row.count;
     if (row.type === 'after') result.after = row.count;
   }
   return result;

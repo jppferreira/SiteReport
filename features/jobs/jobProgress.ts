@@ -2,7 +2,7 @@ import { Job, JobProgress, JobSectionKey, JobSectionStatus, JobStatus } from '@/
 
 export type JobProgressInput = {
   job: Pick<Job, 'title'>;
-  photoCounts: { before: number; after: number };
+  photoCounts: { before: number; during?: number; after: number };
   hasWorkSummary: boolean;
   hasSignature: boolean;
   reportState: 'none' | 'stale' | 'fresh';
@@ -18,7 +18,8 @@ const SECTION_ORDER: JobSectionKey[] = ['details', 'photos', 'summary', 'signatu
 export function computeJobProgress(input: JobProgressInput): JobProgress {
   const detailsStatus: JobSectionStatus = input.job.title.trim().length > 0 ? 'complete' : 'not_started';
 
-  const totalPhotos = input.photoCounts.before + input.photoCounts.after;
+  const totalPhotos =
+    input.photoCounts.before + (input.photoCounts.during ?? 0) + input.photoCounts.after;
   let photosStatus: JobSectionStatus = 'not_started';
   if (input.photoCounts.before > 0 && input.photoCounts.after > 0) {
     photosStatus = 'complete';

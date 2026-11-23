@@ -20,6 +20,8 @@ const MAX_LINES = 40;
 
 export type PricingReferenceHandle = {
   flush: () => Promise<void>;
+  /** Replace pricing from voice fill and persist immediately. */
+  applyPricing: (pricing: ReportPricing) => void;
 };
 
 type PricingReferenceProps = {
@@ -70,11 +72,6 @@ export const PricingReference = forwardRef<PricingReferenceHandle, PricingRefere
     await persist(latest.current);
   }, [persist]);
 
-  useImperativeHandle(ref, () => ({ flush }), [flush]);
-  useFlushWhenHidden(() => {
-    void flush();
-  });
-
   const commit = useCallback(
     (next: ReportPricing, immediate: boolean) => {
       latest.current = next;
@@ -90,6 +87,20 @@ export const PricingReference = forwardRef<PricingReferenceHandle, PricingRefere
     },
     [persist]
   );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      flush,
+      applyPricing: (pricing: ReportPricing) => {
+        commit(pricing, true);
+      },
+    }),
+    [flush, commit]
+  );
+  useFlushWhenHidden(() => {
+    void flush();
+  });
 
   const updateLine = (id: string, patch: Partial<(typeof draft.lines)[number]>, immediate = false) => {
     commit(

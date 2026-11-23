@@ -14,7 +14,7 @@ Store or Play Store, and a bug report you choose to send from Settings.
 
 - **Create a job** in seconds — only a title is required.
 - **Before/after photos** with captions, reordering, and full-screen review.
-- **Work summary** notes (work completed, materials, recommendations) with autosave.
+- **Work summary** notes (work completed, materials, recommendations) with autosave, plus optional **offline voice dictation** (on-device Whisper; no cloud AI upload).
 - **Optional customer signature**, captured with a hand-drawn signature pad.
 - **One-tap PDF report** generation, previewed in-app, then shared or saved via the native share
   sheet (or saved straight to a folder on Android).

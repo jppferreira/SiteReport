@@ -1,5 +1,5 @@
 import { getDatabase } from '@/database/client';
-import { normalizeReportTemplateId, Report } from '@/models';
+import { normalizeReportStatus, normalizeReportTemplateId, Report, ReportStatus } from '@/models';
 import { generateId } from '@/utils/id';
 
 function rowToReport(row: Record<string, unknown>): Report {
@@ -13,10 +13,11 @@ function rowToReport(row: Record<string, unknown>): Report {
     version: row.version as number,
     sourceHash: row.sourceHash as string,
     templateId: normalizeReportTemplateId(row.templateId),
+    status: normalizeReportStatus(row.status),
   };
 }
 
-export type NewReport = Omit<Report, 'id' | 'generatedAt' | 'version'>;
+export type NewReport = Omit<Report, 'id' | 'generatedAt' | 'version' | 'status'>;
 
 export async function createReport(report: NewReport): Promise<Report> {
   const db = await getDatabase();
@@ -31,11 +32,12 @@ export async function createReport(report: NewReport): Promise<Report> {
     version: existingForJob.length + 1,
     sourceHash: report.sourceHash,
     templateId: report.templateId,
+    status: 'active',
   };
 
   await db.runAsync(
-    `INSERT INTO reports (id, jobId, localPdfUri, fileName, generatedAt, fileSize, version, sourceHash, templateId)
-     VALUES ($id, $jobId, $localPdfUri, $fileName, $generatedAt, $fileSize, $version, $sourceHash, $templateId)`,
+    `INSERT INTO reports (id, jobId, localPdfUri, fileName, generatedAt, fileSize, version, sourceHash, templateId, status)
+     VALUES ($id, $jobId, $localPdfUri, $fileName, $generatedAt, $fileSize, $version, $sourceHash, $templateId, $status)`,
     {
       $id: record.id,
       $jobId: record.jobId,
@@ -46,6 +48,7 @@ export async function createReport(report: NewReport): Promise<Report> {
       $version: record.version,
       $sourceHash: record.sourceHash,
       $templateId: record.templateId,
+      $status: record.status,
     }
   );
 
@@ -76,6 +79,11 @@ export async function getReport(id: string): Promise<Report | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<Record<string, unknown>>('SELECT * FROM reports WHERE id = ?', [id]);
   return row ? rowToReport(row) : null;
+}
+
+export async function updateReportStatus(id: string, status: ReportStatus): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('UPDATE reports SET status = ? WHERE id = ?', [status, id]);
 }
 
 export async function updateReportFileName(id: string, fileName: string): Promise<void> {

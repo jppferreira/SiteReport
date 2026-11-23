@@ -37,6 +37,16 @@ export function normalizeReportTemplateId(value: unknown): ReportTemplateId {
   return DEFAULT_REPORT_TEMPLATE;
 }
 
+export const REPORT_STATUSES = ['active', 'draft', 'archived'] as const;
+
+export type ReportStatus = (typeof REPORT_STATUSES)[number];
+
+export function normalizeReportStatus(value: unknown): ReportStatus {
+  return typeof value === 'string' && (REPORT_STATUSES as readonly string[]).includes(value)
+    ? (value as ReportStatus)
+    : 'active';
+}
+
 export type Report = {
   id: string;
   jobId: string;
@@ -49,4 +59,6 @@ export type Report = {
   sourceHash: string;
   /** Layout used when this file was created. */
   templateId: ReportTemplateId;
+  /** Filing state shown by the reports list filter. New reports start active. */
+  status: ReportStatus;
 };

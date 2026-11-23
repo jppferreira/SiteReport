@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -5,19 +6,31 @@ import { useTheme } from '@/theme';
 
 import { Text } from './Text';
 
-type Segment = { key: string; label: string };
+type Segment = {
+  key: string;
+  label: string;
+  icon?: keyof typeof Ionicons.glyphMap;
+};
 
 type SegmentedControlProps = {
   segments: Segment[];
   value: string;
   onChange: (key: string) => void;
+  /** Icon-only control that hug its content instead of stretching full width. */
+  iconsOnly?: boolean;
 };
 
-export function SegmentedControl({ segments, value, onChange }: SegmentedControlProps) {
+export function SegmentedControl({ segments, value, onChange, iconsOnly = false }: SegmentedControlProps) {
   const { colors, radius } = useTheme();
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surfaceSunken, borderRadius: radius.pill }]}>
+    <View
+      style={[
+        styles.container,
+        iconsOnly ? styles.containerIcons : null,
+        { backgroundColor: colors.surfaceSunken, borderRadius: radius.pill },
+      ]}
+    >
       {segments.map((segment) => {
         const active = segment.key === value;
         return (
@@ -25,15 +38,26 @@ export function SegmentedControl({ segments, value, onChange }: SegmentedControl
             key={segment.key}
             onPress={() => onChange(segment.key)}
             accessibilityRole="tab"
+            accessibilityLabel={segment.label}
             accessibilityState={{ selected: active }}
             style={[
               styles.segment,
+              iconsOnly ? styles.segmentIcon : null,
               { borderRadius: radius.pill, backgroundColor: active ? colors.accent : 'transparent' },
             ]}
           >
-            <Text variant="bodyMedium" color={active ? colors.accentOnAccent : colors.textSecondary}>
-              {segment.label}
-            </Text>
+            {segment.icon ? (
+              <Ionicons
+                name={segment.icon}
+                size={18}
+                color={active ? colors.accentOnAccent : colors.textSecondary}
+              />
+            ) : null}
+            {!iconsOnly || !segment.icon ? (
+              <Text variant="bodyMedium" color={active ? colors.accentOnAccent : colors.textSecondary}>
+                {segment.label}
+              </Text>
+            ) : null}
           </Pressable>
         );
       })}
@@ -47,9 +71,17 @@ const styles = StyleSheet.create({
     padding: 4,
     height: 44,
   },
+  containerIcons: {
+    alignSelf: 'flex-end',
+    height: 40,
+  },
   segment: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  segmentIcon: {
+    flex: 0,
+    width: 40,
   },
 });

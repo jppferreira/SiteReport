@@ -4,6 +4,8 @@ const { getDefaultConfig } = require('expo/metro-config');
 const config = getDefaultConfig(__dirname);
 
 config.resolver.assetExts.push('wasm');
+// whisper.rn: bundled GGML model (+ optional Core ML assets later)
+config.resolver.assetExts.push('bin', 'mil');
 
 config.server.enhanceMiddleware = (middleware) => {
   return (req, res, next) => {

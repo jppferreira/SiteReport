@@ -1,22 +1,22 @@
 # Trade Report — Google Play Console
 
-Draft / prepare only. Do not roll out to production until J says so.
+Organisation account — open testing is the path onto the Play Store. Do not roll out **production** until J says so.
 
-**Play Console (as of 28 Oct 2026)**
+**Play Console (as of 30 Oct 2026)**
 
 | Field | Value |
 | --- | --- |
-| Developer account | Joao Prates Ferreira (`8407589994182832236`) |
+| Developer account | Joao Prates Ferreira (`8407589994182832236`) — organisation (open testing allowed) |
 | App name in console | TradesReport (listing title set to **Trade Report**) |
 | Package name | `com.tradesreport.app` |
 | App ID | `4972398680603116595` |
-| Status | Draft (internal testing release already created; listing incomplete graphics) |
+| Status | Closed testing has 1.0.0 (vc7). Internal draft has vc8. Open testing (beta) empty until countries are set and vc8 is promoted. |
 | Default listing locale | English (United Kingdom) – en-GB |
 | Privacy policy | `https://tradereportapp.com/privacy.html` |
 | Terms | `https://tradereportapp.com/terms.html` |
 | Support / marketing | `https://tradereportapp.com/` |
 
-Dashboard checklist (approximate): internal testing 2/3, store listing 10/11, closed testing incomplete, production access not applied (disabled until closed testing requirements are met for personal accounts).
+Open testing needs at least one country selected under **Test and release → Open testing → Countries/regions** (beta currently syncs with production, which has none). Then promote vc8 and send for review.
 
 ## Listing copy (en-GB)
 
@@ -90,7 +90,7 @@ Activate base plans. License testing needs a build on an internal testing track.
 App content → Data safety. Suggested answers aligned with the privacy policy and ASC App Privacy:
 
 - **Collects data?** Yes — only optional bug reports.
-- **Data shared with third parties?** Yes for that optional bug report path (FormSubmit → developer email). Not sold. Not used for advertising.
+- **Data shared with third parties?** Yes for that optional bug report path (GitHub Issues on the project repo; mail fallback to developer). Not sold. Not used for advertising.
 - **Collected (optional, app functionality, not required for core use):**
   - User-generated content / support text (bug report body)
   - App info / diagnostics: app version and platform (e.g. Android)

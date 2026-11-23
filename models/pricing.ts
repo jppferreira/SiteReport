@@ -87,6 +87,29 @@ export function pricingTotalPence(lines: PricingLine[]): number | null {
   return any ? total : null;
 }
 
+/** Subtotal / VAT / total in pence. VAT is calculated on the net subtotal. */
+export function pricingVatBreakdown(
+  lines: PricingLine[],
+  vatRatePercent: number
+): { subtotalPence: number; vatPence: number; totalPence: number } | null {
+  const subtotal = pricingTotalPence(lines);
+  if (subtotal === null) return null;
+  const rate = Math.max(0, vatRatePercent);
+  const vatPence = Math.round((subtotal * rate) / 100);
+  return { subtotalPence: subtotal, vatPence, totalPence: subtotal + vatPence };
+}
+
+/** Groups report lines by category for UI and PDF. */
+export function groupPricingLines(lines: PricingLine[]): Partial<Record<PricingCategory, PricingLine[]>> {
+  const groups: Partial<Record<PricingCategory, PricingLine[]>> = {};
+  for (const line of lines) {
+    const list = groups[line.category] ?? [];
+    list.push(line);
+    groups[line.category] = list;
+  }
+  return groups;
+}
+
 /** Lines that should appear on the report: the toggle is on, and the row has a name or an amount. */
 export function linesForReport(pricing: ReportPricing | null | undefined): PricingLine[] {
   if (!pricing?.enabled) return [];

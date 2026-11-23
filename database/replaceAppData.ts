@@ -1,5 +1,5 @@
 import { getDatabase } from '@/database/client';
-import { serializePricing } from '@/models';
+import { serializePhotoAnnotations, serializePricing } from '@/models';
 
 import { BackupManifest } from '@/services/backup/archive';
 import { isSafeRelativePath } from '@/services/backup/paths';
@@ -60,8 +60,8 @@ export async function replaceAppData(manifest: BackupManifest, root: string): Pr
 
     for (const photo of manifest.photos) {
       await db.runAsync(
-        `INSERT INTO photos (id, jobId, areaId, localUri, thumbnailUri, type, caption, sortOrder, width, height, takenAt, createdAt)
-         VALUES ($id, $jobId, $areaId, $localUri, $thumbnailUri, $type, $caption, $sortOrder, $width, $height, $takenAt, $createdAt)`,
+        `INSERT INTO photos (id, jobId, areaId, localUri, thumbnailUri, type, caption, sortOrder, width, height, takenAt, annotations, createdAt)
+         VALUES ($id, $jobId, $areaId, $localUri, $thumbnailUri, $type, $caption, $sortOrder, $width, $height, $takenAt, $annotations, $createdAt)`,
         {
           $id: photo.id,
           $jobId: photo.jobId,
@@ -74,6 +74,7 @@ export async function replaceAppData(manifest: BackupManifest, root: string): Pr
           $width: photo.width,
           $height: photo.height,
           $takenAt: photo.takenAt,
+          $annotations: serializePhotoAnnotations(photo.annotations),
           $createdAt: photo.createdAt,
         }
       );
@@ -81,8 +82,8 @@ export async function replaceAppData(manifest: BackupManifest, root: string): Pr
 
     for (const summary of manifest.summaries) {
       await db.runAsync(
-        `INSERT INTO work_summaries (jobId, workCompleted, materials, recommendations, notes, pricingJson, updatedAt)
-         VALUES ($jobId, $workCompleted, $materials, $recommendations, $notes, $pricingJson, $updatedAt)`,
+        `INSERT INTO work_summaries (jobId, workCompleted, materials, recommendations, notes, pricingJson, documentType, invoiceNumber, updatedAt)
+         VALUES ($jobId, $workCompleted, $materials, $recommendations, $notes, $pricingJson, $documentType, $invoiceNumber, $updatedAt)`,
         {
           $jobId: summary.jobId,
           $workCompleted: summary.workCompleted,
@@ -90,6 +91,8 @@ export async function replaceAppData(manifest: BackupManifest, root: string): Pr
           $recommendations: summary.recommendations,
           $notes: summary.notes,
           $pricingJson: serializePricing(summary.pricing),
+          $documentType: (summary as { documentType?: string }).documentType ?? 'reference',
+          $invoiceNumber: (summary as { invoiceNumber?: string | null }).invoiceNumber ?? null,
           $updatedAt: summary.updatedAt,
         }
       );
@@ -112,8 +115,8 @@ export async function replaceAppData(manifest: BackupManifest, root: string): Pr
 
     for (const report of manifest.reports) {
       await db.runAsync(
-        `INSERT INTO reports (id, jobId, localPdfUri, fileName, generatedAt, fileSize, version, sourceHash, templateId)
-         VALUES ($id, $jobId, $localPdfUri, $fileName, $generatedAt, $fileSize, $version, $sourceHash, $templateId)`,
+        `INSERT INTO reports (id, jobId, localPdfUri, fileName, generatedAt, fileSize, version, sourceHash, templateId, status)
+         VALUES ($id, $jobId, $localPdfUri, $fileName, $generatedAt, $fileSize, $version, $sourceHash, $templateId, $status)`,
         {
           $id: report.id,
           $jobId: report.jobId,
@@ -124,6 +127,7 @@ export async function replaceAppData(manifest: BackupManifest, root: string): Pr
           $version: report.version,
           $sourceHash: report.sourceHash,
           $templateId: report.templateId,
+          $status: report.status,
         }
       );
     }
@@ -132,8 +136,8 @@ export async function replaceAppData(manifest: BackupManifest, root: string): Pr
     if (profile) {
       await db.runAsync(
         `INSERT INTO business_profile
-           (id, businessName, logoUri, ownerName, email, phone, website, address, registrationNumber, vatNumber, accentColor, footerMessage, coverImageUri, thanksImageUri, imageMask, updatedAt)
-         VALUES (1, $businessName, $logoUri, $ownerName, $email, $phone, $website, $address, $registrationNumber, $vatNumber, $accentColor, $footerMessage, $coverImageUri, $thanksImageUri, $imageMask, $updatedAt)`,
+           (id, businessName, logoUri, ownerName, email, phone, website, address, registrationNumber, vatNumber, accentColor, footerMessage, coverImageUri, thanksImageUri, imageMask, reviewUrl, reviewProvider, bankName, sortCode, accountNumber, paymentTerms, defaultDueDays, nextInvoiceSequence, updatedAt)
+         VALUES (1, $businessName, $logoUri, $ownerName, $email, $phone, $website, $address, $registrationNumber, $vatNumber, $accentColor, $footerMessage, $coverImageUri, $thanksImageUri, $imageMask, $reviewUrl, $reviewProvider, $bankName, $sortCode, $accountNumber, $paymentTerms, $defaultDueDays, $nextInvoiceSequence, $updatedAt)`,
         {
           $businessName: profile.businessName,
           $logoUri: optionalPath(profile.logoUri),
@@ -149,6 +153,14 @@ export async function replaceAppData(manifest: BackupManifest, root: string): Pr
           $coverImageUri: optionalPath(profile.coverImageUri),
           $thanksImageUri: optionalPath(profile.thanksImageUri),
           $imageMask: profile.imageMask,
+          $reviewUrl: (profile as { reviewUrl?: string | null }).reviewUrl ?? null,
+          $reviewProvider: (profile as { reviewProvider?: string }).reviewProvider ?? 'google',
+          $bankName: (profile as { bankName?: string | null }).bankName ?? null,
+          $sortCode: (profile as { sortCode?: string | null }).sortCode ?? null,
+          $accountNumber: (profile as { accountNumber?: string | null }).accountNumber ?? null,
+          $paymentTerms: (profile as { paymentTerms?: string | null }).paymentTerms ?? null,
+          $defaultDueDays: (profile as { defaultDueDays?: number }).defaultDueDays ?? 14,
+          $nextInvoiceSequence: (profile as { nextInvoiceSequence?: number }).nextInvoiceSequence ?? 1,
           $updatedAt: profile.updatedAt,
         }
       );

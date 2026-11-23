@@ -12,7 +12,7 @@ import { readDatabaseSnapshot, writeDatabaseSnapshot } from './webSnapshot';
 // holds an exclusive lock per origin and breaks hot reload — and copies that
 // database into IndexedDB after each write so jobs survive reloads offline.
 const DATABASE_NAME = Platform.OS === 'web' ? ':memory:' : 'sitereport.db';
-const CURRENT_SCHEMA_VERSION = 9;
+const CURRENT_SCHEMA_VERSION = 12;
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 let snapshotTimer: ReturnType<typeof setTimeout> | null = null;
@@ -200,6 +200,53 @@ async function migrate(db: SQLite.SQLiteDatabase) {
       await db.execAsync('ALTER TABLE photos ADD COLUMN takenAt TEXT');
     }
     await db.execAsync('PRAGMA user_version = 9');
+    version = 9;
+  }
+
+  if (version < 10) {
+    const reportColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(reports)');
+    if (!reportColumns.some((column) => column.name === 'status')) {
+      await db.execAsync(`ALTER TABLE reports ADD COLUMN status TEXT NOT NULL DEFAULT 'active'`);
+    }
+    await db.execAsync('PRAGMA user_version = 10');
+    version = 10;
+  }
+
+  if (version < 11) {
+    const photoColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(photos)');
+    if (!photoColumns.some((column) => column.name === 'annotations')) {
+      await db.execAsync('ALTER TABLE photos ADD COLUMN annotations TEXT');
+    }
+    await db.execAsync('PRAGMA user_version = 11');
+    version = 11;
+  }
+
+  if (version < 12) {
+    const profileColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(business_profile)');
+    const profileAdds: Array<[string, string]> = [
+      ['reviewUrl', 'TEXT'],
+      ['reviewProvider', "TEXT NOT NULL DEFAULT 'google'"],
+      ['bankName', 'TEXT'],
+      ['sortCode', 'TEXT'],
+      ['accountNumber', 'TEXT'],
+      ['paymentTerms', 'TEXT'],
+      ['defaultDueDays', 'INTEGER NOT NULL DEFAULT 14'],
+      ['nextInvoiceSequence', 'INTEGER NOT NULL DEFAULT 1'],
+    ];
+    for (const [name, type] of profileAdds) {
+      if (!profileColumns.some((column) => column.name === name)) {
+        await db.execAsync(`ALTER TABLE business_profile ADD COLUMN ${name} ${type}`);
+      }
+    }
+
+    const summaryColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(work_summaries)');
+    if (!summaryColumns.some((column) => column.name === 'documentType')) {
+      await db.execAsync(`ALTER TABLE work_summaries ADD COLUMN documentType TEXT NOT NULL DEFAULT 'reference'`);
+    }
+    if (!summaryColumns.some((column) => column.name === 'invoiceNumber')) {
+      await db.execAsync('ALTER TABLE work_summaries ADD COLUMN invoiceNumber TEXT');
+    }
+    await db.execAsync('PRAGMA user_version = 12');
   }
 
   logger.debug('Database schema ready', { version: CURRENT_SCHEMA_VERSION });
