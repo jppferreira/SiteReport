@@ -82,3 +82,34 @@ export function smoothReading(previous: LevelReading | null, next: LevelReading,
     isLevel: tiltDeg <= DEFAULT_LEVEL_THRESHOLD_DEG,
   };
 }
+
+export type GravitySample = { x: number; y: number; z: number };
+
+/**
+ * Bring a raw accelerometer sample onto the iOS/CoreMotion axis convention
+ * (face up → z ≈ −1). Android's SensorManager reports the opposite sign on
+ * every axis. Returns null for unusable samples (NaN or free fall).
+ */
+export function normaliseGravity(
+  sample: GravitySample,
+  platform: string
+): GravitySample | null {
+  if (![sample.x, sample.y, sample.z].every(Number.isFinite)) return null;
+  const sign = platform === 'android' ? -1 : 1;
+  const next = { x: sign * sample.x, y: sign * sample.y, z: sign * sample.z };
+  return Math.hypot(next.x, next.y, next.z) < 0.1 ? null : next;
+}
+
+/** Low-pass the gravity vector (not Euler angles, which jump at mode boundaries). */
+export function smoothGravity(
+  previous: GravitySample | null,
+  next: GravitySample,
+  alpha = 0.25
+): GravitySample {
+  if (!previous) return next;
+  return {
+    x: previous.x + alpha * (next.x - previous.x),
+    y: previous.y + alpha * (next.y - previous.y),
+    z: previous.z + alpha * (next.z - previous.z),
+  };
+}

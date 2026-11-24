@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
-import { type LevelReading, readingFromAcceleration, smoothReading } from './levelMath';
+import { type LevelReading, normaliseGravity, readingFromAcceleration, smoothGravity } from './levelMath';
+import type { Gravity } from './levelOrientation';
 
 export type DeviceLevelState = {
   reading: LevelReading | null;
+  /** Smoothed gravity in iOS axis convention; Android signs are normalised. */
+  gravity: Gravity | null;
   available: boolean | null;
   /** True once we have received at least one accelerometer sample. */
   ready: boolean;
@@ -38,17 +41,13 @@ async function loadAccelerometer(): Promise<AccelerometerModule | null> {
  */
 export function useDeviceLevel(enabled: boolean): DeviceLevelState {
   const [reading, setReading] = useState<LevelReading | null>(null);
+  const [gravity, setGravity] = useState<Gravity | null>(null);
   const [available, setAvailable] = useState<boolean | null>(null);
   const [ready, setReady] = useState(false);
-  const smoothedRef = useRef<LevelReading | null>(null);
+  const gravityRef = useRef<Gravity | null>(null);
 
   useEffect(() => {
-    if (!enabled) {
-      smoothedRef.current = null;
-      setReading(null);
-      setReady(false);
-      return;
-    }
+    if (!enabled) return;
 
     let subscription: { remove: () => void } | null = null;
     let cancelled = false;
@@ -73,10 +72,12 @@ export function useDeviceLevel(enabled: boolean): DeviceLevelState {
 
       Accelerometer.setUpdateInterval(UPDATE_MS);
       subscription = Accelerometer.addListener((data) => {
-        const raw = readingFromAcceleration(data.x, data.y, data.z);
-        const smoothed = smoothReading(smoothedRef.current, raw);
-        smoothedRef.current = smoothed;
-        setReading(smoothed);
+        const next = normaliseGravity(data, Platform.OS);
+        if (!next) return;
+        const g = smoothGravity(gravityRef.current, next);
+        gravityRef.current = g;
+        setGravity(g);
+        setReading(readingFromAcceleration(g.x, g.y, g.z));
         setReady(true);
       });
     };
@@ -86,8 +87,12 @@ export function useDeviceLevel(enabled: boolean): DeviceLevelState {
     return () => {
       cancelled = true;
       subscription?.remove();
+      gravityRef.current = null;
+      setGravity(null);
+      setReading(null);
+      setReady(false);
     };
   }, [enabled]);
 
-  return { reading, available, ready };
+  return { reading, gravity, available, ready };
 }
