@@ -228,6 +228,13 @@ export default function SectionPhotosScreen() {
                 }}
               />
             ) : null}
+            {reorderMode ? null : (
+              <IconButton
+                name="resize-outline"
+                accessibilityLabel={t('arTools.openA11y')}
+                onPress={() => router.push({ pathname: '/job/[id]/measure', params: { id, areaId } })}
+              />
+            )}
             {wholeJob ? null : (
               <IconButton name="ellipsis-horizontal" accessibilityLabel={t('photos.sectionOptionsA11y')} onPress={() => setMenuOpen(true)} />
             )}
