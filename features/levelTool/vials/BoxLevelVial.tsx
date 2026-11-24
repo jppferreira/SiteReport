@@ -36,7 +36,7 @@ export function BoxLevelVial({
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
+      <Svg width={width} height={height} style={styles.abs}>
         <Defs>
           <LinearGradient id={bodyId} x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor="#8F9491" />
@@ -59,7 +59,10 @@ export function BoxLevelVial({
         style={[styles.abs, { width, height, opacity: 0.45 }]}
         resizeMode="stretch"
       />
+      {/* Plain RN Text (not a Fragment wrapper) — keep branding off Svg to avoid
+          react-native-svg forwarding host props into Fragments on Android. */}
       <Text
+        allowFontScaling={false}
         style={[
           styles.brand,
           { left: 62 * scale, top: 30 * scale, fontSize: 12 * scale, letterSpacing: 3 * scale },
@@ -68,12 +71,13 @@ export function BoxLevelVial({
         TRADE REPORT
       </Text>
       <Text
+        allowFontScaling={false}
         style={[
           styles.spec,
           { left: 62 * scale, top: 50 * scale, fontSize: 9 * scale, letterSpacing: 1 * scale },
         ]}
       >
-        ±0.5 mm/m
+        {'\u00B10.5 mm/m'}
       </Text>
       <Image
         source={boxAssets.mmScale}
@@ -137,7 +141,7 @@ export function BoxLevelVial({
           },
         ]}
       >
-        <Svg width={vialW} height={vialH} style={StyleSheet.absoluteFill}>
+        <Svg width={vialW} height={vialH} style={styles.abs}>
           <Defs>
             <LinearGradient id={vialId} x1="0" y1="0" x2="0" y2="1">
               <Stop offset="0" stopColor={isLevel ? '#B8F0A0' : '#F5FAB0'} />
@@ -244,13 +248,11 @@ const styles = StyleSheet.create({
   brand: {
     position: 'absolute',
     color: 'rgba(26,28,26,0.4)',
-    fontFamily: 'Lexend_600SemiBold',
     fontWeight: '600',
   },
   spec: {
     position: 'absolute',
     color: 'rgba(26,28,26,0.3)',
-    fontFamily: 'Lexend_500Medium',
     fontWeight: '500',
   },
   graduation: {

@@ -3,6 +3,7 @@ import { useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components';
@@ -52,6 +53,10 @@ export function LevelToolView({ active, onClose, onChangeMode, topReserve = 0 }:
   const [zeroNotice, setZeroNotice] = useState(false);
   const wasLevelRef = useRef(false);
   const player = useAudioPlayer(require('../../assets/sounds/level-tick.wav'));
+  const rotation = useSharedValue(0);
+  const animatedFrameStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
 
   useEffect(() => {
     if (!active || !gravity || held) return;
@@ -103,7 +108,10 @@ export function LevelToolView({ active, onClose, onChangeMode, topReserve = 0 }:
   const availableH = height - insetY * 2 - topReserve;
   const frameW = longEdge ? availableH : availableW;
   const frameH = longEdge ? availableW : availableH;
-  const rotation = UI_ROTATION_DEG[shownOrientation];
+  const rotationDeg = UI_ROTATION_DEG[shownOrientation];
+  useEffect(() => {
+    rotation.value = withTiming(rotationDeg, { duration: 280 });
+  }, [rotation, rotationDeg]);
   const compact = frameH < 600;
   const bezelSize = Math.min(frameW - 50, Math.max(180, frameH * 0.44), 340);
   const offset = displayed
@@ -181,7 +189,7 @@ export function LevelToolView({ active, onClose, onChangeMode, topReserve = 0 }:
 
   return (
     <View style={styles.fill}>
-      <View
+      <Animated.View
         style={[
           styles.frame,
           {
@@ -189,8 +197,8 @@ export function LevelToolView({ active, onClose, onChangeMode, topReserve = 0 }:
             height: frameH,
             left: (width - frameW) / 2,
             top: insetY + topReserve + (availableH - frameH) / 2,
-            transform: [{ rotate: `${rotation}deg` }],
           },
+          animatedFrameStyle,
         ]}
       >
         {onClose && onChangeMode ? <ArTopBar mode="level" onChangeMode={onChangeMode} onClose={onClose} right={{ icon: settings.sound ? 'volume-high-outline' : 'volume-mute-outline', label: t(settings.sound ? 'arTools.level.soundOff' : 'arTools.level.soundOn'), onPress: toggleSound, active: settings.sound }} /> : null}
@@ -219,7 +227,7 @@ export function LevelToolView({ active, onClose, onChangeMode, topReserve = 0 }:
           </>
         )}
         {shownOrientation !== 'flat' ? <View style={styles.surfaceEdge} /> : null}
-      </View>
+      </Animated.View>
     </View>
   );
 }
