@@ -24,15 +24,17 @@ Open testing needs at least one country selected under **Test and release → Op
 
 **Short description** (80 chars max):
 
-Before-and-after photos, notes, and a signature into a branded PDF.
+Before-and-after photos, voice notes, and a signature into a branded PDF.
 
 **Full description:**
 
-Trade Report is for trades and small service businesses. Photograph the job, write what you did, collect an optional customer signature, and generate a branded PDF.
+Trade Report is for trades and small service businesses. Photograph the job, dictate or write what you did, collect an optional customer signature, and generate a branded PDF, quote, or invoice.
 
-Jobs stay on the device. There is no account. Trade Report does not upload customer photos, names, or addresses. A backup is created only when you ask, after a confirmation that lists what is in the file. You save it to a folder you pick. Google Drive and other providers can appear in that picker. The app does not sign in to Google or Apple.
+Jobs stay on the device. There is no account. Trade Report does not upload customer photos, names, or addresses. Optional voice dictation is transcribed on this device. Optional evidence stamps can add a location label to photos when you turn that on. AR measure and a spirit level help you capture dimensions and check surfaces where your phone supports them. Job checklists and a review-link QR can appear on reports when you choose.
 
-The free tier includes PDF reports for 3 jobs. Pro unlocks unlimited reports, your logo and colours, and customer sign-off.
+A backup is created when you ask, after a confirmation that lists what is in the file. You save it to a folder you pick. Google Drive and other providers can appear in that picker. The app does not sign in to Google or Apple.
+
+The free tier includes PDF reports for 3 jobs. Pro unlocks unlimited reports, your logo and colours, customer sign-off, and other Pro tools shown in the app.
 
 Monthly and annual Pro plans renew until you cancel them in Google Play subscriptions, at least 24 hours before the end of the current period. Google Play charges the renewal within 24 hours before that period ends. A lifetime purchase is charged once and does not renew. The price is the amount shown on the upgrade screen. Deleting the app does not cancel a subscription.
 
@@ -89,13 +91,19 @@ Activate base plans. License testing needs a build on an internal testing track.
 
 App content → Data safety. Suggested answers aligned with the privacy policy and ASC App Privacy:
 
-- **Collects data?** Yes — only optional bug reports.
-- **Data shared with third parties?** Yes for that optional bug report path (GitHub Issues on the project repo; mail fallback to developer). Not sold. Not used for advertising.
+- **Collects data?** Yes — only optional bug / contact messages the user sends.
+- **Data shared with third parties?** Yes for that optional message path (GitHub Issues on the project repo; mail fallback to developer). Not sold. Not used for advertising.
 - **Collected (optional, app functionality, not required for core use):**
-  - User-generated content / support text (bug report body)
+  - User-generated content / support text (bug or contact message body)
   - App info / diagnostics: app version and platform (e.g. Android)
-- **Not collected by Trade Report:** photos, precise location, contacts, name, email, phone, address, payment info, device IDs for analytics, crash logs automatic, advertising ID.
-- Job photos, customer details, signatures, and PDFs stay on device unless the user shares or saves a backup themselves.
+- **Permissions to declare** (device access; not “collected by developer” unless you choose that framing):
+  - Camera — job photos and optional AR measure
+  - Microphone — optional on-device voice dictation (temp audio deleted after transcription; not uploaded to Trade Report)
+  - Location (approximate and precise / while in use) — optional evidence stamp when the user turns it on; not sent to Trade Report servers
+- **Do not declare / not in the release AAB:** `ACTIVITY_RECOGNITION` (blocked — spirit level uses accelerometer only), broad photo/video storage (`READ_MEDIA_*` blocked; system picker), overlay (`SYSTEM_ALERT_WINDOW` blocked), media-playback foreground service (background audio playback disabled).
+- **Not collected / not shared by Trade Report:** photos, precise location coordinates, audio recordings, contacts, name, email, phone, address, payment info, device IDs for analytics, automatic crash logs, advertising ID. Those may be processed on the device for the features above, but the developer does not receive them.
+- **Optional network note for Data Safety / privacy alignment:** some premium PDF layouts may request fonts from Google Fonts (IP / technical request data to Google; not job content). Disclose if Console asks about data shared with third parties beyond the optional support message.
+- Job photos, customer details, signatures, and PDFs stay on device unless the user shares or saves a backup themselves. Google Drive saves use the system document UI; the app does not sign in to Google.
 - Purchases are processed by Google Play; Play’s own disclosures apply for payment data.
 
 Also complete: content rating questionnaire, target audience (not children), news app / COVID / data encryption declarations as applicable (encryption: standard HTTPS for optional bug report only; jobs are local).

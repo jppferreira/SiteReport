@@ -1,30 +1,35 @@
 # Trade Report 1.1.0
 
-**iOS:** 1.1.0 (6) · **Android:** 1.1.0 (11)
+**iOS:** 1.1.0 · **Android:** 1.1.0
 
 ## What’s new
 
-- **Photo annotations on reports** — pins, notes, pen, arrows, and circles now appear in the generated PDF, baked into each photo as SVG so marks stay aligned with the image.
-- **Annotation editor polish** — full-width photo canvas, compact tools bar, and no bulk delete control; remove individual callout cards when needed.
-- **Section photos keep marks** — annotations are preserved when photos are grouped by area/section in the report.
-- **Uniform photo scaling** — marked photos scale to fit without cropping; a blurred backdrop fills letterboxed frames.
-- **Larger rounded photo frames** — report photo frames use a larger corner radius for a cleaner print look.
-- **Empty jobs guidance** — clearer first-report prompt when you have no jobs yet.
+- **Photo annotations on reports** — pins, notes, pen, arrows, and circles appear in the generated PDF.
+- **On-device voice dictation** — dictate job notes; audio is transcribed on this device and is not uploaded.
+- **Evidence stamps** — optional location and verified-on-device labels on photos (Pro).
+- **Job checklists** — Field Proof checklists for handover-ready reports.
+- **AR measure & spirit level** — measure distances and check surfaces where the device supports them; save measurements into the report.
+- **Quote & invoice layouts** — Pro document types plus review-link QR on PDFs.
+- **Premium report templates** — additional branded PDF looks.
+- **Backups** — manual zip backup; optional iCloud auto-backup on iPhone to your own iCloud Drive.
+
+## Store / privacy checklist for this release
+
+- [x] Publish updated `website/privacy.html` and `website/terms.html` (24 November 2026).
+- [ ] Paste updated listing copy from `store/app-store-connect.md` and `store/google-play.md` (Play Console + ASC — manual).
+- [ ] Update App Privacy (ASC): FormSubmit → GitHub for optional messages (manual).
+- [ ] Update Play Data Safety + declare Camera / Microphone / Location permissions as in `store/google-play.md` (manual).
+- [x] Confirm privacy policy URL still `https://tradereportapp.com/privacy.html`.
+- [x] Android: block `ACTIVITY_RECOGNITION` and `SYSTEM_ALERT_WINDOW`; disable expo-audio background playback FGS.
+- [x] Android AR measure: library pick uses system photo picker (no broad media permission).
 
 ## Checks before release
 
 - Typecheck: pass
-- Annotation / PDF unit tests: pass (56)
-- Fixed ScrollView ref typing and aria-label nullability in annotation code
-- Fixed locale-sensitive job-date assertion in `reportHtml.test.ts`
+- Feature / PDF unit tests: pass (AR, level, voice, conversion, backup, checklists, annotations)
 
 ## Known notes
 
-- A callout on the extreme photo edge (e.g. normalized ~0,0) can sit slightly inset in the PDF so the pin stays inside the rounded frame.
+- A callout on the extreme photo edge can sit slightly inset in the PDF so the pin stays inside the rounded frame.
 - Debug route `/debug-github-report` exists for support tooling and is not linked from Settings.
-- EAS submit for iOS needs the ASC API key path in `eas.json` (`AuthKey_3TXXMB78D6.p8`); that file was not present locally at build time — build only, no auto-submit.
-
-## EAS builds (production, store)
-
-- Android: https://expo.dev/accounts/joaoferreira500/projects/tradesreport/builds/9208aa08-44c7-471b-a7c6-fdd64383b333
-- iOS: https://expo.dev/accounts/joaoferreira500/projects/tradesreport/builds/cf77f9f6-6552-4987-a0aa-05a1270a3c54
+- Live device QA for mic, GPS stamp, AR, and Drive/iCloud still needs a store or local native build.

@@ -67,7 +67,7 @@
         <a class="policy-back" href="index.html">Back to home</a>
         <p class="eyebrow">Privacy policy</p>
         <h1>Your job data stays on your device.</h1>
-        <p class="policy-date">29 October 2026</p>
+        <p class="policy-date">24 November 2026</p>
 
         <section>
           <h2>Who is responsible</h2>
@@ -83,21 +83,40 @@
           <h2>Who Trade Report is for</h2>
           <p>
             Trade Report is a local-first app for tradespeople and small service businesses. It keeps a
-            record of a finished job — photos, notes, and an optional customer signature — and turns
-            that into a PDF report you can share.
+            record of a finished job — photos, notes, checklists, optional measurements, and an optional
+            customer signature — and turns that into a PDF report, quote, or invoice you can share.
           </p>
         </section>
 
         <section>
           <h2>What is stored, and where</h2>
           <p>
-            Jobs, customer names, addresses, notes, photos, signatures, and generated PDFs are stored
-            only in this app on your phone or tablet. The business details you add for the report —
-            such as your name, logo, phone number, and email — stay there too.
+            Jobs, customer names, addresses, notes, photos, signatures, checklists, measurements, review
+            links you enter, pricing for quotes or invoices, and generated PDFs are stored only in this
+            app on your phone or tablet. The business details you add for the report — such as your name,
+            logo, phone number, and email — stay there too.
           </p>
           <p>
             Trade Report does not operate a server that receives, stores, or processes this information.
-            Nothing about a job is uploaded automatically.
+            Nothing about a job is uploaded automatically to Trade Report.
+          </p>
+        </section>
+
+        <section>
+          <h2>Device features (camera, microphone, location, motion)</h2>
+          <p>
+            Trade Report may ask for permission to use your <strong>camera</strong> (job photos and
+            optional AR measuring), <strong>microphone</strong> (optional voice dictation into job notes),
+            <strong>location while the app is in use</strong> (optional evidence stamp address on photos
+            when you turn that on in Settings), and <strong>motion sensors</strong> (spirit level).
+          </p>
+          <p>
+            Audio is transcribed on this device with a speech model bundled in the app. Temporary
+            recordings are deleted after transcription, cancellation, or failure. Speech transcripts and
+            optional on-device text polishing (where your phone supports it) stay on the device. Location
+            is used only to label photos and PDF captions when you enable the stamp; it is not sent to
+            Trade Report’s servers. Measurements and level readings are stored only in the app on your
+            device.
           </p>
         </section>
 
@@ -109,8 +128,14 @@
             personal information, and it does not share it for advertising.
           </p>
           <p>
+            The app may use the camera, microphone, location, and motion sensors on your device as
+            described above. That use happens on the device. Trade Report does not upload audio,
+            transcripts, GPS coordinates, or job photos to its own servers.
+          </p>
+          <p>
             Network use is the in-app purchase flow that iOS or Android runs with the App Store or
-            Google Play, and a message you choose to send from the app.
+            Google Play, a message you choose to send from the app or this website, and optional font
+            requests when some PDF layouts are generated (see below).
           </p>
           <p>
             Trade Report does not use analytics or an automatic crash-reporting service. A failure in the app is
@@ -124,13 +149,17 @@
             If you send a message from Contact us in Settings — support, a bug, a feature request, or
             something else — or tap Send a report after a screen fails, the text you write or the error
             text on that screen, the app version, and the device platform (such as iOS or Android) are
-            sent to FormSubmit (formsubmit.co), which delivers it to the developer. A crash is not sent
-            on its own. The report does not include a stack trace. FormSubmit does not receive job photos,
-            signatures, customer details, or PDF reports. Sending a message is optional. If FormSubmit
-            cannot accept it, the app opens your mail app with the same text so you can send it yourself.
+            sent to GitHub as an issue on the Trade Report project repository. A crash is not sent
+            on its own. The report does not include a stack trace. GitHub does not receive job photos,
+            signatures, customer details, or PDF reports. Sending a message is optional. If GitHub
+            cannot accept it, the app opens your mail app with the same text so you can send it to
+            hello@jppferreira.com yourself.
+          </p>
+          <p>
             The <a href="index.html#contact">contact form</a> on this website sends your name, email
-            address, and message the same way. Do not include customer names, addresses, or photos. The
-            lawful basis is your consent. You can withdraw it by asking for that message to be deleted.
+            address, and message to FormSubmit (formsubmit.co), which delivers it to the developer.
+            Do not include customer names, addresses, or photos. The lawful basis for both paths is your
+            consent. You can withdraw it by asking for that message to be deleted.
           </p>
           <p>
             A message is kept only while it is needed to look into it, and it is deleted within 24 months
@@ -141,8 +170,8 @@
         <section>
           <h2>Purchases</h2>
           <p>
-            The free tier includes 3 reports. Pro unlocks unlimited reports, branding, and customer
-            signatures. The price is whatever the store shows when you buy.
+            The free tier includes 3 reports. Pro unlocks unlimited reports, branding, customer
+            signatures, and other Pro tools shown in the app. The price is whatever the store shows when you buy.
           </p>
           <p>
             Apple and Google process the payment under their own privacy policies. The lawful basis for
@@ -155,8 +184,13 @@
           <h2>Sharing a PDF</h2>
           <p>
             A report stays on the device until you choose to share or save it. Sharing uses the phone’s
-            share sheet. On Android you can also save a copy to a folder you pick. The file leaves the
-            device only because you sent it.
+            share sheet or your mail app. On Android you can also save a copy to a folder you pick. The
+            file leaves the device only because you sent it.
+          </p>
+          <p>
+            Some report layouts load typefaces from Google Fonts when a PDF is generated, so your device
+            may contact Google for those font files. Google receives the usual technical data needed to
+            deliver fonts, not your job photos or customer details.
           </p>
         </section>
 
@@ -165,14 +199,21 @@
           <p>
             From Settings → Data &amp; privacy you can save one zip file. You confirm before it is created.
             The file contains every job on the device: customer names and addresses, photos, private notes,
-            signatures, PDF reports, and the business profile, including contact details and any tax numbers
-            you added. A text export is separate and leaves out photos and signatures.
+            signatures, checklists, PDF reports, and the business profile, including contact details and any
+            tax numbers you added. A text export is separate and leaves out photos and signatures.
           </p>
           <p>
             iCloud Drive, Google Drive, and a folder on the phone are locations in the system file picker.
             Trade Report does not sign in to Apple or Google, and it does not upload the file itself. If you
             choose Google Drive, the copy sits in your own Google account. Google’s terms apply to that copy.
             Trade Report cannot see it or delete it.
+          </p>
+          <p>
+            On iPhone, if you leave <strong>iCloud auto-backup</strong> turned on in Settings, the app can
+            save a single zip file named tradesreport-icloud-backup.zip to your iCloud Drive when you
+            generate a report and on a daily schedule. The zip contains the same job data as a manual
+            backup. You can turn this off at any time. Trade Report does not sign in to iCloud separately
+            and does not keep another copy on the phone after the file is written.
           </p>
           <p>
             The app does not keep its own copy of that zip after you save. The file you saved stays in the
@@ -241,10 +282,12 @@
         <section>
           <h2>Transfers outside the UK</h2>
           <p>
-            FormSubmit, Google Fonts, Apple, and Google may process a request on servers
-            outside the United Kingdom. A bug report is the only message the developer asks a service
-            to deliver. A font request happens only if you allow it on this site. A backup
-            you save to Google Drive is stored in your Google account, which may be outside the UK.
+            GitHub (for in-app messages), FormSubmit (for the website contact form), Google Fonts,
+            Apple, and Google may process a request on servers outside the United Kingdom. An optional
+            message is the only content the developer asks a service to deliver on your behalf. A font
+            request happens if you allow it on this site, or when some PDF layouts load fonts on the
+            device. A backup you save to Google Drive or iCloud Drive is stored in your own account,
+            which may be outside the UK.
           </p>
         </section>
 

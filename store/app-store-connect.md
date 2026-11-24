@@ -2,9 +2,9 @@
 
 Paste this into App Store Connect. Nothing here has been submitted. Prices are the UK amounts already used by the in-app catalog in `services/purchases/catalog.ts`. Apple’s price tiers must match those amounts. The app shows the price the store returns.
 
-Privacy and Terms are live on the GitHub Pages site. Use these HTTPS URLs in App Store Connect and Google Play. Do not enter `https://sitereport.pages.dev` — that host still serves a different product, Daily Site Report.
+Privacy and Terms are live on the marketing site. Use these HTTPS URLs in App Store Connect and Google Play.
 
-**ASC (App ID 6827091783) as of 28 Oct 2026:** en-GB App Information privacy policy URL is `https://tradereportapp.com/privacy.html`. Version 1.0 support and marketing URLs are `https://tradereportapp.com/`. IAP products `tradesreport.pro.monthly`, `tradesreport.pro.annual`, and `tradesreport.pro.lifetime` exist and are `READY_TO_SUBMIT`.
+**ASC (App ID 6827091783):** en-GB App Information privacy policy URL is `https://tradereportapp.com/privacy.html`. Support and marketing URLs are `https://tradereportapp.com/`. IAP products `tradesreport.pro.monthly`, `tradesreport.pro.annual`, and `tradesreport.pro.lifetime` exist and are `READY_TO_SUBMIT`.
 
 ## Listing
 
@@ -20,15 +20,17 @@ Privacy and Terms are live on the GitHub Pages site. Use these HTTPS URLs in App
 
 Promotional text (170 characters max):
 
-Turn before-and-after photos, notes, and an optional signature into a branded PDF. Jobs stay on your phone.
+Before-and-after photos, on-device voice notes, AR measure, and a branded PDF. Jobs stay on your phone.
 
 Description:
 
-Trade Report is for trades and small service businesses. Photograph the job, write what you did, collect an optional customer signature, and generate a branded PDF.
+Trade Report is for trades and small service businesses. Photograph the job, dictate or write what you did, collect an optional customer signature, and generate a branded PDF, quote, or invoice.
 
-Jobs stay on the device. There is no account. Trade Report does not upload customer photos, names, or addresses. A backup is created only when you ask, after a confirmation that lists what is in the file. You save it to a folder you pick. Google Drive and iCloud Drive can appear in that picker. The app does not sign in to Google or Apple.
+Jobs stay on the device. There is no account. Trade Report does not upload customer photos, names, or addresses. Optional voice dictation is transcribed on this device. Optional evidence stamps can add a location label to photos when you turn that on. AR measure and a spirit level help you capture dimensions and check surfaces where your phone supports them. Job checklists and a review-link QR can appear on reports when you choose.
 
-The free tier includes PDF reports for 3 jobs. Pro unlocks unlimited reports, your logo and colours, and customer sign-off.
+A backup is created when you ask, after a confirmation that lists what is in the file, or on iPhone via optional iCloud auto-backup to your own iCloud Drive. You save backups to a folder you pick. Google Drive and iCloud Drive can appear in that picker. The app does not sign in to Google or Apple.
+
+The free tier includes PDF reports for 3 jobs. Pro unlocks unlimited reports, your logo and colours, customer sign-off, and other Pro tools shown in the app.
 
 Monthly and annual Pro plans renew until you cancel them in your App Store account settings, at least 24 hours before the end of the current period. Apple charges the renewal within 24 hours before that period ends. A lifetime purchase is charged once and does not renew. The price is the amount shown on the upgrade screen, charged to your Apple ID. Deleting the app does not cancel a subscription.
 
@@ -51,26 +53,26 @@ Create these in App Store Connect before the first version. Use one subscription
 
 Subscription display name on the group: Trade Report Pro.
 
-Review description for each plan: Unlimited PDF reports, your logo and colours on reports, and customer sign-off.
+Review description for each plan: Unlimited PDF reports, your logo and colours on reports, customer sign-off, and other Pro tools shown in the app.
 
-Paid Applications agreement must be active, and each product must be attached to version 1.0.0.
+Paid Applications agreement must be active, and each product must be attached to the version under review.
 
 Review notes (do not include a demo login):
 
-Trade Report has no account. Jobs, photos, and signatures stay on the device. Save to Google Drive opens the system folder picker. It is not a Google sign-in. The free tier generates reports for 3 jobs. Pro is the subscriptions and lifetime product above. Restore purchases is on the upgrade screen.
+Trade Report has no account. Jobs, photos, and signatures stay on the device. Microphone: optional voice dictation; on-device Whisper transcription; temporary audio is deleted after use; no audio uploaded to Trade Report. Location: optional Pro evidence stamp only; foreground while in use; not sent to developer servers. AR / level: camera plus ARKit where available, and accelerometer for the spirit level; measurements saved locally. Save to Google Drive / iCloud opens the system folder picker or writes to the user’s iCloud Drive; it is not a Google or Apple sign-in by Trade Report. Optional iCloud auto-backup on iPhone can be turned off in Settings. The free tier generates reports for 3 jobs. Pro is the subscriptions and lifetime product above. Restore purchases is on the upgrade screen.
 
 ## App Privacy answers
 
 Data used to track you: none. Do not answer yes to tracking. No App Tracking Transparency prompt is required.
 
-Do you or your third-party partners collect data from this app? Yes. The only collection is an optional bug report.
+Do you or your third-party partners collect data from this app? Yes. The only data Trade Report collects from the device is an optional bug or contact message the user sends.
 
 Declare these two types, both with purpose App Functionality, not linked to the user’s identity, not used for tracking:
 
-- User Content → Customer Support. The text the user types in the bug report. Sent to FormSubmit (formsubmit.co), which emails hello@jppferreira.com. Optional.
-- Diagnostics → Other Diagnostic Data. App version and platform, such as iOS. Sent with that same bug report. Optional.
+- User Content → Customer Support. The text the user types in the bug or contact report. Sent to GitHub Issues on the Trade Report project repository (mailto fallback to hello@jppferreira.com if GitHub cannot accept it). Optional.
+- Diagnostics → Other Diagnostic Data. App version and platform, such as iOS. Sent with that same optional message. Optional.
 
-Do not declare photos, videos, precise location, contacts, name, email, phone, physical address, payment info, purchases, device ID, crash data, or product interaction. Customer names, addresses, photos, signatures, and private notes stay on the device unless the user shares a PDF or saves a backup into their own Drive or Files. That backup is not collected by Trade Report, and Google is not a partner collecting it for the developer.
+Do not declare photos, videos, precise location, contacts, name, email, phone, physical address, payment info, purchases, device ID, crash data, product interaction, or audio data as collected by Trade Report. Microphone audio and optional location stamps are processed on device for app functionality and are not received by the developer. Customer names, addresses, photos, signatures, and private notes stay on the device unless the user shares a PDF or saves a backup into their own Drive or Files. That backup is not collected by Trade Report, and Google or Apple are not partners collecting it for the developer.
 
 ## Screenshots still to capture
 

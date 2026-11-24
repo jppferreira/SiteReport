@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components';
 import { ArTopBar, AR_COLORS, type ArToolMode } from '@/features/arTools';
 import { useI18n } from '@/i18n/useI18n';
+import { requestPhotoLibraryAccess } from '@/services/photoLibraryAccess';
 import { logger } from '@/utils/logger';
 
 import { buildMeasurementCaption, measurementName, measurementTable } from './measurementSummary';
@@ -43,10 +44,19 @@ export function ManualMeasureView({ jobId, areaId, reason, onClose, onChangeMode
 
   const pickPhoto = async (source: 'camera' | 'library') => {
     try {
-      const permission = source === 'camera' ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert(t('arTools.measure.photoPermissionTitle'), t('arTools.measure.photoPermissionBody'));
-        return;
+      if (source === 'camera') {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert(t('arTools.measure.photoPermissionTitle'), t('arTools.measure.photoPermissionBody'));
+          return;
+        }
+      } else {
+        // Android uses the system photo picker (no broad media permission).
+        const allowed = await requestPhotoLibraryAccess();
+        if (!allowed) {
+          Alert.alert(t('arTools.measure.photoPermissionTitle'), t('arTools.measure.photoPermissionBody'));
+          return;
+        }
       }
       const result = source === 'camera'
         ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.9 })
