@@ -71,6 +71,11 @@ const enGBOverrides = {
     triggerColour:
       'Upgrade to choose the accent colour on your reports. Pro includes your colour on every report.',
   },
+  arTools: {
+    measure: {
+      units: { m: 'Metres', cm: 'Centimetres', mm: 'Millimetres' },
+    },
+  },
   onboarding: {
     captureBody: 'Snap the job as you go. Photos stay organised by area in the report.',
     documentBody: 'Note what you did, what you used, and labour — costs stay optional.',
