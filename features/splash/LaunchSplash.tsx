@@ -76,7 +76,7 @@ export function LaunchSplash() {
           minimumFontScale={0.7}
           style={[styles.word, { width: '100%', fontSize: LOCKUP.title * scale, lineHeight: LOCKUP.titleLine * scale, color: INK }]}
         >
-          {t('splash.wordmarkTrade')}{' '}
+          {t('splash.wordmarkTrade')}
           <RNText style={{ color: REPORT }}>{t('splash.wordmarkReport')}</RNText>
         </RNText>
         <RNText

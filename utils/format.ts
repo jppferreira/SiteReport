@@ -28,6 +28,14 @@ export function formatDate(iso: string | null | undefined): string {
   return new Intl.DateTimeFormat(getLocale(), { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 }
 
+/** Short calendar day for compact meta rows, e.g. "24 Nov". */
+export function formatDateShort(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const date = parseDisplayDate(iso);
+  if (!date) return '';
+  return new Intl.DateTimeFormat(getLocale(), { day: 'numeric', month: 'short' }).format(date);
+}
+
 /** Formats an ISO date string relative to today when recent, e.g. "Today". */
 export function formatRelativeDate(iso: string | null | undefined): string {
   if (!iso) return '';

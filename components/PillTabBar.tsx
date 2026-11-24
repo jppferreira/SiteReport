@@ -6,15 +6,21 @@ import {
 } from 'expo-router/js-tabs';
 import React, { useContext, useEffect, useRef } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  makeMutable,
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient, Mask, Rect, Stop } from 'react-native-svg';
 
-import { motionTiming, useTheme } from '@/theme';
+import { isMotionReduced, useTheme } from '@/theme';
 
 import { Text } from './Text';
 
+/** Soft ease for the selected pill between tabs. */
 const INDICATOR_TIMING = {
-  duration: 280,
+  duration: 320,
   easing: Easing.out(Easing.cubic),
 };
 
@@ -23,50 +29,52 @@ const ICON_SIZE = 22;
 /** How far the fade reaches above the pill, so content dissolves instead of hitting a hard edge. */
 export const PILL_TAB_BAR_WASH_ABOVE = 72;
 
-type TabFrame = {
-  x: number;
-  width: number;
-};
+type TabFrame = { x: number; width: number };
 
 /**
- * Floating capsule tab bar. The active pill is positioned from each tab's
- * measured frame and moved with Reanimated timing so the slide runs on the
- * UI thread. `motionTiming` collapses that timing when Reduce Motion is on.
- *
- * The bar floats over the screen. A radial wash tapers out toward the edges
- * so the bottom of the page dissolves instead of ending on a solid plate,
- * and the capsule itself is a pastel frosted blur.
+ * Module-level mutables so the selected-pill animation survives tab-bar remounts
+ * when the navigator re-creates the custom `tabBar` on focus changes. Component
+ * `useSharedValue` would reset to 0 and look like a snap.
+ */
+const indicatorX = makeMutable(0);
+const indicatorWidth = makeMutable(0);
+const indicatorReady = makeMutable(0);
+const savedFrames: Record<string, TabFrame> = {};
+
+/**
+ * Floating capsule tab bar. The green selected pill eases between measured
+ * tab frames on press and when the focused route changes.
  */
 export function PillTabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {
   const { colors, spacing, radius, shadows } = useTheme();
   const onHeightChange = useContext(BottomTabBarHeightCallbackContext);
-  const frames = useRef<Record<string, TabFrame>>({});
-  const positioned = useRef(false);
-  const indicatorX = useSharedValue(0);
-  const indicatorWidth = useSharedValue(0);
-  const indicatorReady = useSharedValue(0);
+  const frames = useRef(savedFrames);
 
   const focusedRoute = state.routes[state.index];
   const focusedKey = focusedRoute?.key;
 
-  const placeIndicator = (frame: TabFrame, animate: boolean) => {
-    if (animate) {
-      indicatorX.value = motionTiming(frame.x, INDICATOR_TIMING);
-      indicatorWidth.value = motionTiming(frame.width, INDICATOR_TIMING);
+  const commit = (frame: TabFrame, animate: boolean) => {
+    const canAnimate = animate && indicatorReady.value === 1 && indicatorWidth.value > 0 && !isMotionReduced();
+
+    if (canAnimate) {
+      indicatorX.value = withTiming(frame.x, INDICATOR_TIMING);
+      indicatorWidth.value = withTiming(frame.width, INDICATOR_TIMING);
     } else {
       indicatorX.value = frame.x;
       indicatorWidth.value = frame.width;
     }
     indicatorReady.value = 1;
-    positioned.current = true;
+  };
+
+  const moveToKey = (key: string | undefined, animate: boolean) => {
+    if (!key) return;
+    const frame = frames.current[key];
+    if (!frame) return;
+    commit(frame, animate);
   };
 
   useEffect(() => {
-    if (!focusedKey) return;
-    const frame = frames.current[focusedKey];
-    if (!frame) return;
-    placeIndicator(frame, positioned.current);
-    // Shared values are stable; the indicator should only retarget when the focused tab changes.
+    moveToKey(focusedKey, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusedKey]);
 
@@ -75,10 +83,11 @@ export function PillTabBar({ state, descriptors, emitter, navigateToTab, insets 
     const next = { x, width };
     const previous = frames.current[key];
     frames.current[key] = next;
+    savedFrames[key] = next;
+
     if (key !== focusedKey) return;
     if (previous && previous.x === next.x && previous.width === next.width) return;
-    // First measurement snaps into place. Later frame changes (rotation) follow the same timing.
-    placeIndicator(next, positioned.current);
+    commit(next, indicatorReady.value === 1);
   };
 
   const indicatorStyle = useAnimatedStyle(() => ({
@@ -150,55 +159,56 @@ export function PillTabBar({ state, descriptors, emitter, navigateToTab, insets 
             ]}
           />
           {state.routes.map((route, index) => {
-          const descriptor = descriptors[route.key];
-          if (!descriptor) return null;
-          const { options } = descriptor;
-          if (isHidden(options)) return null;
+            const descriptor = descriptors[route.key];
+            if (!descriptor) return null;
+            const { options } = descriptor;
+            if (isHidden(options)) return null;
 
-          const focused = state.index === index;
-          const color = focused ? colors.accentOnAccent : colors.textTertiary;
-          const label = resolveLabel(options, route.name);
+            const focused = state.index === index;
+            const color = focused ? colors.accentOnAccent : colors.textTertiary;
+            const label = resolveLabel(options, route.name);
 
-          const onPress = () => {
-            const event = emitter.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
-            if (!focused && !event.defaultPrevented) {
+            const onPress = () => {
+              const event = emitter.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              });
+              if (focused || event.defaultPrevented) return;
+
+              moveToKey(route.key, true);
               navigateToTab(route.key);
-            }
-          };
+            };
 
-          const onLongPress = () => {
-            emitter.emit({
-              type: 'tabLongPress',
-              target: route.key,
-            });
-          };
+            const onLongPress = () => {
+              emitter.emit({
+                type: 'tabLongPress',
+                target: route.key,
+              });
+            };
 
-          return (
-            <Pressable
-              key={route.key}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: focused }}
-              aria-selected={focused}
-              accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
-              testID={options.tabBarButtonTestID ?? `tab-${route.name}`}
-              onPress={onPress}
-              onLongPress={onLongPress}
-              onLayout={(event) => onTabLayout(route.key, event)}
-              style={({ pressed }) => [styles.tab, { borderRadius: radius.pill, opacity: pressed ? 0.72 : 1 }]}
-            >
-              {options.tabBarIcon?.({ focused, color, size: ICON_SIZE })}
-              {options.tabBarShowLabel === false ? null : (
-                <Text variant="caption" color={color} numberOfLines={1}>
-                  {label}
-                </Text>
-              )}
-            </Pressable>
-          );
-        })}
+            return (
+              <Pressable
+                key={route.key}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: focused }}
+                aria-selected={focused}
+                accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
+                testID={options.tabBarButtonTestID ?? `tab-${route.name}`}
+                onPress={onPress}
+                onLongPress={onLongPress}
+                onLayout={(event) => onTabLayout(route.key, event)}
+                style={({ pressed }) => [styles.tab, { borderRadius: radius.pill, opacity: pressed ? 0.72 : 1 }]}
+              >
+                {options.tabBarIcon?.({ focused, color, size: ICON_SIZE })}
+                {options.tabBarShowLabel === false ? null : (
+                  <Text variant="caption" color={color} numberOfLines={1}>
+                    {label}
+                  </Text>
+                )}
+              </Pressable>
+            );
+          })}
         </View>
       </View>
     </View>

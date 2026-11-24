@@ -56,7 +56,10 @@ export function templateAllowedForTier(id: ReportTemplateId, isPro: boolean): Re
   return DEFAULT_REPORT_TEMPLATE;
 }
 
-/** Layouts saved before the six-page set. Mapped so existing jobs still open a current design. */
+/**
+ * Layouts saved before the current set. Remaps metadata for new generates only —
+ * previously saved PDF/HTML files are opened as-is and are never rewritten.
+ */
 const LEGACY_REPORT_TEMPLATES: Record<string, ReportTemplateId> = {
   classic: 'modern',
   compact: 'cards',

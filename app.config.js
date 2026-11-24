@@ -36,7 +36,7 @@ const brand = loadBrandColors();
 /** @param {{ config: import('expo/config').ExpoConfig }} ctx */
 module.exports = ({ config }) => ({
   ...config,
-  name: config.name ?? 'Trade Report',
+  name: config.name ?? 'TradeReport',
   slug: config.slug ?? 'tradesreport',
   extra: {
     ...(config.extra ?? {}),

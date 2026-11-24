@@ -7,7 +7,9 @@ import {
   FlatList,
   KeyboardAvoidingView,
   type LayoutChangeEvent,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
@@ -307,8 +309,17 @@ export default function PhotoDetailScreen() {
         style={{ flex: 1 }}
       />
 
-      <KeyboardAvoidingView behavior="padding">
-        <View style={[styles.footer, { padding: spacing.lg, backgroundColor: '#101310' }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.footerShell}
+      >
+        <ScrollView
+          style={styles.footerScroll}
+          contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.lg + 8 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
           {listCallouts(currentPhoto.annotations).length > 0 ? (
             <View style={{ gap: spacing.sm, marginBottom: spacing.sm }}>
               {listCallouts(currentPhoto.annotations).map((item) => (
@@ -363,18 +374,21 @@ export default function PhotoDetailScreen() {
             }}
           >
             <ToggleRow
+              onDark
               label={t('stamp.dateTime')}
               description={t('stamp.dateTimeHint')}
               value={stampPrefs.stampDateTime}
               onValueChange={(value) => void updateStampPref({ stampDateTime: value })}
             />
             <ToggleRow
+              onDark
               label={t('stamp.address')}
               description={isPro ? t('stamp.addressHint') : t('stamp.addressProHint')}
               value={isPro && stampPrefs.stampAddress}
               onValueChange={(value) => void updateStampPref({ stampAddress: value })}
             />
             <ToggleRow
+              onDark
               label={t('stamp.showOnPdf')}
               description={t('stamp.showOnPdfHint')}
               value={stampPrefs.stampShowOnPdf}
@@ -443,7 +457,7 @@ export default function PhotoDetailScreen() {
               <FooterAction icon="albums-outline" label={t('photoDetail.moveToSection')} onPress={() => setMoveOpen(true)} />
             </View>
           ) : null}
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
 
       <ConfirmationDialog
@@ -548,7 +562,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     height: 52,
   },
-  footer: {},
+  footerShell: {
+    maxHeight: '58%',
+    backgroundColor: '#101310',
+  },
+  footerScroll: {
+    backgroundColor: '#101310',
+  },
   actionsRow: {
     flexDirection: 'row',
   },

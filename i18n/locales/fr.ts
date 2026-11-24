@@ -1,9 +1,10 @@
 import enUS, { type TranslationTree } from './en-US';
+import { deepMerge, type DeepPartial } from './deepMerge';
 
 /**
  * French (France) catalog for Trade Report.
  */
-const fr = {
+const fr = deepMerge(enUS, {
   common: {
     close: 'Fermer',
     cancel: 'Annuler',
@@ -28,7 +29,7 @@ const fr = {
     proBadge: 'PRO',
     free: 'Gratuit',
     enabled: 'ACTIVÉ',
-    brandName: 'Trade Report',
+    brandName: 'TradeReport',
     brandTrade: 'Trade',
     brandReport: 'Report',
     photo: 'photo',
@@ -1103,7 +1104,7 @@ const fr = {
     profileUpgradeLogo: 'Passez à Pro pour ajouter un logo',
     profileCta: 'Créer mon premier chantier →',
     profileSkip: 'Passer pour l’instant',
-    brandMarkA11y: 'Trade Report',
+    brandMarkA11y: 'TradeReport',
     stepDotsA11y: 'Étape %{step} sur %{total}',
     heroNext: 'Suivant',
     welcomeTagline: 'Preuve de travaux en quelques minutes',
@@ -1127,8 +1128,8 @@ const fr = {
     proofTradespersonName: 'Tom Rivers',
   },
   splash: {
-    accessibilityLabel: 'Trade Report. Des rapports de chantier professionnels en quelques minutes.',
-    wordmarkTrade: 'Trades',
+    accessibilityLabel: 'TradeReport. Des rapports de chantier professionnels en quelques minutes.',
+    wordmarkTrade: 'Trade',
     wordmarkReport: 'Report',
     tagline: 'Des rapports de chantier professionnels en quelques minutes',
   },
@@ -1385,6 +1386,6 @@ const fr = {
     system: 'Utiliser la langue de l’appareil',
     description: 'Choisissez la langue des menus, boutons et messages dans Trade Report.',
   },
-} satisfies TranslationTree;
+} as DeepPartial<TranslationTree>);
 
 export default fr;

@@ -209,12 +209,17 @@ function listItems(value: string | null): string[] | null {
   return [trimmed];
 }
 
-function proseSection(title: string, body: string | null, className: string): string {
-  if (!isNonEmpty(body)) return '';
-  return `<section class="block ${className}"><h2 class="block-title">${escapeHtml(title)}</h2><div class="prose">${nl2p(body)}</div></section>`;
+function editTextAttrs(field: string): string {
+  return `data-preview-edit="text" data-edit-field="${escapeHtml(field)}"`;
 }
 
-function listSection(title: string, body: string | null, className: string): string {
+function proseSection(title: string, body: string | null, className: string, field?: string): string {
+  if (!isNonEmpty(body)) return '';
+  const edit = field ? ` ${editTextAttrs(field)}` : '';
+  return `<section class="block ${className}"${edit}><h2 class="block-title">${escapeHtml(title)}</h2><div class="prose">${nl2p(body)}</div></section>`;
+}
+
+function listSection(title: string, body: string | null, className: string, field?: string): string {
   const items = listItems(body);
   if (!items) return '';
   const only = items[0];
@@ -222,7 +227,8 @@ function listSection(title: string, body: string | null, className: string): str
     items.length === 1 && only
       ? `<div class="prose"><p>${escapeHtml(only)}</p></div>`
       : `<ul class="bullets">${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
-  return `<section class="block ${className}"><h2 class="block-title">${escapeHtml(title)}</h2>${inner}</section>`;
+  const edit = field ? ` ${editTextAttrs(field)}` : '';
+  return `<section class="block ${className}"${edit}><h2 class="block-title">${escapeHtml(title)}</h2>${inner}</section>`;
 }
 
 function documentTypeOf(input: ReportHtmlInput): DocumentType {
@@ -351,7 +357,7 @@ function reviewCardBlock(input: ReportHtmlInput): string {
 function extraOverview(input: ReportHtmlInput): string {
   if (!isNonEmpty(input.workCompleted) || !isNonEmpty(input.job.description)) return '';
   if (input.job.description.trim() === input.workCompleted.trim()) return '';
-  return proseSection('Overview', input.job.description, 'section-overview');
+  return proseSection('Overview', input.job.description, 'section-overview', 'description');
 }
 
 function cardRow(sections: string[]): string {
@@ -452,7 +458,7 @@ function shotFigure(photo: ReportPhotoData, label: PhotoStageLabel, showTag: boo
       ${showTag ? `<span class="photo-tag">${label}</span>` : ''}
     </div>
     ${annotationCardsMarkup(photo)}
-    ${caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : ''}
+    ${caption ? `<figcaption>${rich(caption)}</figcaption>` : ''}
   </figure>`;
 }
 
@@ -707,8 +713,10 @@ function coverLockup(input: ReportHtmlInput, theme: Theme): string {
 
 function coverFacts(input: ReportHtmlInput): string {
   return [
-    factRow('Project', escapeHtml(input.job.title)),
-    isNonEmpty(input.job.address) ? factRow('Project address', rich(input.job.address)) : '',
+    factRow('Project', `<span ${editTextAttrs('title')}>${escapeHtml(input.job.title)}</span>`),
+    isNonEmpty(input.job.address)
+      ? factRow('Project address', `<span ${editTextAttrs('address')}>${rich(input.job.address)}</span>`)
+      : '',
     factRow('Report date', formatDate(input.job.jobDate)),
     factRow('Prepared by', escapeHtml(preparedBy(input))),
   ]
@@ -730,8 +738,8 @@ function coverPhotoTag(input: ReportHtmlInput, className = 'cover-photo'): strin
 }
 
 function coverSection(design: CoverDesignId, body: string): string {
-  // Preview: tap anywhere on the front cover to change the cover image.
-  return `<section class="sheet-cover" data-cover="${design}" data-preview-edit="cover">${body}</section>`;
+  // Cover image taps live on the photo frame; text taps open the text tray.
+  return `<section class="sheet-cover" data-cover="${design}">${body}</section>`;
 }
 
 function renderEditorialCover(input: ReportHtmlInput, theme: Theme): string {
@@ -743,7 +751,7 @@ function renderEditorialCover(input: ReportHtmlInput, theme: Theme): string {
     <h1 class="cover-title">Trade report</h1>
     <div class="cover-rule"></div>
     <dl class="cover-meta">${coverFacts(input)}</dl>
-    <div class="cover-hero"${clip}>${coverPhotoTag(input)}</div>
+    <div class="cover-hero" data-preview-edit="cover"${clip}>${coverPhotoTag(input)}</div>
     ${coverBadgeList(input)}
   `
   );
@@ -780,7 +788,7 @@ function renderSplitCover(input: ReportHtmlInput, theme: Theme): string {
       <dl class="cover-meta">${coverFacts(input)}</dl>
       ${coverBadgeList(input, 'cover-badges split-badges')}
     </div>
-    <div class="split-photo"${clip}>${coverPhotoTag(input)}</div>
+    <div class="split-photo" data-preview-edit="cover"${clip}>${coverPhotoTag(input)}</div>
   `
   );
 }
@@ -795,7 +803,7 @@ function renderPosterCover(input: ReportHtmlInput, theme: Theme): string {
       <h1 class="poster-title">Trade<br />report</h1>
       <div class="cover-rule"></div>
     </div>
-    <div class="poster-photo"${clip}>${coverPhotoTag(input)}</div>
+    <div class="poster-photo" data-preview-edit="cover"${clip}>${coverPhotoTag(input)}</div>
     <dl class="cover-meta poster-meta">${coverFacts(input)}</dl>
     ${coverBadgeList(input)}
   `
@@ -881,7 +889,7 @@ function tradeShot(photo: ReportPhotoData, label: PhotoStageLabel): string {
   return `<figure class="trade-shot ${section}" data-preview-edit="photo" data-photo-id="${escapeHtml(photo.id)}">
     <div class="trade-frame">
       ${photoImage(photo, caption)}
-      <figcaption class="trade-bar">${escapeHtml(caption)}</figcaption>
+      <figcaption class="trade-bar">${rich(caption)}</figcaption>
     </div>
   </figure>`;
 }
@@ -979,8 +987,8 @@ function renderTrade(input: ReportHtmlInput, theme: Theme): string {
   }
 
   const details = [
-    listSection('Materials used', input.materials, 'section-materials'),
-    proseSection('Notes', input.recommendations, 'section-labour'),
+    listSection('Materials used', input.materials, 'section-materials', 'materials'),
+    proseSection('Notes', input.recommendations, 'section-labour', 'recommendations'),
     pricingSection(input),
   ].join('');
   if (details.trim()) parts.push(tradeSection(number++, 'Details and materials', details));
@@ -1000,12 +1008,12 @@ function renderTrade(input: ReportHtmlInput, theme: Theme): string {
 function renderModern(input: ReportHtmlInput, theme: Theme): string {
   const ref = refLine(input);
   const photos = photosMarkup(input, (pair) => compareBlock(pair, { tags: true, layout: input.photoAnnotationLayout }));
-  const overview = proseSection('Overview', input.job.description, 'section-overview');
-  const work = proseSection('Work summary', input.workCompleted, 'section-work');
+  const overview = proseSection('Overview', input.job.description, 'section-overview', 'description');
+  const work = proseSection('Work summary', input.workCompleted, 'section-work', 'work');
   const checklist = jobChecklistSection(input);
   const notes = cardRow([
-    listSection('Materials used', input.materials, 'section-materials'),
-    proseSection('Labour details', input.recommendations, 'section-labour'),
+    listSection('Materials used', input.materials, 'section-materials', 'materials'),
+    proseSection('Labour details', input.recommendations, 'section-labour', 'recommendations'),
   ]);
   const ordered = joinOrderedSections(input, {
     photos,
@@ -1069,9 +1077,10 @@ function renderImage(input: ReportHtmlInput, theme: Theme): string {
   const overview = proseSection(
     'Project overview',
     overviewSource,
-    overviewIsWork ? 'section-overview section-work' : 'section-overview'
+    overviewIsWork ? 'section-overview section-work' : 'section-overview',
+    overviewIsWork ? 'work' : 'description'
   );
-  const work = overviewIsWork ? '' : proseSection('Work summary', input.workCompleted, 'section-work');
+  const work = overviewIsWork ? '' : proseSection('Work summary', input.workCompleted, 'section-work', 'work');
   const photos = photosMarkup(input, (pair) => compareBlock(pair, { tags: true, large: true, layout: input.photoAnnotationLayout }));
   const cover = input.coverDataUri
     ? `<img class="hero-photo" src="${input.coverDataUri}" alt="" data-preview-edit="cover" /><div class="hero-shade"></div>`
@@ -1099,8 +1108,8 @@ function renderImage(input: ReportHtmlInput, theme: Theme): string {
     ${photos}
     ${work}
     ${cardRow([
-      listSection('Materials used', input.materials, 'section-materials'),
-      proseSection('Labour details', input.recommendations, 'section-labour'),
+      listSection('Materials used', input.materials, 'section-materials', 'materials'),
+      proseSection('Labour details', input.recommendations, 'section-labour', 'recommendations'),
     ])}
     ${pricingSection(input)}
     ${signatureBlock(input, 'block')}
@@ -1113,23 +1122,23 @@ function renderSide(input: ReportHtmlInput, theme: Theme): string {
   const photos = photosMarkup(input, (pair) => compareBlock(pair, { tags: true, layout: input.photoAnnotationLayout }));
   const sections: string[] = [];
   const workBody = input.workCompleted || input.job.description;
-  const work = proseSection('Work summary', workBody, input.workCompleted ? 'section-work' : 'section-work section-overview');
+  const work = proseSection('Work summary', workBody, input.workCompleted ? 'section-work' : 'section-work section-overview', input.workCompleted ? 'work' : 'description');
   if (work) sections.push(work);
   if (photos) {
     sections.push(
       `<section class="block section-photos"><h2 class="block-title">Before &amp; after photos</h2>${photos}</section>`
     );
   }
-  const materials = listSection('Materials used', input.materials, 'section-materials');
+  const materials = listSection('Materials used', input.materials, 'section-materials', 'materials');
   if (materials) sections.push(materials);
   const pricing = pricingSection(input);
   if (pricing) sections.push(pricing);
   const signature = signatureBlock(input, 'block');
   if (signature) sections.push(signature);
-  const labour = proseSection('Labour details', input.recommendations, 'section-labour');
+  const labour = proseSection('Labour details', input.recommendations, 'section-labour', 'recommendations');
   if (labour) sections.push(labour);
   if (isNonEmpty(input.job.description) && isNonEmpty(input.workCompleted) && input.job.description.trim() !== input.workCompleted.trim()) {
-    sections.splice(1, 0, proseSection('Overview', input.job.description, 'section-overview'));
+    sections.splice(1, 0, proseSection('Overview', input.job.description, 'section-overview', 'description'));
   }
 
   const numbered = sections
@@ -1210,9 +1219,9 @@ function renderCards(input: ReportHtmlInput, theme: Theme): string {
       photos: photosMarkup(input, (pair) => compareBlock(pair, { tags: true, layout: input.photoAnnotationLayout })),
       checklist: jobChecklistSection(input),
       costs: `${cardRow([
-        proseSection('Work completed', input.workCompleted || input.job.description, 'section-work'),
-        listSection('Materials used', input.materials, 'section-materials'),
-      ])}${cardRow([proseSection('Labour details', input.recommendations, 'section-labour')])}${pricingSection(input)}`,
+        proseSection('Work completed', input.workCompleted || input.job.description, 'section-work', input.workCompleted ? 'work' : 'description'),
+        listSection('Materials used', input.materials, 'section-materials', 'materials'),
+      ])}${cardRow([proseSection('Labour details', input.recommendations, 'section-labour', 'recommendations')])}${pricingSection(input)}`,
       signature: signatureBlock(input, 'block'),
       review: reviewCardBlock(input),
     })}
@@ -1225,11 +1234,11 @@ function renderMinimal(input: ReportHtmlInput, theme: Theme): string {
   const stamp = [ref, formatDate(input.job.jobDate)].filter(Boolean).join(' · ');
   const contacts = contactLines(input).map(escapeHtml).join(' · ');
   const ordered = joinOrderedSections(input, {
-    photos: `${photosMarkup(input, labeledCompare)}${extraOverview(input)}${proseSection('Work summary', input.workCompleted || input.job.description, 'section-work')}`,
+    photos: `${photosMarkup(input, labeledCompare)}${extraOverview(input)}${proseSection('Work summary', input.workCompleted || input.job.description, 'section-work', input.workCompleted ? 'work' : 'description')}`,
     checklist: jobChecklistSection(input),
     costs: `${cardRow([
-      listSection('Materials used', input.materials, 'section-materials'),
-      proseSection('Labour details', input.recommendations, 'section-labour'),
+      listSection('Materials used', input.materials, 'section-materials', 'materials'),
+      proseSection('Labour details', input.recommendations, 'section-labour', 'recommendations'),
     ])}${pricingSection(input)}`,
     signature: signatureBlock(input, 'inline'),
     review: reviewCardBlock(input),
@@ -1276,12 +1285,12 @@ function renderDark(input: ReportHtmlInput, theme: Theme): string {
   const ref = refLine(input);
   const columns = [
     `<div class="trio-col section-customer"><h2 class="block-title">Customer</h2>${customerBlock(input) || '<p class="addr">—</p>'}</div>`,
-    asColumn(proseSection('Work summary', input.workCompleted || input.job.description, 'section-work')),
-    asColumn(listSection('Materials used', input.materials, 'section-materials')),
+    asColumn(proseSection('Work summary', input.workCompleted || input.job.description, 'section-work', input.workCompleted ? 'work' : 'description')),
+    asColumn(listSection('Materials used', input.materials, 'section-materials', 'materials')),
   ].filter((column) => column.trim().length > 0);
 
-  const materialsMissing = !listSection('Materials used', input.materials, 'section-materials');
-  const labour = proseSection('Labour details', input.recommendations, 'section-labour');
+  const materialsMissing = !listSection('Materials used', input.materials, 'section-materials', 'materials');
+  const labour = proseSection('Labour details', input.recommendations, 'section-labour', 'recommendations');
   if (materialsMissing && labour) columns.push(asColumn(labour));
 
   return `
@@ -1661,7 +1670,7 @@ function stylesheet(theme: Theme): string {
   .filmstrip .marked-photo-blur { border-radius: 12mm; }
   .filmstrip .photo-tag { font-size: 6.4pt; left: 1.3mm; top: 1.3mm; padding: 0.5mm 1.5mm; }
   .filmstrip .shot figcaption {
-    font-size: 7pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 7pt; overflow: hidden;
   }
   .section-pricing { break-inside: auto; page-break-inside: auto; }
   .price-table tr { break-inside: avoid; page-break-inside: avoid; }
@@ -2228,12 +2237,33 @@ img[data-preview-edit="cover"],
 .annotation-cards[data-preview-edit="annotate"]:active {
   outline: 1.2px solid rgba(31, 168, 74, 0.9);
 }
-.sheet-cover[data-preview-edit="cover"]:active,
+[data-preview-edit="cover"]:active,
 .hero[data-preview-edit="cover"]:active {
   outline: 1.6px solid rgba(31, 168, 74, 0.85);
   outline-offset: -1.6px;
 }
-.photo-with-marks, .bleed-shade, .hero-shade { pointer-events: none !important; }
+.photo-with-marks, .bleed-shade, .hero-shade, .prem-photo-marks { pointer-events: none !important; }
+.preview-only-edit { display: block !important; opacity: 0.72; font-style: italic; }
+[data-preview-edit="text"] {
+  outline: 1px dashed rgba(31, 168, 74, 0.35);
+  outline-offset: 2px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+[data-preview-edit="text"]:active {
+  outline: 1.4px solid rgba(31, 168, 74, 0.95);
+}
+[data-preview-edit="cover"],
+[data-preview-edit="photo"],
+.prem-shot[data-preview-edit="photo"] .prem-shot-frame,
+.prem-num-frame {
+  cursor: pointer;
+}
+[data-preview-edit="cover"]:active,
+.prem-shot[data-preview-edit="photo"]:active .prem-shot-frame {
+  outline: 1.6px solid rgba(31, 168, 74, 0.85);
+  outline-offset: -1.6px;
+}
 `.trim();
 
 /** Preview taps post a message to the native app so photos and cover can be edited. */
@@ -2264,7 +2294,8 @@ const PREVIEW_EDIT_SCRIPT = `(function(){
     send({
       type: 'preview-edit',
       action: action,
-      photoId: el.getAttribute('data-photo-id') || ''
+      photoId: el.getAttribute('data-photo-id') || '',
+      field: el.getAttribute('data-edit-field') || ''
     });
   }, true);
 })();`;
@@ -2272,7 +2303,7 @@ const PREVIEW_EDIT_SCRIPT = `(function(){
 /** Splits overflowing A4 frames into extra pages, then scales the stack to the viewport width. */
 const PREVIEW_SCREEN_SCRIPT = `(function(){
   var PAGE_SELECTOR = 'body[data-template="trade"] .trade-page, body:not([data-template="trade"]) .sheet-body';
-  var ATOM = '.pair-row, .shot-row, .film-row, .trade-shot, .signoff, .meta-card, .info-card, .stat, .hero, .text-card, .sign-inline, .top, .title-row, .split, .dark-head, .card-row, .info-cards, .stats, .trade-mast, .trade-foot, .min-foot, .doc-footer, .trio, .rail';
+  var ATOM = '.pair-row, .shot-row, .film-row, .trade-shot, .prem-pair, .prem-shot, .prem-photos, .prem-num-photos, .prem-gallery-3, .signoff, .meta-card, .info-card, .stat, .hero, .text-card, .sign-inline, .top, .title-row, .split, .dark-head, .card-row, .info-cards, .stats, .trade-mast, .trade-foot, .min-foot, .doc-footer, .trio, .rail, .prem-care, .prem-work, .prem-specs';
   function overflows(page){
     return page.scrollHeight > page.clientHeight + 1;
   }

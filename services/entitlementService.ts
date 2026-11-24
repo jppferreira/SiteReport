@@ -63,6 +63,11 @@ export async function getEntitlement(): Promise<Entitlement> {
   return readCache();
 }
 
+/** Sync snapshot of the in-memory entitlement, if refresh/get already ran this session. */
+export function getCachedEntitlementSync(): Entitlement | null {
+  return cached;
+}
+
 export async function hasProAccess(): Promise<boolean> {
   const entitlement = await readCache();
   return entitlement.status === 'pro';
@@ -98,12 +103,27 @@ export async function getProducts(): Promise<ProductInfo[]> {
   }
 }
 
+function optimisticPro(planId: PlanId): Entitlement {
+  return {
+    status: 'pro',
+    planId,
+    subscriptionState: 'active',
+    expiresAt: null,
+    isLifetime: planId === 'lifetime',
+    lastVerifiedAt: new Date().toISOString(),
+  };
+}
+
 export async function purchase(planId: PlanId): Promise<PurchaseResult> {
   const store = getPurchaseService();
   const result = await store.purchase(planId);
   if (result.outcome === 'success') {
     const fresh = await store.getEntitlement();
-    await writeCache(fresh);
+    // StoreKit/Play can lag right after purchase — never wipe a successful buy to free.
+    await writeCache(fresh.status === 'pro' ? fresh : optimisticPro(result.planId));
+    if (fresh.status !== 'pro') {
+      void refreshEntitlement().catch(() => undefined);
+    }
   }
   return result;
 }
@@ -113,7 +133,7 @@ export async function restorePurchases(): Promise<RestoreResult> {
   const result = await store.restorePurchases();
   if (result.outcome === 'restored') {
     const fresh = await store.getEntitlement();
-    await writeCache(fresh);
+    await writeCache(fresh.status === 'pro' ? fresh : optimisticPro(result.planId));
   }
   return result;
 }

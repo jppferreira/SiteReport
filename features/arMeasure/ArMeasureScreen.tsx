@@ -9,6 +9,7 @@ import { useI18n } from '@/i18n/useI18n';
 import { getArCapabilities } from './arCapabilities';
 import type { ArMeasureSessionProps } from './ArMeasureSession';
 import { ManualMeasureView } from './ManualMeasureView';
+import { MeasureDemoView } from './MeasureDemoView';
 
 type ArMeasureScreenProps = {
   jobId: string;
@@ -16,6 +17,8 @@ type ArMeasureScreenProps = {
   onClose: () => void;
   onSaved: () => void;
   initialMode?: Exclude<ArToolMode, 'photo'>;
+  /** Store / simulator: still door photo with live-looking tape overlays. */
+  demo?: boolean;
 };
 
 type SessionComponent = React.ComponentType<ArMeasureSessionProps>;
@@ -31,18 +34,19 @@ export function ArMeasureScreen({
   onClose,
   onSaved,
   initialMode = 'measure',
+  demo = false,
 }: ArMeasureScreenProps) {
   const { t } = useI18n();
   const caps = useMemo(() => getArCapabilities(), []);
   const [mode, setMode] = useState<ArToolMode>(initialMode);
-  const [manual, setManual] = useState(!caps.arSupported);
+  const [manual, setManual] = useState(!demo && !caps.arSupported);
   const [Session, setSession] = useState<SessionComponent | null>(null);
   const [loadError, setLoadError] = useState(false);
   const unsavedRef = useRef(false);
   const [saveRequest, setSaveRequest] = useState(0);
 
   useEffect(() => {
-    if (!caps.arSupported) return;
+    if (demo || !caps.arSupported) return;
     let cancelled = false;
     // Lazy-load so Expo Go / unlinked builds never evaluate @stewmore/expo-ar.
     import('./ArMeasureSession')
@@ -58,7 +62,7 @@ export function ArMeasureScreen({
     return () => {
       cancelled = true;
     };
-  }, [caps.arSupported]);
+  }, [caps.arSupported, demo]);
 
   const openPhotos = useCallback(() => {
     const href = areaId ? `/job/${jobId}/photos/${areaId}` : `/job/${jobId}/photos`;
@@ -108,7 +112,13 @@ export function ArMeasureScreen({
 
   return (
     <View style={styles.fill}>
-      {arAvailable && Session ? (
+      {demo && mode === 'measure' ? (
+        <View style={StyleSheet.absoluteFill}>
+          <MeasureDemoView onClose={handleClose} onChangeMode={handleChangeMode} />
+        </View>
+      ) : null}
+
+      {!demo && arAvailable && Session ? (
         <View
           style={[StyleSheet.absoluteFill, (mode !== 'measure' || manual) && styles.hidden]}
           pointerEvents={mode === 'measure' && !manual ? 'auto' : 'none'}
@@ -128,7 +138,7 @@ export function ArMeasureScreen({
         </View>
       ) : null}
 
-      {mode === 'measure' && manual ? (
+      {!demo && mode === 'measure' && manual ? (
         <View style={StyleSheet.absoluteFill}>
           <ManualMeasureView
             jobId={jobId}
@@ -142,7 +152,7 @@ export function ArMeasureScreen({
         </View>
       ) : null}
 
-      {mode === 'measure' && !manual && !Session ? (
+      {!demo && mode === 'measure' && !manual && !Session ? (
         <View style={[StyleSheet.absoluteFill, styles.loading]}>
           <ArTopBar
             mode="measure"

@@ -21,6 +21,7 @@ import {
   checklistAllPassed,
   coverPhotoUri,
   descriptionExcerpt,
+  editTextAttrs,
   escapeHtml,
   isNonEmpty,
   listItems,
@@ -56,14 +57,23 @@ function coverPhoto(input: ReportHtmlInput, className = 'prem-cover-photo'): str
   return `<img class="${className}" src="${coverPhotoUri(input)}" alt="" data-preview-edit="cover" />`;
 }
 
+function jobTitle(input: ReportHtmlInput, className: string, tag: 'h1' | 'h2' = 'h1'): string {
+  return `<${tag} class="${className}" ${editTextAttrs('title')}>${escapeHtml(input.job.title)}</${tag}>`;
+}
+
+function jobAddress(input: ReportHtmlInput, className: string, prefix = ''): string {
+  if (!isNonEmpty(input.job.address)) return '';
+  return `<p class="${className}" ${editTextAttrs('address')}>${prefix}${rich(input.job.address)}</p>`;
+}
+
 function thermalSpineMeta(input: ReportHtmlInput): string {
   const rows = [
     isNonEmpty(input.job.customerName)
-      ? `<div class="therm-meta-row"><span class="therm-meta-k">Client</span><span class="therm-meta-v">${escapeHtml(input.job.customerName.trim())}</span></div>`
-      : '',
+      ? `<div class="therm-meta-row" ${editTextAttrs('customer')}><span class="therm-meta-k">Client</span><span class="therm-meta-v">${escapeHtml(input.job.customerName.trim())}</span></div>`
+      : `<div class="therm-meta-row preview-only-edit" ${editTextAttrs('customer')}><span class="therm-meta-k">Client</span><span class="therm-meta-v">Tap to add</span></div>`,
     isNonEmpty(input.job.address)
-      ? `<div class="therm-meta-row"><span class="therm-meta-k">Property</span><span class="therm-meta-v">${rich(input.job.address)}</span></div>`
-      : '',
+      ? `<div class="therm-meta-row" ${editTextAttrs('address')}><span class="therm-meta-k">Property</span><span class="therm-meta-v">${rich(input.job.address)}</span></div>`
+      : `<div class="therm-meta-row preview-only-edit" ${editTextAttrs('address')}><span class="therm-meta-k">Property</span><span class="therm-meta-v">Tap to add</span></div>`,
     `<div class="therm-meta-row"><span class="therm-meta-k">Service date</span><span class="therm-meta-v">${formatDate(input.job.jobDate)}</span></div>`,
     `<div class="therm-meta-row"><span class="therm-meta-k">Engineer</span><span class="therm-meta-v">${escapeHtml(preparedBy(input))}</span></div>`,
   ].filter(Boolean);
@@ -77,7 +87,7 @@ function renderThermal(input: ReportHtmlInput, theme: PremiumTheme): string {
   const verified =
     checklistAllPassed(input) ? `<span class="therm-verified">${SVG_SHIELD} Verified</span>` : '';
 
-  const cover = `<section class="sheet-cover premium-cover template-thermal-cover" data-preview-edit="cover">
+  const cover = `<section class="sheet-cover premium-cover template-thermal-cover">
     <div class="therm-spine">
       <div class="therm-spine-grid" aria-hidden="true"></div>
       <div class="therm-spine-inner">
@@ -97,10 +107,10 @@ function renderThermal(input: ReportHtmlInput, theme: PremiumTheme): string {
       </div>
       <h1 class="therm-doc-title">${escapeHtml(premCoverDocTitle(input))}</h1>
       <p class="therm-accent-bar"></p>
-      <h2 class="therm-job-title">${escapeHtml(input.job.title)}</h2>
-      ${excerpt ? `<p class="therm-excerpt">${escapeHtml(excerpt)}</p>` : ''}
+      ${jobTitle(input, 'therm-job-title', 'h2')}
+      ${excerpt ? `<p class="therm-excerpt" ${editTextAttrs('description')}>${escapeHtml(excerpt)}</p>` : `<p class="therm-excerpt preview-only-edit" ${editTextAttrs('description')}>Tap to add description</p>`}
       ${verified}
-      <div class="therm-hero">
+      <div class="therm-hero" data-preview-edit="cover">
         <p class="therm-hero-bar"></p>
         ${coverPhoto(input)}
       </div>
@@ -145,20 +155,16 @@ function circuitMeta(input: ReportHtmlInput): string {
 
 function renderCircuit(input: ReportHtmlInput, theme: PremiumTheme): string {
   const ref = refLine(input);
-  const cover = `<section class="sheet-cover premium-cover template-circuit-cover" data-preview-edit="cover">
+  const cover = `<section class="sheet-cover premium-cover template-circuit-cover">
     <div class="prem-grid-bg" aria-hidden="true"></div>
     <div class="circ-cover-head">
       ${premLogo(input, theme)}
       <p class="circ-biz">${escapeHtml(input.business.name)}</p>
     </div>
-    <h1 class="circ-title">${escapeHtml(input.job.title)}</h1>
-    ${
-      isNonEmpty(input.job.address)
-        ? `<p class="circ-addr"><span class="circ-addr-icon">${SVG_PIN}</span>${rich(input.job.address)}</p>`
-        : ''
-    }
+    ${jobTitle(input, 'circ-title')}
+    ${jobAddress(input, 'circ-addr', `<span class="circ-addr-icon">${SVG_PIN}</span>`)}
     <div class="circ-meta-card">${circuitMeta(input)}</div>
-    <div class="circ-hero-wrap">
+    <div class="circ-hero-wrap" data-preview-edit="cover">
       <div class="circ-amber-bar"></div>
       ${coverPhoto(input, 'circ-hero-photo')}
     </div>
@@ -206,15 +212,15 @@ function renderStudio(input: ReportHtmlInput, theme: PremiumTheme): string {
   const ref = refLine(input);
   const hero = input.after[0] ?? input.before[0];
   const caption = hero?.caption?.trim() || input.job.title;
-  const cover = `<section class="sheet-cover premium-cover template-studio-cover" data-preview-edit="cover">
+  const cover = `<section class="sheet-cover premium-cover template-studio-cover">
     <header class="stu-cover-head">
       <span class="stu-biz">${escapeHtml(input.business.name)}</span>
       <span class="stu-tag">${escapeHtml(businessTagline(input, 'Fine kitchens &amp; joinery'))}</span>
     </header>
-    <div class="stu-hero">${coverPhoto(input)}</div>
+    <div class="stu-hero" data-preview-edit="cover">${coverPhoto(input)}</div>
     <p class="stu-caption"><em>${escapeHtml(caption)}</em></p>
     <p class="stu-handover">HANDOVER REPORT${ref ? ` · ${escapeHtml(ref)}` : ''}</p>
-    <h1 class="stu-title">${escapeHtml(input.job.title)}</h1>
+    ${jobTitle(input, 'stu-title')}
     <p class="stu-hairline"></p>
     <div class="stu-linen-band">${studioLinenMeta(input)}</div>
     <footer class="stu-cover-foot">
@@ -244,14 +250,14 @@ function renderStudio(input: ReportHtmlInput, theme: PremiumTheme): string {
 
 function renderField(input: ReportHtmlInput, theme: PremiumTheme): string {
   const ref = refLine(input);
-  const cover = `<section class="sheet-cover premium-cover template-field-cover" data-preview-edit="cover">
+  const cover = `<section class="sheet-cover premium-cover template-field-cover">
     <div class="fld-slate-band" aria-hidden="true"></div>
     <header class="fld-cover-head">
       ${premLogo(input, theme)}
       <span class="fld-biz">${escapeHtml(input.business.name)}</span>
     </header>
     <span class="fld-proof-badge">EXTERIOR PROOF OF WORK</span>
-    <h1 class="fld-title">${escapeHtml(input.job.title)}</h1>
+    ${jobTitle(input, 'fld-title')}
     <p class="fld-strip">
       <span class="fld-strip-item">${SVG_CAL} ${escapeHtml(formatDate(input.job.jobDate))}</span>
       ${
@@ -260,7 +266,7 @@ function renderField(input: ReportHtmlInput, theme: PremiumTheme): string {
           : ''
       }
     </p>
-    <div class="fld-hero-wrap">
+    <div class="fld-hero-wrap" data-preview-edit="cover">
       ${coverPhoto(input, 'fld-hero')}
       ${
         isNonEmpty(input.job.address)
@@ -309,15 +315,15 @@ function renderField(input: ReportHtmlInput, theme: PremiumTheme): string {
 
 function renderAtelier(input: ReportHtmlInput, theme: PremiumTheme): string {
   const ref = refLine(input);
-  const cover = `<section class="sheet-cover premium-cover template-atelier-cover" data-preview-edit="cover">
+  const cover = `<section class="sheet-cover premium-cover template-atelier-cover">
     <div class="atl-page-border" aria-hidden="true"></div>
     <p class="atl-biz-center">${escapeHtml(input.business.name)}</p>
     <p class="atl-terracotta">${escapeHtml(businessTagline(input, 'Colour · finish · detail'))}</p>
     <span class="atl-diamond">${SVG_DIAMOND}</span>
     <div class="atl-framed-photo">
-      <div class="atl-frame-outer"><div class="atl-frame-inner">${coverPhoto(input)}</div></div>
+      <div class="atl-frame-outer"><div class="atl-frame-inner" data-preview-edit="cover">${coverPhoto(input)}</div></div>
     </div>
-    <h1 class="atl-title">${escapeHtml(input.job.title)}</h1>
+    ${jobTitle(input, 'atl-title')}
     <span class="atl-diamond atl-diamond-b">${SVG_DIAMOND}</span>
     ${premMetaCols([
       {
@@ -356,13 +362,13 @@ function renderBotanical(input: ReportHtmlInput, theme: PremiumTheme): string {
   const titleTail = titleParts.length > 1 ? (titleParts[titleParts.length - 1] ?? '') : '& Handover';
   const hero = input.after[0] ?? input.before[0];
   const caption = hero?.caption?.trim() || 'Transformation complete';
-  const cover = `<section class="sheet-cover premium-cover template-botanical-cover" data-preview-edit="cover">
+  const cover = `<section class="sheet-cover premium-cover template-botanical-cover">
     <header class="bot-cover-head">
       <span class="bot-emblem">${SVG_LEAF}</span>
       <span class="bot-biz">${escapeHtml(input.business.name)}</span>
     </header>
     <p class="bot-handover-num">Handover Nº ${ref ? escapeHtml(ref) : '—'}</p>
-    <h1 class="bot-title">${escapeHtml(titleMain)} <em class="bot-title-tail">${escapeHtml(titleTail)}</em></h1>
+    <h1 class="bot-title" ${editTextAttrs('title')}>${escapeHtml(titleMain)} <em class="bot-title-tail">${escapeHtml(titleTail)}</em></h1>
     <div class="bot-meta-bordered">
       ${premMetaCols([
         {
@@ -377,7 +383,7 @@ function renderBotanical(input: ReportHtmlInput, theme: PremiumTheme): string {
         { label: 'Lead', html: escapeHtml(preparedBy(input)) },
       ])}
     </div>
-    <div class="bot-hero-full">${coverPhoto(input)}</div>
+    <div class="bot-hero-full" data-preview-edit="cover">${coverPhoto(input)}</div>
     <div class="bot-moss-strip">
       <p class="bot-moss-caption"><em>${escapeHtml(caption)}</em></p>
       <span class="bot-pages">01 / 02</span>
@@ -551,16 +557,16 @@ function clearlineChecklist(input: ReportHtmlInput): string {
 
 function renderStone(input: ReportHtmlInput, theme: PremiumTheme): string {
   const ref = refLine(input);
-  const cover = `<section class="sheet-cover premium-cover template-stone-cover" data-preview-edit="cover">
+  const cover = `<section class="sheet-cover premium-cover template-stone-cover">
     <div class="sto-frame" aria-hidden="true"></div>
   <div class="sto-cover-inner">
     <div class="sto-logo-center">${premLogo(input, theme)}</div>
     <p class="sto-biz">${escapeHtml(input.business.name)}</p>
     <p class="sto-tag">${escapeHtml(businessTagline(input, 'Bathrooms · tiling · wet rooms'))}</p>
-    <div class="sto-hero">${coverPhoto(input)}</div>
+    <div class="sto-hero" data-preview-edit="cover">${coverPhoto(input)}</div>
     <p class="sto-handover">${ref ? `Handover ${escapeHtml(ref)} · ` : ''}<span class="sto-handover-doc">Installation record</span></p>
-    <h1 class="sto-title">${escapeHtml(input.job.title)}</h1>
-    ${isNonEmpty(input.job.address) ? `<p class="sto-addr">${rich(input.job.address)}</p>` : ''}
+    ${jobTitle(input, 'sto-title')}
+    ${jobAddress(input, 'sto-addr')}
     <div class="sto-meta-band">${stoneMeta(input)}</div>
     <footer class="sto-cover-foot">
       <span>${isNonEmpty(input.business.phone) ? escapeHtml(input.business.phone.trim()) : ''}${isNonEmpty(input.business.email) ? ` · ${escapeHtml(input.business.email.trim())}` : ''}</span>
@@ -590,7 +596,7 @@ function renderSolaris(input: ReportHtmlInput, theme: PremiumTheme): string {
   const ref = refLine(input);
   const inset = input.after[1] ?? input.before[1];
   const insetHtml = inset ? `<div class="sol-inset-card">${premShot(inset, 'Detail', true)}</div>` : '';
-  const cover = `<section class="sheet-cover premium-cover template-solaris-cover" data-preview-edit="cover">
+  const cover = `<section class="sheet-cover premium-cover template-solaris-cover">
     <header class="sol-cover-head">
       <span class="sol-emblem">${SVG_SUN}</span>
       ${premLogo(input, theme)}
@@ -600,10 +606,10 @@ function renderSolaris(input: ReportHtmlInput, theme: PremiumTheme): string {
       </div>
     </header>
     <span class="sol-report-pill">COMMISSIONING REPORT</span>
-    <h1 class="sol-title">${escapeHtml(input.job.title)}</h1>
-    ${isNonEmpty(input.job.address) ? `<p class="sol-addr">${SVG_PIN} ${rich(input.job.address)}</p>` : ''}
+    ${jobTitle(input, 'sol-title')}
+    ${jobAddress(input, 'sol-addr', `${SVG_PIN} `)}
     ${solarisKpiPills(input)}
-    <div class="sol-hero-wrap">
+    <div class="sol-hero-wrap" data-preview-edit="cover">
       ${coverPhoto(input, 'sol-hero-photo')}
       ${insetHtml}
     </div>
@@ -645,7 +651,7 @@ function renderSolaris(input: ReportHtmlInput, theme: PremiumTheme): string {
 
 function renderBlueprint(input: ReportHtmlInput, theme: PremiumTheme): string {
   const ref = refLine(input);
-  const cover = `<section class="sheet-cover premium-cover template-blueprint-cover" data-preview-edit="cover">
+  const cover = `<section class="sheet-cover premium-cover template-blueprint-cover">
     <div class="bpt-grid-bg" aria-hidden="true"></div>
     <div class="bpt-crop tl" aria-hidden="true"></div>
     <div class="bpt-crop tr" aria-hidden="true"></div>
@@ -654,11 +660,11 @@ function renderBlueprint(input: ReportHtmlInput, theme: PremiumTheme): string {
     <div class="bpt-cover-inner">
       <header class="bpt-cover-head">${premLogo(input, theme)}<span class="bpt-biz">${escapeHtml(input.business.name)}</span></header>
       <span class="bpt-phase-pill">PHASE · SITE CLOSE-OUT</span>
-      ${isNonEmpty(input.job.address) ? `<p class="bpt-addr">${rich(input.job.address)}</p>` : ''}
-      <h1 class="bpt-title">${escapeHtml(input.job.title)}</h1>
+      ${jobAddress(input, 'bpt-addr')}
+      ${jobTitle(input, 'bpt-title')}
       ${blueprintStageBar(input)}
       <div class="bpt-dimension" aria-hidden="true"><span class="bpt-dim-line"></span><span class="bpt-dim-tick"></span></div>
-      <div class="bpt-hero">${coverPhoto(input)}</div>
+      <div class="bpt-hero" data-preview-edit="cover">${coverPhoto(input)}</div>
       ${blueprintTitleBlock(input, ref)}
     </div>
   </section>`;
@@ -681,13 +687,13 @@ function renderBlueprint(input: ReportHtmlInput, theme: PremiumTheme): string {
 
 function renderClearline(input: ReportHtmlInput, theme: PremiumTheme): string {
   const ref = refLine(input);
-  const cover = `<section class="sheet-cover premium-cover template-clearline-cover" data-preview-edit="cover">
+  const cover = `<section class="sheet-cover premium-cover template-clearline-cover">
     <div class="clr-cover-split">
       <div class="clr-cover-copy">
         ${premLogo(input, theme)}
         <p class="clr-eyebrow">INSTALLATION RECORD</p>
-        <h1 class="clr-title">${escapeHtml(input.job.title)}</h1>
-        ${isNonEmpty(input.job.address) ? `<p class="clr-addr">${rich(input.job.address)}</p>` : ''}
+        ${jobTitle(input, 'clr-title')}
+        ${jobAddress(input, 'clr-addr')}
         <div class="clr-cover-meta">${premMetaCols([
           {
             label: 'Client',
@@ -700,7 +706,7 @@ function renderClearline(input: ReportHtmlInput, theme: PremiumTheme): string {
         <p class="clr-biz">${escapeHtml(input.business.name)}</p>
         <span class="prem-mono clr-pages">01 / 02</span>
       </div>
-      <div class="clr-cover-photo">${coverPhoto(input, 'clr-hero-photo')}</div>
+      <div class="clr-cover-photo" data-preview-edit="cover">${coverPhoto(input, 'clr-hero-photo')}</div>
     </div>
   </section>`;
 
@@ -872,7 +878,7 @@ function sentinelHandoverChecklist(input: ReportHtmlInput): string {
 function renderSentinel(input: ReportHtmlInput, theme: PremiumTheme): string {
   const ref = refLine(input);
   const armed = checklistAllPassed(input);
-  const cover = `<section class="sheet-cover premium-cover template-sentinel-cover" data-preview-edit="cover">
+  const cover = `<section class="sheet-cover premium-cover template-sentinel-cover">
     <header class="sen-cover-head">
       <span class="sen-aperture">${SVG_APERTURE}</span>
       <div class="sen-brand">
@@ -884,7 +890,7 @@ function renderSentinel(input: ReportHtmlInput, theme: PremiumTheme): string {
     <p class="sen-armed"><span class="sen-armed-dot"></span>${
       armed ? 'INSTALLATION COMPLETE · SYSTEM ARMED' : 'INSTALLATION IN PROGRESS'
     }</p>
-    <h1 class="sen-title">${escapeHtml(input.job.title)}</h1>
+    ${jobTitle(input, 'sen-title')}
     <p class="sen-sub">${
       isNonEmpty(input.job.description)
         ? rich(descriptionExcerpt(input, 140))
@@ -893,7 +899,7 @@ function renderSentinel(input: ReportHtmlInput, theme: PremiumTheme): string {
     <div class="sen-status-pill"><span class="sen-status-dot"></span>${
       armed ? 'Zones Active · Encrypted Local NVR' : 'Commissioning in progress'
     }</div>
-    <div class="sen-hero">
+    <div class="sen-hero" data-preview-edit="cover">
       ${coverPhoto(input, 'sen-hero-photo')}
       <div class="sen-hud-brackets" aria-hidden="true"></div>
       <div class="sen-hud-top"><span class="sen-rec">REC</span><span>CH-01 · FRONT ENTRY · 4K</span></div>

@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { Entitlement, FREE_ENTITLEMENT } from '@/models';
-import { getEntitlement, refreshEntitlement, subscribeToEntitlement } from '@/services/entitlementService';
+import {
+  getCachedEntitlementSync,
+  getEntitlement,
+  refreshEntitlement,
+  subscribeToEntitlement,
+} from '@/services/entitlementService';
 
 export function useEntitlement() {
-  const [entitlement, setEntitlement] = useState<Entitlement>(FREE_ENTITLEMENT);
-  const [loading, setLoading] = useState(true);
+  const seeded = getCachedEntitlementSync();
+  const [entitlement, setEntitlement] = useState<Entitlement>(seeded ?? FREE_ENTITLEMENT);
+  const [loading, setLoading] = useState(seeded == null);
 
   useEffect(() => {
     let mounted = true;
@@ -21,11 +27,17 @@ export function useEntitlement() {
       });
     refreshEntitlement()
       .then((value) => {
-        if (mounted) setEntitlement(value);
+        if (mounted) {
+          setEntitlement(value);
+          setLoading(false);
+        }
       })
       .catch(() => undefined);
     const unsubscribe = subscribeToEntitlement((value) => {
-      if (mounted) setEntitlement(value);
+      if (mounted) {
+        setEntitlement(value);
+        setLoading(false);
+      }
     });
     return () => {
       mounted = false;
@@ -38,6 +50,7 @@ export function useEntitlement() {
   const refresh = useCallback(async () => {
     const value = await refreshEntitlement();
     setEntitlement(value);
+    setLoading(false);
     return value;
   }, []);
 

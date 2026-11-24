@@ -11,19 +11,36 @@ type ToggleRowProps = {
   value: boolean;
   onValueChange: (value: boolean) => void;
   disabled?: boolean;
+  /** Use on dark surfaces (e.g. photo detail) so labels stay readable. */
+  onDark?: boolean;
 };
 
-export function ToggleRow({ label, description, value, onValueChange, disabled = false }: ToggleRowProps) {
+export function ToggleRow({
+  label,
+  description,
+  value,
+  onValueChange,
+  disabled = false,
+  onDark = false,
+}: ToggleRowProps) {
   const { colors, spacing } = useTheme();
+  const labelColor = onDark
+    ? disabled
+      ? 'rgba(255,255,255,0.4)'
+      : '#FFFFFF'
+    : disabled
+      ? colors.textTertiary
+      : colors.textPrimary;
+  const descriptionColor = onDark ? 'rgba(255,255,255,0.65)' : colors.textSecondary;
 
   return (
     <View style={[styles.row, { paddingVertical: spacing.sm }]}>
       <View style={styles.textColumn}>
-        <Text variant="body" color={disabled ? colors.textTertiary : colors.textPrimary}>
+        <Text variant="body" color={labelColor}>
           {label}
         </Text>
         {description ? (
-          <Text variant="bodySmall" color={colors.textSecondary} style={{ marginTop: 2 }}>
+          <Text variant="bodySmall" color={descriptionColor} style={{ marginTop: 2 }}>
             {description}
           </Text>
         ) : null}
@@ -32,9 +49,14 @@ export function ToggleRow({ label, description, value, onValueChange, disabled =
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        trackColor={{ false: colors.border, true: colors.accent }}
+        trackColor={{
+          false: onDark ? 'rgba(255,255,255,0.22)' : colors.border,
+          true: colors.accent,
+        }}
         thumbColor="#FFFFFF"
         accessibilityLabel={label}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: value, disabled }}
       />
     </View>
   );

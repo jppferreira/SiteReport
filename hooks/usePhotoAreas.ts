@@ -23,7 +23,6 @@ export function usePhotoAreas(jobId: string) {
   }, [jobId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 
@@ -57,7 +56,6 @@ export function usePhotoArea(areaId: string | null) {
   }, [areaId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 

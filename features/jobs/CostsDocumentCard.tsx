@@ -42,6 +42,8 @@ type CostsDocumentCardProps = {
   onSavePricing: (pricing: ReportPricing) => Promise<ReportPricing>;
   onChangeDocumentType: (type: DocumentType) => void;
   onLocked: () => void;
+  /** When false, the parent owns the Notes / Reference / Quote / Invoice control. */
+  showTypeControl?: boolean;
 };
 
 export function CostsDocumentCard({
@@ -53,6 +55,7 @@ export function CostsDocumentCard({
   onSavePricing,
   onChangeDocumentType,
   onLocked,
+  showTypeControl = true,
 }: CostsDocumentCardProps) {
   const { colors, radius, spacing } = useTheme();
   const { t } = useI18n();
@@ -97,20 +100,22 @@ export function CostsDocumentCard({
 
   return (
     <View style={{ gap: spacing.md }}>
-      <View style={{ gap: spacing.sm }}>
-        <SegmentedControl
-          segments={[
-            { key: 'reference', label: t('costs.typeReference') },
-            { key: 'quote', label: t('costs.typeQuote') },
-            { key: 'invoice', label: t('costs.typeInvoice') },
-          ]}
-          value={documentType}
-          onChange={chooseType}
-        />
-        <Text variant="caption" color={colors.textSecondary} style={{ textAlign: 'center' }}>
-          {caption}
-        </Text>
-      </View>
+      {showTypeControl ? (
+        <View style={{ gap: spacing.sm }}>
+          <SegmentedControl
+            segments={[
+              { key: 'reference', label: t('costs.typeReference') },
+              { key: 'quote', label: t('costs.typeQuote') },
+              { key: 'invoice', label: t('costs.typeInvoice') },
+            ]}
+            value={documentType}
+            onChange={chooseType}
+          />
+          <Text variant="caption" color={colors.textSecondary} style={{ textAlign: 'center' }}>
+            {caption}
+          </Text>
+        </View>
+      ) : null}
 
       <View
         style={{

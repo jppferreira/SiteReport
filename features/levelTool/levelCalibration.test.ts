@@ -26,7 +26,9 @@ describe('per-orientation zero', () => {
 
   it('drops corrupt stored offsets', () => {
     expect(parseCalibration({ flat: { a: Number.NaN, b: 0 }, edgeLeft: { a: 1, b: 0 }, nope: { a: 1, b: 1 } })).toEqual({ edgeLeft: { a: 1, b: 0 } });
-    expect(parseLevelSettings('{bad json')).toMatchObject({ unit: 'deg', haptics: true, sound: false });
+    expect(parseLevelSettings('{bad json')).toMatchObject({ unit: 'deg', haptics: true, sound: false, uprightVial: 'bubble' });
+    expect(parseLevelSettings('{"uprightVial":"box"}')).toMatchObject({ uprightVial: 'box' });
+    expect(parseLevelSettings('{"uprightVial":"nope"}')).toMatchObject({ uprightVial: 'bubble' });
   });
 });
 

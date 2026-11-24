@@ -1,11 +1,18 @@
 import { AccessibilityInfo } from 'react-native';
-import { makeMutable, withTiming, type AnimationCallback, type WithTimingConfig } from 'react-native-reanimated';
+import {
+  makeMutable,
+  withSpring,
+  withTiming,
+  type AnimationCallback,
+  type WithSpringConfig,
+  type WithTimingConfig,
+} from 'react-native-reanimated';
 
 /**
  * OS "Reduce Motion" flag, readable from the UI thread.
  *
  * Worklets must read `reduceMotion.value` directly. Calling `isMotionReduced`
- * or `motionTiming` from a worklet makes Worklets throw
+ * or `motionTiming` / `motionSpring` from a worklet makes Worklets throw
  * "Tried to synchronously call a remote function" on Expo Go. Those helpers
  * stay plain JS functions because press handlers and effects run on the JS thread.
  */
@@ -24,6 +31,14 @@ AccessibilityInfo.addEventListener('reduceMotionChanged', (enabled) => {
 /** Drop-in replacement for Reanimated's `withTiming` that respects Reduce Motion. JS thread only. */
 export function motionTiming(toValue: number, config?: WithTimingConfig, callback?: AnimationCallback) {
   return withTiming(toValue, reduceMotion.value ? { ...config, duration: 0 } : config, callback);
+}
+
+/** Drop-in replacement for Reanimated's `withSpring` that respects Reduce Motion. JS thread only. */
+export function motionSpring(toValue: number, config?: WithSpringConfig, callback?: AnimationCallback) {
+  if (reduceMotion.value) {
+    return withTiming(toValue, { duration: 0 }, callback);
+  }
+  return withSpring(toValue, config, callback);
 }
 
 /** True when the OS asks for reduced motion. JS thread only. */

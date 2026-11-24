@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Trade Report",
+    "name": "TradeReport",
     "slug": "tradesreport",
     "scheme": "tradesreport",
     "version": "1.1.0",
@@ -15,7 +15,7 @@
     "ios": {
       "bundleIdentifier": "com.tradesreport.app",
       "buildNumber": "10",
-      "supportsTablet": true,
+      "supportsTablet": false,
       "infoPlist": {
         "NSCameraUsageDescription": "Trade Report uses your camera to take before and after job photos and to measure distances with AR for your reports.",
         "NSPhotoLibraryUsageDescription": "Trade Report needs access to your photo library so you can add existing photos to a job report.",

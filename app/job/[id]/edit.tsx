@@ -68,7 +68,6 @@ export default function EditJobScreen() {
 
     // Immediately reflects "saving" while the debounced persistence below
     // runs; this mirrors the autosave operation itself, not derived state.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSavedLabel('saving');
     pendingRef.current = true;
     if (timer.current) clearTimeout(timer.current);

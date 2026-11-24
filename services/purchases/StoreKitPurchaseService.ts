@@ -158,6 +158,7 @@ export class StoreKitPurchaseService implements PurchaseService {
     const activeByProduct = new Map(activeSubscriptions.map((subscription) => [subscription.productId, subscription]));
 
     const items: StoreKitOwnedItem[] = [];
+    const seen = new Set<string>();
     for (const purchase of purchases) {
       if (purchase.purchaseState === 'purchased') {
         await finishTransaction({ purchase, isConsumable: false }).catch((error: unknown) => {
@@ -166,8 +167,30 @@ export class StoreKitPurchaseService implements PurchaseService {
       }
       for (const productId of productIdsOf(purchase)) {
         if (!isAppleProduct(productId)) continue;
-        items.push(ownedItem(purchase, productId, activeByProduct.get(productId)));
+        const active = activeByProduct.get(productId);
+        const item = ownedItem(purchase, productId, active);
+        // Active StoreKit subscriptions sometimes report purchaseState "unknown" —
+        // still count them as purchased when the subscription is active.
+        if (item.purchaseState === 'unknown' && active?.isActive) {
+          item.purchaseState = 'purchased';
+        }
+        items.push(item);
+        seen.add(productId);
       }
+    }
+    for (const subscription of activeSubscriptions) {
+      if (!subscription.isActive || !isAppleProduct(subscription.productId) || seen.has(subscription.productId)) {
+        continue;
+      }
+      const renewal = subscription.renewalInfoIOS;
+      items.push({
+        productId: subscription.productId,
+        purchaseState: 'purchased',
+        expiresAt: subscription.expirationDateIOS ?? renewal?.renewalDate ?? null,
+        autoRenewing: renewal?.willAutoRenew === true,
+        inBillingRetry: renewal?.isInBillingRetry === true,
+      });
+      seen.add(subscription.productId);
     }
     return entitlementFromStoreKit(items);
   }

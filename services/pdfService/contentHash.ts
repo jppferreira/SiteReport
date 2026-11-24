@@ -50,9 +50,10 @@ export type ReportBrandStamp = {
 };
 
 /**
- * Bump this when the printed document changes. Saved reports then show as
- * outdated until they are regenerated, instead of looking current while the
- * file still has the previous layout.
+ * Bump this only when the printed document intentionally changes. Saved PDF/HTML
+ * files are never rewritten — bumping only marks the latest report as outdated
+ * until the user regenerates a new version. Do not bump for refactors that leave
+ * printed output the same.
  */
 export const REPORT_RENDER_VERSION = 5;
 

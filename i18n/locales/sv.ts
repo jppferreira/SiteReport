@@ -1,9 +1,10 @@
 import enUS, { type TranslationTree } from './en-US';
+import { deepMerge, type DeepPartial } from './deepMerge';
 
 /**
  * Swedish catalog for Trade Report.
  */
-const sv = {
+const sv = deepMerge(enUS, {
   common: {
     close: 'Stäng',
     cancel: 'Avbryt',
@@ -28,7 +29,7 @@ const sv = {
     proBadge: 'PRO',
     free: 'Gratis',
     enabled: 'AKTIVERAD',
-    brandName: 'Trade Report',
+    brandName: 'TradeReport',
     brandTrade: 'Trade',
     brandReport: 'Report',
     photo: 'foto',
@@ -1103,7 +1104,7 @@ const sv = {
     profileUpgradeLogo: 'Uppgradera för att lägga till en logotyp',
     profileCta: 'Skapa mitt första jobb →',
     profileSkip: 'Hoppa över för nu',
-    brandMarkA11y: 'Trade Report',
+    brandMarkA11y: 'TradeReport',
     stepDotsA11y: 'Steg %{step} av %{total}',
     heroNext: 'Nästa',
     welcomeTagline: 'Arbetsbevis på några minuter',
@@ -1127,8 +1128,8 @@ const sv = {
     proofTradespersonName: 'Tom Rivers',
   },
   splash: {
-    accessibilityLabel: 'Trade Report. Professionella jobbrapporter på några minuter.',
-    wordmarkTrade: 'Trades',
+    accessibilityLabel: 'TradeReport. Professionella jobbrapporter på några minuter.',
+    wordmarkTrade: 'Trade',
     wordmarkReport: 'Report',
     tagline: 'Professionella jobbrapporter på några minuter',
   },
@@ -1385,6 +1386,6 @@ const sv = {
     system: 'Använd enhetens språk',
     description: 'Välj språk för menyer, knappar och meddelanden i Trade Report.',
   },
-} satisfies TranslationTree;
+} as DeepPartial<TranslationTree>);
 
 export default sv;

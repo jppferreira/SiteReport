@@ -12,12 +12,14 @@ import { goBack } from '@/utils/goBack';
 export default function JobChecklistRoute() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t } = useI18n();
-  const { isPro } = useEntitlement();
+  const { isPro, loading: entitlementLoading } = useEntitlement();
   const [job, setJob] = useState<Job | null>(null);
   const [checklist, setChecklist] = useState<JobChecklist | null>(null);
   const [missing, setMissing] = useState(false);
 
   useEffect(() => {
+    // Wait until Pro status is known — defaulting to free here kicked Pro testers to the paywall.
+    if (entitlementLoading) return;
     if (!isPro) {
       router.replace({ pathname: '/paywall', params: { trigger: 'checklist' } });
       return;
@@ -38,7 +40,7 @@ export default function JobChecklistRoute() {
     return () => {
       cancelled = true;
     };
-  }, [id, isPro]);
+  }, [id, isPro, entitlementLoading]);
 
   if (missing) {
     return (
@@ -49,7 +51,7 @@ export default function JobChecklistRoute() {
     );
   }
 
-  if (!job || !checklist) {
+  if (entitlementLoading || !job || !checklist) {
     return (
       <Screen>
         <NavigationHeader title={t('checklist.title')} onBack={() => goBack(`/(tabs)/jobs`)} />

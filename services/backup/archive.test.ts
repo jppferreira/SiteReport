@@ -1,6 +1,6 @@
 import { strToU8, zipSync } from 'fflate';
 
-import { packArchive, restoreIfValid, sha256Hex, BackupManifest } from './archive';
+import { openBackup, packArchive, restoreIfValid, sha256Hex, BackupManifest } from './archive';
 
 const photo = new TextEncoder().encode('photo-bytes');
 const signature = new TextEncoder().encode('<svg></svg>');
@@ -125,6 +125,28 @@ describe('openBackup', () => {
     expect(opened.ok).toBe(false);
     if (!opened.ok) expect(opened.liveDataChanged).toBe(false);
     expect(commit).not.toHaveBeenCalled();
+  });
+
+  it('rejects backups written by a newer app format', async () => {
+    const source = await manifest();
+    const zip = packArchive({ ...source, formatVersion: 2 } as unknown as BackupManifest, [
+      { path: 'jobs/job-1/photos/full.jpg', data: photo },
+      { path: 'jobs/job-1/photos/thumb.jpg', data: photo },
+      { path: 'jobs/job-1/signature.svg', data: signature },
+    ]);
+    const opened = await openBackup(zip);
+    expect(opened.ok).toBe(false);
+  });
+
+  it('still opens the current backup format after app updates', async () => {
+    const source = await manifest();
+    const zip = packArchive(source, [
+      { path: 'jobs/job-1/photos/full.jpg', data: photo },
+      { path: 'jobs/job-1/photos/thumb.jpg', data: photo },
+      { path: 'jobs/job-1/signature.svg', data: signature },
+    ]);
+    const opened = await openBackup(zip);
+    expect(opened.ok).toBe(true);
   });
 });
 

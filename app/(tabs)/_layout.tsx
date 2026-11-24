@@ -1,15 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import React from 'react';
+import type { BottomTabBarProps } from 'expo-router/js-tabs';
+import React, { useCallback } from 'react';
 
 import { PillTabBar } from '@/components/PillTabBar';
 import { useI18n } from '@/i18n/useI18n';
 
 export default function TabsLayout() {
   const { t } = useI18n();
+  const renderTabBar = useCallback((props: BottomTabBarProps) => <PillTabBar {...props} />, []);
 
   return (
-    <Tabs tabBar={(props) => <PillTabBar {...props} />} screenOptions={{ headerShown: false }}>
+    <Tabs tabBar={renderTabBar} screenOptions={{ headerShown: false }}>
       <Tabs.Screen
         name="jobs"
         options={{

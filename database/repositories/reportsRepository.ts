@@ -19,6 +19,10 @@ function rowToReport(row: Record<string, unknown>): Report {
 
 export type NewReport = Omit<Report, 'id' | 'generatedAt' | 'version' | 'status'>;
 
+/**
+ * Appends a new report row. `localPdfUri` is immutable after insert — regenerating
+ * creates another version; status/fileName are the only fields that may change later.
+ */
 export async function createReport(report: NewReport): Promise<Report> {
   const db = await getDatabase();
   const existingForJob = await listReportsForJob(report.jobId);

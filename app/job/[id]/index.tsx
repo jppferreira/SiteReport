@@ -1,67 +1,98 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { ScrollView } from 'react-native';
 
 import {
-  Button,
   ConfirmationDialog,
   ErrorState,
   IconButton,
   LoadingState,
   NavigationHeader,
   Screen,
-  Text,
   useToast,
 } from '@/components';
 import { jobChecklistsRepository, jobsRepository, photoAreasRepository, photosRepository } from '@/database';
-import { checklistProgress } from '@/models';
 import { BottomSheetMenu } from '@/features/jobs/BottomSheetMenu';
-import { JobSectionRow } from '@/features/jobs/JobSectionRow';
-import { nextRecommendedAction } from '@/features/jobs/jobProgress';
+import {
+  addressForMeta,
+  computeGuidedChecklist,
+  ctaForGuidedState,
+  GuidedFooter,
+  GuidedJobHeader,
+  GuidedStepList,
+  JobDetailsSheet,
+  ReportReadyView,
+  type GuidedStepId,
+  type ReportReadyStat,
+} from '@/features/jobs/guidedChecklist';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import { useJob } from '@/hooks/useJob';
 import { useSignature } from '@/hooks/useSignature';
 import { useWorkSummary } from '@/hooks/useWorkSummary';
 import { useI18n } from '@/i18n/useI18n';
+import { formatPence, JobChecklist, linesForReport, pricingTotalPence } from '@/models';
 import { deleteJobFiles } from '@/services/fileService';
+import { reportTemplateLabel } from '@/services/pdfService';
 import { useTheme } from '@/theme';
-import { linesForReport, WorkSummary } from '@/models';
-import { formatDate } from '@/utils/format';
+import { formatDate, formatDateShort } from '@/utils/format';
 import { goBack } from '@/utils/goBack';
 
 export default function JobOverviewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { colors, spacing } = useTheme();
+  const { spacing } = useTheme();
   const { t } = useI18n();
-  const { isPro } = useEntitlement();
+  const { isPro, refresh: refreshEntitlement } = useEntitlement();
   const { job, progress, loading, error, refresh } = useJob(id);
-  const { summary } = useWorkSummary(id);
-  const { signature } = useSignature(id);
+  const { summary, refresh: refreshSummary } = useWorkSummary(id);
+  const { signature, refresh: refreshSignature } = useSignature(id);
   const { showToast } = useToast();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [detailsSheetOpen, setDetailsSheetOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [photoCounts, setPhotoCounts] = useState({ before: 0, during: 0, after: 0 });
-  const [areaCount, setAreaCount] = useState(0);
-  const [checklistStatus, setChecklistStatus] = useState<'not_started' | 'in_progress' | 'complete'>('not_started');
+  const [photoThumbs, setPhotoThumbs] = useState<string[]>([]);
+  const [photoCaptions, setPhotoCaptions] = useState<string[]>([]);
+  const [areaName, setAreaName] = useState<string | null>(null);
+  const [checklist, setChecklist] = useState<JobChecklist | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       refresh();
+      void refreshSummary();
+      void refreshSignature();
       photosRepository.countPhotos(id).then(setPhotoCounts);
-      photoAreasRepository.countAreas(id).then(setAreaCount);
-      jobChecklistsRepository.getChecklist(id).then((list) => {
-        if (!list || list.items.length === 0) {
-          setChecklistStatus('not_started');
-          return;
-        }
-        const progress = checklistProgress(list.items);
-        if (progress.checked === 0) setChecklistStatus('not_started');
-        else if (progress.checked >= progress.total) setChecklistStatus('complete');
-        else setChecklistStatus('in_progress');
+      photosRepository.listPhotos(id).then((photos) => {
+        setPhotoThumbs(
+          photos
+            .slice(0, 8)
+            .map((p) => p.thumbnailUri || p.localUri)
+            .filter(Boolean)
+        );
+        setPhotoCaptions(photos.map((p) => p.caption ?? '').filter(Boolean));
       });
-    }, [refresh, id])
+      photoAreasRepository.listAreas(id).then((areas) => {
+        setAreaName(areas[0]?.name ?? null);
+      });
+      jobChecklistsRepository.getChecklist(id).then(setChecklist);
+    }, [refresh, refreshSummary, refreshSignature, id])
   );
+
+  const guided = useMemo(() => {
+    if (!job) return null;
+    return computeGuidedChecklist({
+      job,
+      photoCounts,
+      photoCaptions,
+      areaName,
+      summary,
+      hasSignature: Boolean(signature),
+      signatureName: signature?.customerName ?? null,
+      signatureDate: signature?.signedAt ?? null,
+      checklist,
+      isPro,
+    });
+  }, [job, photoCounts, photoCaptions, areaName, summary, signature, checklist, isPro]);
 
   if (loading && !job) {
     return (
@@ -72,7 +103,7 @@ export default function JobOverviewScreen() {
     );
   }
 
-  if (error || !job || !progress) {
+  if (error || !job || !progress || !guided) {
     return (
       <Screen>
         <NavigationHeader title={t('jobDetail.title')} onBack={() => goBack('/(tabs)/jobs')} />
@@ -80,8 +111,6 @@ export default function JobOverviewScreen() {
       </Screen>
     );
   }
-
-  const action = nextRecommendedAction(progress);
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -95,7 +124,71 @@ export default function JobOverviewScreen() {
     }
   };
 
-  const photoTotal = photoCounts.before + photoCounts.during + photoCounts.after;
+  const openPhotosTools = () => {
+    router.push(`/job/${job.id}/photos/tools`);
+  };
+
+  const openStep = async (stepId: GuidedStepId) => {
+    switch (stepId) {
+      case 'details':
+        setDetailsSheetOpen(true);
+        return;
+      case 'photos':
+        openPhotosTools();
+        return;
+      case 'measure':
+        router.push(`/job/${job.id}/measure`);
+        return;
+      case 'level':
+        router.push(`/job/${job.id}/measure?mode=level`);
+        return;
+      case 'notes':
+        router.push(`/job/${job.id}/summary`);
+        return;
+      case 'checklist': {
+        let entitled = isPro;
+        if (!entitled) {
+          const next = await refreshEntitlement();
+          entitled = next.status === 'pro';
+        }
+        if (!entitled) {
+          router.push({ pathname: '/paywall', params: { trigger: 'checklist' } });
+          return;
+        }
+        router.push(`/job/${job.id}/checklist`);
+        return;
+      }
+      case 'signature':
+        router.push(`/job/${job.id}/signature`);
+        return;
+      default:
+        return;
+    }
+  };
+
+  const cta = ctaForGuidedState(guided);
+  const primaryLabel = labelForCta(t, cta.stepId, cta.kind, photoCounts);
+  const primaryIcon =
+    cta.kind === 'create'
+      ? ('document-text-outline' as const)
+      : cta.stepId === 'photos'
+        ? ('camera-outline' as const)
+        : undefined;
+
+  const intro = introForState(t, guided, photoCounts);
+  const showReady = guided.allComplete;
+  const metaAddress = addressForMeta(job.address);
+  const dateLabel = formatDateShort(job.jobDate);
+
+  const onPrimary = () => {
+    if (cta.stepId === 'report') {
+      router.push(`/job/${job.id}/preview`);
+      return;
+    }
+    void openStep(cta.stepId);
+  };
+
+  const readyStats = buildReadyStats(t, guided, photoCounts, summary, checklist, signature);
 
   return (
     <Screen>
@@ -103,141 +196,119 @@ export default function JobOverviewScreen() {
         title=""
         onBack={() => goBack('/(tabs)/jobs')}
         right={
-          <IconButton
-            name="ellipsis-horizontal"
-            accessibilityLabel={t('jobDetail.moreOptionsA11y')}
-            onPress={() => setMenuOpen(true)}
-          />
+          showReady ? (
+            <IconButton
+              name="share-outline"
+              size={20}
+              accessibilityLabel={t('jobDetail.guided.sendToCustomer')}
+              onPress={() => router.push(`/job/${job.id}/send`)}
+              style={{ width: 40, height: 40 }}
+            />
+          ) : (
+            <IconButton
+              name="ellipsis-horizontal"
+              size={20}
+              accessibilityLabel={t('jobDetail.moreOptionsA11y')}
+              onPress={() => setMenuOpen(true)}
+              style={{ width: 40, height: 40 }}
+            />
+          )
         }
       />
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg, paddingTop: 0 }}>
-        <Text variant="h1">{job.title}</Text>
-        {job.address ? (
-          <Text variant="body" color={colors.textSecondary} style={{ marginTop: 4 }}>
-            {job.address}
-          </Text>
-        ) : job.customerName ? (
-          <Text variant="body" color={colors.textSecondary} style={{ marginTop: 4 }}>
-            {job.customerName}
-          </Text>
-        ) : null}
-        <Text variant="bodySmall" color={colors.textTertiary} style={{ marginTop: 2 }}>
-          {formatDate(job.jobDate)}
-        </Text>
 
-        <Pressable
-          onPress={() => router.push('/settings/data')}
-          accessibilityRole="button"
-          accessibilityLabel={t('jobDetail.localOnlyBanner')}
-          style={{
-            marginTop: spacing.lg,
-            paddingVertical: spacing.sm,
-            paddingHorizontal: spacing.md,
-            backgroundColor: colors.surfaceSunken,
-            borderRadius: 12,
-          }}
+      {showReady ? (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, flexGrow: 1 }}
         >
-          <Text variant="bodySmall" color={colors.textSecondary}>
-            {t('jobDetail.localOnlyBanner')}
-          </Text>
-        </Pressable>
-
-        <View
-          style={{
-            marginTop: spacing.xl,
-            backgroundColor: colors.surface,
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: colors.border,
-            overflow: 'hidden',
-          }}
-        >
-          <JobSectionRow
-            title={t('jobDetail.sectionDetails')}
-            subtitle={job.description ? truncate(job.description) : t('jobDetail.sectionDetailsSubtitle')}
-            status={progress.sections.details}
-            showDivider
-            onPress={() => router.push(`/job/${job.id}/edit`)}
+          <ReportReadyView
+            jobTitle={job.title}
+            customerName={job.customerName}
+            stats={readyStats}
+            templateName={reportTemplateLabel('modern')}
+            templateMeta={t('jobDetail.guided.templateMeta', { pages: 6 })}
+            templateFree
+            onChangeTemplate={() => router.push(`/job/${job.id}/generate`)}
+            onCreatePdf={() => router.push(`/job/${job.id}/preview`)}
+            onSend={() => router.push(`/job/${job.id}/send`)}
           />
-          <JobSectionRow
-            title={t('jobDetail.sectionPhotos')}
-            subtitle={photosSubtitle(t, photoTotal, areaCount)}
-            status={progress.sections.photos}
-            showDivider
-            onPress={() => router.push(`/job/${job.id}/photos`)}
-          />
-          <JobSectionRow
-            title={t('jobDetail.sectionMeasure')}
-            subtitle={t('jobDetail.sectionMeasureSubtitle')}
-            status="not_started"
-            showDivider
-            onPress={() => router.push(`/job/${job.id}/measure`)}
-          />
-          <JobSectionRow
-            title={t('jobDetail.sectionChecklist')}
-            subtitle={t('jobDetail.sectionChecklistSubtitle')}
-            status={checklistStatus}
-            showDivider
-            onPress={() => {
-              if (!isPro) {
-                router.push({ pathname: '/paywall', params: { trigger: 'checklist' } });
-                return;
-              }
-              router.push(`/job/${job.id}/checklist`);
+        </ScrollView>
+      ) : (
+        <>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{
+              paddingHorizontal: 20,
+              paddingTop: 4,
+              paddingBottom: spacing.xl,
+              gap: 14,
             }}
-          />
-          <JobSectionRow
-            title={t('jobDetail.sectionSummary')}
-            subtitle={summarySubtitle(t, summary)}
-            status={progress.sections.summary}
-            showDivider
-            onPress={() => router.push(`/job/${job.id}/summary`)}
-          />
-          <JobSectionRow
-            title={t('jobDetail.sectionSignature')}
-            subtitle={
-              signature
-                ? t('jobDetail.signatureSignedBy', {
-                    name: signature.customerName ?? t('jobDetail.signatureSignedByClientFallback'),
-                  })
-                : t('jobDetail.signatureNotAdded')
-            }
-            status={progress.sections.signature}
-            showDivider
-            onPress={() => router.push(`/job/${job.id}/signature`)}
-          />
-          <JobSectionRow
-            title={t('jobDetail.sectionGenerate')}
-            subtitle={
-              progress.sections.report === 'complete'
-                ? t('jobDetail.reportPreviewShare')
-                : progress.sections.report === 'in_progress'
-                  ? t('jobDetail.reportChanged')
-                  : t('jobDetail.reportReady')
-            }
-            status={progress.sections.report}
-            onPress={() => router.push(`/job/${job.id}/preview`)}
-          />
-        </View>
-      </ScrollView>
+          >
+            <GuidedJobHeader
+              title={job.title}
+              address={metaAddress}
+              dateLabel={dateLabel}
+              completed={guided.completedCount}
+              total={guided.totalCount}
+              intro={intro}
+            />
+            <GuidedStepList
+              steps={guided.steps}
+              currentId={guided.currentId}
+              isPro={isPro}
+              photoCounts={photoCounts}
+              photoThumbs={photoThumbs}
+              showYourStepsLabel={guided.completedCount === 0}
+              onPressStep={(stepId) => void openStep(stepId)}
+              onAddAfterPhotos={openPhotosTools}
+              onMeasure={() => router.push(`/job/${job.id}/measure`)}
+            />
+          </ScrollView>
 
-      <View style={{ padding: spacing.lg, paddingTop: 0 }}>
-        <Button
-          label={t('common.continue')}
-          onPress={() => {
-            if (action.target === 'photos') router.push(`/job/${job.id}/photos`);
-            else if (action.target === 'summary') router.push(`/job/${job.id}/summary`);
-            else if (action.target === 'signature') router.push(`/job/${job.id}/signature`);
-            else router.push(`/job/${job.id}/preview`);
-          }}
-        />
-      </View>
+          <GuidedFooter
+            primaryLabel={primaryLabel}
+            primaryIcon={primaryIcon}
+            onPrimary={onPrimary}
+            showSavedNote={guided.completedCount === 0}
+            onSavedNotePress={() => router.push('/settings/data')}
+            showPreviewRow={guided.completedCount > 0}
+            unlockHint={
+              guided.canCreatePdf
+                ? null
+                : photoCounts.after === 0 && photoCounts.before + photoCounts.during > 0
+                  ? t('jobDetail.guided.unlockAfterPhotos')
+                  : t('jobDetail.guided.unlockRequired')
+            }
+            canCreatePdf={guided.canCreatePdf}
+            onPreview={() => router.push(`/job/${job.id}/preview`)}
+          />
+        </>
+      )}
+
+      <JobDetailsSheet
+        visible={detailsSheetOpen}
+        job={job}
+        onClose={() => setDetailsSheetOpen(false)}
+        onSavedContinue={() => {
+          setDetailsSheetOpen(false);
+          void refresh();
+          openPhotosTools();
+        }}
+        onChangeTemplate={() => {
+          setDetailsSheetOpen(false);
+          router.push(`/job/${job.id}/generate`);
+        }}
+      />
 
       <BottomSheetMenu
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
         items={[
-          { icon: 'create-outline', label: t('jobDetail.editDetails'), onPress: () => router.push(`/job/${job.id}/edit`) },
+          {
+            icon: 'create-outline',
+            label: t('jobDetail.editDetails'),
+            onPress: () => setDetailsSheetOpen(true),
+          },
           {
             icon: 'trash-outline',
             label: t('jobDetail.deleteJob'),
@@ -262,29 +333,107 @@ export default function JobOverviewScreen() {
 
 type Translate = (key: string, options?: Record<string, string | number>) => string;
 
-function photosSubtitle(t: Translate, photoTotal: number, areaCount: number): string {
-  if (areaCount > 0) {
-    const sections =
-      areaCount === 1 ? t('jobDetail.photosOneSection') : t('jobDetail.photosSectionsCount', { count: areaCount });
-    if (photoTotal === 0) return sections;
-    const photos =
-      photoTotal === 1 ? t('jobDetail.photosOnePhoto') : t('jobDetail.photosCount', { count: photoTotal });
-    return t('jobDetail.photosSectionsAndPhotos', { sections, photos });
+function introForState(
+  t: Translate,
+  guided: NonNullable<ReturnType<typeof computeGuidedChecklist>>,
+  photoCounts: { before: number; during: number; after: number }
+): string | null {
+  if (guided.canCreatePdf) return t('jobDetail.guided.introReady');
+  if (guided.completedCount === 0) return t('jobDetail.guided.introFirst');
+  if (photoCounts.before + photoCounts.during > 0 && photoCounts.after === 0) {
+    return t('jobDetail.guided.introAfterPhotos');
   }
-  if (photoTotal > 0) {
-    return photoTotal === 1
-      ? t('jobDetail.photosOneAdded')
-      : t('jobDetail.photosCountAdded', { count: photoTotal });
-  }
-  return t('jobDetail.photosEmptyHint');
+  return t('jobDetail.guided.introKeepGoing');
 }
 
-function summarySubtitle(t: Translate, summary: WorkSummary | null): string {
-  if (summary?.workCompleted?.trim()) return truncate(summary.workCompleted);
-  if (summary && linesForReport(summary.pricing).length > 0) return t('jobDetail.summaryPricingAdded');
-  return t('jobDetail.summaryEmpty');
+function labelForCta(
+  t: Translate,
+  stepId: GuidedStepId | 'report',
+  kind: 'start' | 'continue' | 'create',
+  photoCounts: { before: number; during: number; after: number }
+): string {
+  if (kind === 'create' || stepId === 'report') return t('jobDetail.guided.ctaCreatePdf');
+  if (kind === 'start' && stepId === 'details') return t('jobDetail.guided.ctaStartDetails');
+  if (stepId === 'photos' && photoCounts.after === 0 && photoCounts.before + photoCounts.during > 0) {
+    return t('jobDetail.guided.ctaContinueAfter');
+  }
+  switch (stepId) {
+    case 'details':
+      return t('jobDetail.guided.ctaContinueDetails');
+    case 'photos':
+      return t('jobDetail.guided.ctaContinuePhotos');
+    case 'measure':
+      return t('jobDetail.guided.ctaContinueMeasure');
+    case 'level':
+      return t('jobDetail.guided.ctaContinueLevel');
+    case 'notes':
+      return t('jobDetail.guided.ctaContinueNotes');
+    case 'checklist':
+      return t('jobDetail.guided.ctaContinueChecklist');
+    case 'signature':
+      return t('jobDetail.guided.ctaContinueSignature');
+    default:
+      return t('common.continue');
+  }
 }
 
-function truncate(value: string, length = 60): string {
-  return value.length > length ? `${value.slice(0, length)}…` : value;
+function buildReadyStats(
+  t: Translate,
+  guided: NonNullable<ReturnType<typeof computeGuidedChecklist>>,
+  photoCounts: { before: number; during: number; after: number },
+  summary: ReturnType<typeof useWorkSummary>['summary'],
+  checklist: JobChecklist | null,
+  signature: ReturnType<typeof useSignature>['signature']
+): ReportReadyStat[] {
+  const photoTotal = photoCounts.before + photoCounts.during + photoCounts.after;
+  const cost = summary ? pricingTotalPence(linesForReport(summary.pricing)) : null;
+  const checklistStep = guided.steps.find((s) => s.id === 'checklist');
+  const checklistChip = checklistStep?.summaryChips[0]?.label;
+  const levelChip = guided.steps.find((s) => s.id === 'level')?.summaryChips[0]?.label;
+
+  const stats: ReportReadyStat[] = [
+    {
+      id: 'photos',
+      title: t('jobDetail.guided.stats.photos', { count: photoTotal }),
+      subtitle: t('jobDetail.guided.stats.photosSub'),
+    },
+    {
+      id: 'measure',
+      title: t('jobDetail.guided.stats.measure', { count: Math.max(photoCounts.during, 0) }),
+      subtitle: t('jobDetail.guided.stats.measureSub'),
+    },
+    {
+      id: 'level',
+      title: levelChip
+        ? t('jobDetail.guided.levelDegrees', { degrees: levelChip })
+        : t('jobDetail.guided.stats.level'),
+      subtitle: t('jobDetail.guided.stats.levelSub'),
+    },
+    {
+      id: 'checklist',
+      title: checklistChip
+        ? t('jobDetail.guided.stats.checklist', {
+            checked: checklistChip.split('/')[0] ?? 0,
+            total: checklistChip.split('/')[1] ?? 0,
+          })
+        : t('jobDetail.guided.steps.checklist.title'),
+      subtitle: checklist ? t('jobDetail.guided.stats.checklistSub') : t('jobDetail.guided.optional'),
+    },
+    {
+      id: 'notes',
+      title: t('jobDetail.guided.stats.notes'),
+      subtitle:
+        cost !== null
+          ? t('jobDetail.guided.stats.notesSub', { cost: formatPence(cost) })
+          : t('jobDetail.guided.stats.notesSubEmpty'),
+    },
+    {
+      id: 'signature',
+      title: t('jobDetail.guided.stats.signed'),
+      subtitle: t('jobDetail.guided.stats.signedSub', {
+        date: formatDate(signature?.signedAt ?? undefined),
+      }),
+    },
+  ];
+  return stats;
 }

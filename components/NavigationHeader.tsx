@@ -9,6 +9,8 @@ import { Text } from './Text';
 
 type NavigationHeaderProps = {
   title?: string;
+  /** Optional second line under the title (e.g. “Step 2 of 7”). */
+  subtitle?: string;
   onBack?: () => void;
   left?: React.ReactNode;
   right?: React.ReactNode;
@@ -21,7 +23,14 @@ type NavigationHeaderProps = {
  * notched iPhones and by the window inset inside sheets, where that
  * overlap is already zero.
  */
-export function NavigationHeader({ title, onBack, left, right, transparent = false }: NavigationHeaderProps) {
+export function NavigationHeader({
+  title,
+  subtitle,
+  onBack,
+  left,
+  right,
+  transparent = false,
+}: NavigationHeaderProps) {
   const { colors, spacing } = useTheme();
   const { t } = useI18n();
 
@@ -43,6 +52,11 @@ export function NavigationHeader({ title, onBack, left, right, transparent = fal
         {title ? (
           <Text variant="h3" numberOfLines={1}>
             {title}
+          </Text>
+        ) : null}
+        {subtitle ? (
+          <Text variant="caption" color={colors.textTertiary} numberOfLines={1} style={{ fontSize: 11 }}>
+            {subtitle}
           </Text>
         ) : null}
       </View>

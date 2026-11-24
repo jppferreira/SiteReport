@@ -226,7 +226,12 @@ export function premiumStylesheet(template: ReportTemplateId, accentRgb: string)
   h1, h2, h3 { margin: 0; page-break-after: avoid; font-weight: 700; }
   p { margin: 0; }
   img { max-width: 100%; display: block; }
-  .prem-cover-photo, .prem-cover-photo ~ img { width: 100%; height: 100%; object-fit: cover; }
+  /* Cover heroes always fill their Figma frame; never letterbox or overflow. */
+  .prem-cover-photo, .prem-cover-photo ~ img,
+  .circ-hero-photo, .sol-hero-photo, .clr-hero-photo, .sen-hero-photo, .fld-hero {
+    width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;
+  }
+  .preview-only-edit { display: none !important; }
   .prem-cover-eyebrow {
     display: block;
     font-size: 7.5pt;
@@ -290,8 +295,12 @@ export function premiumStylesheet(template: ReportTemplateId, accentRgb: string)
   .prem-area-title { font-size: 11pt; margin: 0 0 2mm; }
   .prem-pair { display: flex; gap: 3mm; margin-bottom: 3mm; break-inside: avoid; page-break-inside: avoid; }
   .prem-shot { flex: 1; margin: 0; min-width: 0; }
-  .prem-shot-frame { position: relative; border-radius: 3mm; overflow: hidden; background: rgb(231,235,231); }
-  .prem-shot-frame .prem-photo { width: 100%; height: 52mm; object-fit: cover; }
+  .prem-shot-frame { position: relative; border-radius: 3mm; overflow: hidden; background: rgb(231,235,231); height: 52mm; }
+  .prem-shot-frame .prem-photo,
+  .prem-shot-frame .prem-photo-marks {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }
+  .prem-shot-frame .prem-photo-marks { max-width: none; max-height: none; margin: 0; }
   .prem-tag {
     position: absolute; left: 2mm; top: 2mm;
     background: rgb(255,255,255); font-size: 7pt; font-weight: 800;
@@ -346,8 +355,11 @@ export function premiumStylesheet(template: ReportTemplateId, accentRgb: string)
   .prem-pass-pill.is-open { background: rgb(235, 235, 235); color: ${muted}; font-weight: 600; }
   .prem-num-photos { display: flex; flex-direction: column; gap: 3mm; margin-bottom: 4mm; }
   .prem-num-shot { margin: 0; break-inside: avoid; }
-  .prem-num-frame { position: relative; border-radius: 2mm; overflow: hidden; background: rgb(230, 230, 230); }
-  .prem-num-frame .prem-photo { width: 100%; height: 48mm; object-fit: cover; }
+  .prem-num-frame { position: relative; border-radius: 2mm; overflow: hidden; background: rgb(230, 230, 230); height: 48mm; }
+  .prem-num-frame .prem-photo,
+  .prem-num-frame .prem-photo-marks {
+    width: 100%; height: 100%; object-fit: cover; display: block; max-width: none; max-height: none; margin: 0;
+  }
   .prem-num-badge {
     position: absolute; left: 2mm; top: 2mm; font-family: 'JetBrains Mono', monospace; font-size: 8pt;
     background: rgb(0,0,0); color: rgb(255,255,255); padding: 0.8mm 2mm; border-radius: 1mm;
@@ -381,7 +393,8 @@ export function premiumStylesheet(template: ReportTemplateId, accentRgb: string)
   .prem-review-qr { text-align: center; flex-shrink: 0; font-size: 7pt; }
   .prem-review-qr img { width: 18mm; height: 18mm; border-radius: 1.5mm; border: 0.3mm solid ${line}; }
   .prem-foot { margin-top: 4mm; padding-top: 2mm; border-top: 0.3mm solid ${line}; font-size: 7.5pt; color: ${muted}; text-align: center; }
-  .prem-photo-marks { max-width: 100%; max-height: 120mm; display: block; margin: 0 auto; }
+  .prem-photo-marks { display: block; }
+  .prem-gallery-cell .prem-shot-frame { height: 42mm; }
 
   /* Thermal — spine + white panel cover */
   body[data-template="thermal"] .template-thermal-cover {
@@ -419,9 +432,13 @@ export function premiumStylesheet(template: ReportTemplateId, accentRgb: string)
   body[data-template="thermal"] .therm-job-title { font-size: 22pt; font-weight: 800; line-height: 1.05; color: ${navy}; }
   body[data-template="thermal"] .therm-excerpt { font-size: 9.5pt; line-height: 1.45; margin-top: 2mm; color: rgb(80, 90, 100); max-width: 95%; }
   body[data-template="thermal"] .therm-verified { display: inline-flex; align-items: center; gap: 1mm; font-size: 8pt; font-weight: 700; color: ${accent}; margin-top: 2mm; }
-  body[data-template="thermal"] .therm-hero { position: relative; margin-top: auto; min-height: 95mm; overflow: hidden; }
+  /* Figma hero 385×512 on A4 ≈ fills remaining panel; image cover-crops to frame. */
+  body[data-template="thermal"] .therm-hero {
+    position: relative; margin: 4mm -11mm 0; margin-top: auto; flex: 1 1 auto;
+    min-height: 120mm; overflow: hidden;
+  }
   body[data-template="thermal"] .therm-hero-bar { position: absolute; left: 0; right: 0; top: 0; height: 1.2mm; background: ${accent}; z-index: 2; }
-  body[data-template="thermal"] .therm-hero .prem-cover-photo { width: 100%; height: 100%; min-height: 95mm; object-fit: cover; }
+  body[data-template="thermal"] .therm-hero .prem-cover-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   body[data-template="thermal"] .therm-head-ref { margin-left: auto; font-size: 8.5pt; opacity: 0.6; }
 
   /* Circuit */
@@ -443,9 +460,13 @@ export function premiumStylesheet(template: ReportTemplateId, accentRgb: string)
     position: relative; z-index: 1; background: rgb(255,255,255); color: ${ink}; border-radius: 2mm;
     padding: 4mm 5mm; margin-bottom: 5mm;
   }
-  body[data-template="circuit"] .circ-hero-wrap { position: relative; z-index: 1; margin: 0 -12mm; flex: 1; min-height: 105mm; overflow: hidden; }
+  /* Figma hero 595×390 ≈ 138mm tall full-bleed band. */
+  body[data-template="circuit"] .circ-hero-wrap {
+    position: relative; z-index: 1; margin: 0 -12mm; flex: 1 1 auto;
+    min-height: 120mm; height: 138mm; max-height: 148mm; overflow: hidden;
+  }
   body[data-template="circuit"] .circ-amber-bar { position: absolute; left: 0; right: 0; top: 0; height: 1.2mm; background: rgb(245, 166, 35); z-index: 2; }
-  body[data-template="circuit"] .circ-hero-photo { width: 100%; height: 100%; min-height: 105mm; object-fit: cover; display: block; }
+  body[data-template="circuit"] .circ-hero-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
   body[data-template="circuit"] .circ-cover-foot {
     position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center;
     padding: 4mm 0 8mm; font-size: 8pt; opacity: 0.75; margin-top: auto;
@@ -465,8 +486,9 @@ export function premiumStylesheet(template: ReportTemplateId, accentRgb: string)
   }
   body[data-template="studio"] .stu-biz { font-size: 9pt; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
   body[data-template="studio"] .stu-tag { font-size: 8.5pt; font-style: italic; font-family: ${cormorantStack()}; opacity: 0.75; }
-  body[data-template="studio"] .stu-hero { margin: 0 14mm; height: 88mm; overflow: hidden; border-radius: 1.5mm; }
-  body[data-template="studio"] .stu-hero .prem-cover-photo { width: 100%; height: 100%; object-fit: cover; }
+  /* Figma hero 515×456 ≈ 161mm. */
+  body[data-template="studio"] .stu-hero { position: relative; margin: 0 14mm; height: 148mm; overflow: hidden; border-radius: 1.5mm; }
+  body[data-template="studio"] .stu-hero .prem-cover-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   body[data-template="studio"] .stu-caption { padding: 3mm 14mm 0; font-family: ${cormorantStack()}; font-size: 11pt; opacity: 0.8; }
   body[data-template="studio"] .stu-handover { padding: 4mm 14mm 0; font-size: 8pt; font-weight: 700; letter-spacing: 0.12em; }
   body[data-template="studio"] .stu-title { padding: 2mm 14mm 0; font-family: ${cormorantStack()}; font-size: 32pt; font-weight: 600; line-height: 1.05; }
@@ -503,8 +525,11 @@ export function premiumStylesheet(template: ReportTemplateId, accentRgb: string)
   body[data-template="field"] .fld-title { position: relative; z-index: 1; padding: 3mm 14mm 0; font-size: 28pt; line-height: 1.05; max-width: 150mm; }
   body[data-template="field"] .fld-strip { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 4mm; padding: 3mm 14mm 4mm; font-size: 8.5pt; opacity: 0.85; }
   body[data-template="field"] .fld-strip-item { display: inline-flex; align-items: center; gap: 1mm; }
-  body[data-template="field"] .fld-hero-wrap { position: relative; z-index: 1; margin: 0 14mm; min-height: 90mm; border-radius: 2mm; overflow: hidden; }
-  body[data-template="field"] .fld-hero { width: 100%; height: 100%; min-height: 90mm; object-fit: cover; }
+  /* Figma hero 515×372 ≈ 131mm. */
+  body[data-template="field"] .fld-hero-wrap {
+    position: relative; z-index: 1; margin: 0 14mm; height: 128mm; border-radius: 2mm; overflow: hidden;
+  }
+  body[data-template="field"] .fld-hero { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   body[data-template="field"] .fld-gps-badge {
     position: absolute; right: 2mm; bottom: 2mm; background: rgba(0,0,0,0.55); color: rgb(255,255,255);
     font-size: 7pt; padding: 1mm 2mm; border-radius: 1mm; display: inline-flex; align-items: center; gap: 1mm;
@@ -538,8 +563,11 @@ export function premiumStylesheet(template: ReportTemplateId, accentRgb: string)
   body[data-template="atelier"] .atl-diamond { color: rgb(181, 107, 83); margin: 3mm 0; display: block; }
   body[data-template="atelier"] .atl-framed-photo { width: 100%; margin: 2mm 0 4mm; }
   body[data-template="atelier"] .atl-frame-outer { border: 0.25mm solid ${atelierForest}; padding: 1.5mm; }
-  body[data-template="atelier"] .atl-frame-inner { border: 0.25mm solid ${atelierForest}; padding: 1.5mm; overflow: hidden; height: 82mm; }
-  body[data-template="atelier"] .atl-frame-inner .prem-cover-photo { width: 100%; height: 100%; object-fit: cover; }
+  /* Figma framed hero 451×400 ≈ 141mm. */
+  body[data-template="atelier"] .atl-frame-inner {
+    position: relative; border: 0.25mm solid ${atelierForest}; padding: 1.5mm; overflow: hidden; height: 132mm;
+  }
+  body[data-template="atelier"] .atl-frame-inner .prem-cover-photo { position: absolute; inset: 1.5mm; width: calc(100% - 3mm); height: calc(100% - 3mm); object-fit: cover; }
   body[data-template="atelier"] .atl-title { font-family: ${instrumentStack()}; font-size: 28pt; font-weight: 400; line-height: 1.1; max-width: 160mm; }
   body[data-template="atelier"] .template-atelier-cover .prem-meta-cols { justify-content: center; margin-top: 4mm; }
   body[data-template="atelier"] .atl-record { margin-top: auto; font-size: 8pt; letter-spacing: 0.1em; opacity: 0.65; padding-top: 4mm; }
@@ -561,8 +589,11 @@ export function premiumStylesheet(template: ReportTemplateId, accentRgb: string)
   body[data-template="botanical"] .bot-title { padding: 2mm 14mm 4mm; font-size: 28pt; line-height: 1.08; font-family: 'Newsreader', Georgia, serif; font-weight: 500; }
   body[data-template="botanical"] .bot-title-tail { font-style: italic; color: ${botanicalSage}; font-weight: 400; }
   body[data-template="botanical"] .bot-meta-bordered { padding: 4mm 14mm; border-top: 0.35mm solid rgba(27,49,38,0.2); border-bottom: 0.35mm solid rgba(27,49,38,0.2); }
-  body[data-template="botanical"] .bot-hero-full { min-height: 100mm; overflow: hidden; flex: 1; }
-  body[data-template="botanical"] .bot-hero-full .prem-cover-photo { width: 100%; height: 100%; min-height: 100mm; object-fit: cover; }
+  /* Figma hero 595×506 ≈ 179mm full-bleed. */
+  body[data-template="botanical"] .bot-hero-full {
+    position: relative; min-height: 140mm; height: 160mm; overflow: hidden; flex: 1 1 auto;
+  }
+  body[data-template="botanical"] .bot-hero-full .prem-cover-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   body[data-template="botanical"] .bot-moss-strip {
     display: flex; justify-content: space-between; align-items: center; padding: 3.5mm 14mm 10mm;
     background: ${botanicalWash}; font-size: 9.5pt;
@@ -587,8 +618,9 @@ export function premiumStylesheet(template: ReportTemplateId, accentRgb: string)
   body[data-template="stone"] .sto-logo-center { margin-bottom: 2mm; }
   body[data-template="stone"] .sto-biz { font-family: ${outfitStack()}; font-size: 11pt; font-weight: 700; letter-spacing: 0.06em; }
   body[data-template="stone"] .sto-tag { font-size: 8pt; letter-spacing: 0.1em; text-transform: uppercase; color: ${stoneTaupe}; margin-top: 1mm; }
-  body[data-template="stone"] .sto-hero { width: 100%; margin: 4mm 0; height: 78mm; overflow: hidden; border-radius: 1.5mm; }
-  body[data-template="stone"] .sto-hero .prem-cover-photo { width: 100%; height: 100%; object-fit: cover; }
+  /* Figma hero 515×412 ≈ 145mm. */
+  body[data-template="stone"] .sto-hero { position: relative; width: 100%; margin: 4mm 0; height: 118mm; overflow: hidden; border-radius: 1.5mm; }
+  body[data-template="stone"] .sto-hero .prem-cover-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   body[data-template="stone"] .sto-handover { font-size: 8pt; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.7; width: 100%; text-align: left; }
   body[data-template="stone"] .sto-title {
     font-family: ${outfitStack()}; font-size: 30pt; font-weight: 500; font-style: italic; text-transform: lowercase;
@@ -643,8 +675,11 @@ export function premiumStylesheet(template: ReportTemplateId, accentRgb: string)
   }
   body[data-template="solaris"] .sol-kpi-v { display: block; font-size: 14pt; font-weight: 800; color: ${solarisGreen}; font-family: 'JetBrains Mono', monospace; }
   body[data-template="solaris"] .sol-kpi-k { display: block; font-size: 7pt; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.75; margin-top: 1mm; }
-  body[data-template="solaris"] .sol-hero-wrap { position: relative; margin: 0 -12mm; flex: 1; min-height: 88mm; overflow: hidden; }
-  body[data-template="solaris"] .sol-hero-photo { width: 100%; height: 100%; min-height: 88mm; object-fit: cover; display: block; }
+  /* Figma hero 595×436 ≈ 154mm. */
+  body[data-template="solaris"] .sol-hero-wrap {
+    position: relative; margin: 0 -12mm; flex: 1 1 auto; min-height: 110mm; height: 132mm; max-height: 154mm; overflow: hidden;
+  }
+  body[data-template="solaris"] .sol-hero-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
   body[data-template="solaris"] .sol-inset-card {
     position: absolute; right: 10mm; bottom: 8mm; width: 48mm; background: rgb(255,255,255); color: ${ink};
     border-radius: 2mm; padding: 2mm; box-shadow: 0 2mm 8mm rgba(0,0,0,0.25);
@@ -705,8 +740,11 @@ export function premiumStylesheet(template: ReportTemplateId, accentRgb: string)
   body[data-template="blueprint"] .bpt-dimension { display: flex; align-items: center; gap: 2mm; margin: 2mm 0 3mm; opacity: 0.5; }
   body[data-template="blueprint"] .bpt-dim-line { flex: 1; height: 0; border-top: 0.35mm solid rgba(255,255,255,0.6); }
   body[data-template="blueprint"] .bpt-dim-tick { width: 0; height: 4mm; border-left: 0.35mm solid rgba(255,255,255,0.6); }
-  body[data-template="blueprint"] .bpt-hero { min-height: 72mm; overflow: hidden; margin-bottom: 4mm; border: 0.3mm solid rgba(255,255,255,0.25); }
-  body[data-template="blueprint"] .bpt-hero .prem-cover-photo { width: 100%; height: 100%; min-height: 72mm; object-fit: cover; }
+  /* Figma hero 515×354 ≈ 125mm. */
+  body[data-template="blueprint"] .bpt-hero {
+    position: relative; height: 112mm; overflow: hidden; margin-bottom: 4mm; border: 0.3mm solid rgba(255,255,255,0.25);
+  }
+  body[data-template="blueprint"] .bpt-hero .prem-cover-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   body[data-template="blueprint"] .bpt-title-block {
     background: rgb(255,255,255); color: ${ink}; border-radius: 2mm; padding: 3.5mm 4mm; margin-top: auto;
   }
@@ -723,8 +761,10 @@ export function premiumStylesheet(template: ReportTemplateId, accentRgb: string)
   body[data-template="clearline"] .clr-cover-meta { margin: 2mm 0 4mm; }
   body[data-template="clearline"] .clr-biz { font-size: 9pt; font-weight: 700; letter-spacing: 0.06em; margin-top: auto; }
   body[data-template="clearline"] .clr-pages { opacity: 0.65; margin-top: 2mm; }
-  body[data-template="clearline"] .clr-cover-photo { width: 82mm; flex-shrink: 0; overflow: hidden; background: rgb(220,228,236); }
-  body[data-template="clearline"] .clr-hero-photo { width: 100%; height: 100%; min-height: 297mm; object-fit: cover; display: block; }
+  body[data-template="clearline"] .clr-cover-photo {
+    position: relative; width: 82mm; flex-shrink: 0; overflow: hidden; background: rgb(220,228,236); align-self: stretch;
+  }
+  body[data-template="clearline"] .clr-hero-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
   body[data-template="clearline"] .clr-spec-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2.5mm; margin-bottom: 4mm; }
   body[data-template="clearline"] .clr-spec-card {
     border: 0.3mm solid ${line}; border-radius: 2mm; padding: 3mm; background: rgb(255,255,255);
@@ -786,10 +826,11 @@ export function premiumStylesheet(template: ReportTemplateId, accentRgb: string)
   body[data-template="sentinel"] .sen-status-dot {
     width: 2mm; height: 2mm; border-radius: 999px; background: ${sentinelTeal}; flex-shrink: 0;
   }
+  /* Figma hero 515×386 ≈ 136mm. */
   body[data-template="sentinel"] .sen-hero {
-    position: relative; margin: 0 0 4mm; min-height: 88mm; overflow: hidden; background: #0A0C10;
+    position: relative; margin: 0 0 4mm; height: 118mm; overflow: hidden; background: #0A0C10;
   }
-  body[data-template="sentinel"] .sen-hero-photo { width: 100%; height: 100%; min-height: 88mm; object-fit: cover; display: block; }
+  body[data-template="sentinel"] .sen-hero-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
   body[data-template="sentinel"] .sen-hud-brackets {
     position: absolute; inset: 3mm; border: 0.35mm solid rgba(255,255,255,0.55); pointer-events: none;
     box-shadow: inset 0 0 0 0.8mm rgba(17,20,25,0.15);

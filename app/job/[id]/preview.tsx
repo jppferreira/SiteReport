@@ -14,7 +14,8 @@ import { jobChecklistsRepository, jobsRepository, photosRepository, reportsRepos
 import { BottomSheetMenu } from '@/features/jobs/BottomSheetMenu';
 import { CoverPickerSheet } from '@/features/reports/CoverPickerSheet';
 import { HtmlReportPreview } from '@/features/reports/HtmlReportPreview';
-import type { ReportPreviewEditEvent } from '@/features/reports/previewEdit';
+import type { ReportPreviewEditEvent, ReportPreviewTextField } from '@/features/reports/previewEdit';
+import { PreviewTextSheet } from '@/features/reports/PreviewTextSheet';
 import {
   businessInitialFromName,
   parseTrayAccent,
@@ -94,6 +95,7 @@ export default function ReportPreviewScreen() {
   const [tradeFilter, setTradeFilter] = useState<TemplateTradeFilter>('all');
   const [coverPhotoId, setCoverPhotoId] = useState<string | null>(null);
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
+  const [textEditField, setTextEditField] = useState<ReportPreviewTextField | null>(null);
   const [photoMenuId, setPhotoMenuId] = useState<string | null>(null);
   const [photoCount, setPhotoCount] = useState(0);
   const [checklistProgress, setChecklistProgress] = useState({ checked: 0, total: 0 });
@@ -251,7 +253,15 @@ export default function ReportPreviewScreen() {
     (event: ReportPreviewEditEvent) => {
       if (event.action === 'cover') {
         setTrayExpanded(false);
+        setTextEditField(null);
         setCoverPickerOpen(true);
+        return;
+      }
+      if (event.action === 'text') {
+        setTrayExpanded(false);
+        setCoverPickerOpen(false);
+        setPhotoMenuId(null);
+        setTextEditField(event.field || 'title');
         return;
       }
       if (!event.photoId) return;
@@ -265,9 +275,23 @@ export default function ReportPreviewScreen() {
         return;
       }
       setTrayExpanded(false);
+      setTextEditField(null);
       setPhotoMenuId(event.photoId);
     },
     [id, isPro]
+  );
+
+  const textEditValues = useMemo(
+    () => ({
+      title: document?.htmlInput.job.title ?? '',
+      customer: document?.htmlInput.job.customerName ?? '',
+      address: document?.htmlInput.job.address ?? '',
+      description: document?.htmlInput.job.description ?? '',
+      work: summary?.workCompleted ?? document?.htmlInput.workCompleted ?? '',
+      materials: summary?.materials ?? document?.htmlInput.materials ?? '',
+      recommendations: summary?.recommendations ?? document?.htmlInput.recommendations ?? '',
+    }),
+    [document, summary]
   );
 
   const documentType = (summary?.documentType ?? 'reference') as DocumentType;
@@ -412,6 +436,17 @@ export default function ReportPreviewScreen() {
             coverPhotoId={coverPhotoId}
             onClose={() => setCoverPickerOpen(false)}
             onChanged={() => {
+              void load({ silent: true });
+            }}
+          />
+
+          <PreviewTextSheet
+            visible={textEditField !== null}
+            jobId={id}
+            field={textEditField}
+            values={textEditValues}
+            onClose={() => setTextEditField(null)}
+            onSaved={() => {
               void load({ silent: true });
             }}
           />

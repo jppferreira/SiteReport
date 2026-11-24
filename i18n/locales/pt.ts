@@ -1,9 +1,10 @@
 import enUS, { type TranslationTree } from './en-US';
+import { deepMerge, type DeepPartial } from './deepMerge';
 
 /**
  * European Portuguese (Portugal) catalog for Trade Report.
  */
-const pt = {
+const pt = deepMerge(enUS, {
   common: {
     close: 'Fechar',
     cancel: 'Cancelar',
@@ -28,7 +29,7 @@ const pt = {
     proBadge: 'PRO',
     free: 'Grátis',
     enabled: 'ATIVADO',
-    brandName: 'Trade Report',
+    brandName: 'TradeReport',
     brandTrade: 'Trade',
     brandReport: 'Report',
     photo: 'foto',
@@ -1103,7 +1104,7 @@ const pt = {
     profileUpgradeLogo: 'Atualize para adicionar um logótipo',
     profileCta: 'Criar o meu primeiro trabalho →',
     profileSkip: 'Saltar por agora',
-    brandMarkA11y: 'Trade Report',
+    brandMarkA11y: 'TradeReport',
     stepDotsA11y: 'Passo %{step} de %{total}',
     heroNext: 'Seguinte',
     welcomeTagline: 'Prova de trabalho em minutos',
@@ -1127,8 +1128,8 @@ const pt = {
     proofTradespersonName: 'Tom Rivers',
   },
   splash: {
-    accessibilityLabel: 'Trade Report. Relatórios profissionais de trabalhos em minutos.',
-    wordmarkTrade: 'Trades',
+    accessibilityLabel: 'TradeReport. Relatórios profissionais de trabalhos em minutos.',
+    wordmarkTrade: 'Trade',
     wordmarkReport: 'Report',
     tagline: 'Relatórios profissionais de trabalhos em minutos',
   },
@@ -1385,6 +1386,6 @@ const pt = {
     system: 'Usar o idioma do dispositivo',
     description: 'Escolha o idioma dos menus, botões e mensagens no Trade Report.',
   },
-} as const satisfies TranslationTree;
+} as DeepPartial<TranslationTree>);
 
 export default pt;

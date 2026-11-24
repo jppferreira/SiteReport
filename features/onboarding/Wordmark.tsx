@@ -20,7 +20,6 @@ export function Wordmark({ size = 'header' }: WordmarkProps) {
       <View style={styles.name}>
         <Text variant={hero ? 'h1' : 'h2'}>Trade</Text>
         <Text variant={hero ? 'h1' : 'h2'} color={colors.accent}>
-          {' '}
           Report
         </Text>
       </View>

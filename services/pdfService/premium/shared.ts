@@ -39,6 +39,11 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&apos;');
 }
 
+/** Tap target in the in-app preview — opens the text edit tray. */
+export function editTextAttrs(field: string): string {
+  return `data-preview-edit="text" data-edit-field="${escapeHtml(field)}"`;
+}
+
 function parseHex(value: string): Rgb | null {
   const match = /^#([0-9a-fA-F]{6})$/.exec(value.trim());
   if (!match?.[1]) return null;
@@ -131,17 +136,15 @@ function premPhotoImg(photo: ReportPhotoData, alt: string, className = 'prem-pho
   if (!hasAnnotations(photo.annotations)) {
     return `<img class="${className}" src="${photo.dataUri}" width="${width}" height="${height}" alt="${escapeHtml(alt)}" data-preview-edit="photo" data-photo-id="${escapeHtml(photo.id)}" />`;
   }
+  // Fill the template photo frame (same crop as unmarked shots) so annotated
+  // images don't leave empty bands or blow past the Figma cell size.
   const baked = annotationsToSvgMarkup(photo.annotations, width, height, {
-    preserveAspectRatio: 'xMidYMid meet',
+    preserveAspectRatio: 'xMidYMid slice',
     className: 'prem-photo-marks',
     imageHref: photo.dataUri,
     ariaLabel: alt || 'Annotated photo',
   });
-  const sized = baked.replace(
-    '<svg',
-    `<svg style="aspect-ratio:${width}/${height};max-width:100%;max-height:120mm;width:auto;height:auto;display:block;margin:0 auto"`
-  );
-  return svgWithoutHash(sized);
+  return svgWithoutHash(baked);
 }
 
 export function premShot(
@@ -150,12 +153,12 @@ export function premShot(
   showTag = true
 ): string {
   const caption = photo.caption?.trim() || label;
-  return `<figure class="prem-shot">
+  return `<figure class="prem-shot" data-preview-edit="photo" data-photo-id="${escapeHtml(photo.id)}">
     <div class="prem-shot-frame">
       ${premPhotoImg(photo, caption)}
       ${showTag ? `<span class="prem-tag">${escapeHtml(label)}</span>` : ''}
     </div>
-    ${caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : ''}
+    ${caption ? `<figcaption>${rich(caption)}</figcaption>` : ''}
   </figure>`;
 }
 
@@ -196,10 +199,15 @@ export function premPhotosBlock(input: ReportHtmlInput, layout: 'pair' | 'stack'
   const count = photoCountInput(input);
   return groups
     .map((group) => {
+      const duringShots = group.during.map((p) => premShot(p, 'During'));
       const inner =
         layout === 'stack'
-          ? [...group.before.map((p) => premShot(p, 'Before')), ...group.after.map((p) => premShot(p, 'After'))].join('')
-          : pairRow(group.before, group.after);
+          ? [
+              ...group.before.map((p) => premShot(p, 'Before')),
+              ...duringShots,
+              ...group.after.map((p) => premShot(p, 'After')),
+            ].join('')
+          : `${pairRow(group.before, group.after)}${duringShots.join('')}`;
       const title = groups.length > 1 ? `<h3 class="prem-area-title">${escapeHtml(group.name)}</h3>` : '';
       return `<div class="prem-photos" data-photo-count="${count}">${title}${inner}</div>`;
     })
@@ -230,18 +238,19 @@ export function premChecklist(input: ReportHtmlInput, passLabel = 'Pass'): strin
 export function premMaterialsList(input: ReportHtmlInput): string {
   const items = listItems(input.materials);
   if (!items) return '';
-  return `<ul class="prem-specs">${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
+  return `<ul class="prem-specs" ${editTextAttrs('materials')}>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
 }
 
 export function premWorkBullets(input: ReportHtmlInput): string {
   const items = listItems(input.workCompleted) ?? listItems(input.job.description);
   if (!items) return '';
-  return `<ul class="prem-work">${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
+  const field = isNonEmpty(input.workCompleted) ? 'work' : 'description';
+  return `<ul class="prem-work" ${editTextAttrs(field)}>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
 }
 
 export function premAftercare(input: ReportHtmlInput): string {
   if (!isNonEmpty(input.recommendations)) return '';
-  return `<div class="prem-care"><p>${rich(input.recommendations)}</p></div>`;
+  return `<div class="prem-care" ${editTextAttrs('recommendations')}><p>${rich(input.recommendations)}</p></div>`;
 }
 
 function normalizeDocumentType(input: ReportHtmlInput): 'invoice' | 'quote' | 'reference' {
@@ -438,7 +447,7 @@ export function premPhotosNumbered(input: ReportHtmlInput, max?: number): string
   if (photos.length === 0) return '';
   return `<div class="prem-num-photos" data-photo-count="${photoCountInput(input)}">${photos
     .map(
-      (photo, i) => `<figure class="prem-num-shot"><div class="prem-num-frame">${premPhotoImg(photo, photo.caption ?? `Photo ${i + 1}`)}<span class="prem-num-badge">${String(i + 1).padStart(2, '0')}</span></div>${photo.caption?.trim() ? `<figcaption>${escapeHtml(photo.caption.trim())}</figcaption>` : ''}</figure>`
+      (photo, i) => `<figure class="prem-num-shot"><div class="prem-num-frame">${premPhotoImg(photo, photo.caption ?? `Photo ${i + 1}`)}<span class="prem-num-badge">${String(i + 1).padStart(2, '0')}</span></div>${photo.caption?.trim() ? `<figcaption>${rich(photo.caption.trim())}</figcaption>` : ''}</figure>`
     )
     .join('')}</div>`;
 }

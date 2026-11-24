@@ -159,6 +159,7 @@ export class PlayPurchaseService implements PurchaseService {
     const activeByProduct = new Map(activeSubscriptions.map((subscription) => [subscription.productId, subscription]));
 
     const items: PlayOwnedItem[] = [];
+    const seen = new Set<string>();
     for (const purchase of purchases) {
       if ('isSuspendedAndroid' in purchase && purchase.isSuspendedAndroid) continue;
       if (purchase.purchaseState === 'purchased' && 'isAcknowledgedAndroid' in purchase && purchase.isAcknowledgedAndroid === false) {
@@ -166,17 +167,34 @@ export class PlayPurchaseService implements PurchaseService {
           logger.warn('Failed to acknowledge an existing Google Play purchase', { error: String(error) });
         });
       }
-      const purchaseState = purchase.purchaseState === 'pending' || purchase.purchaseState === 'purchased' ? purchase.purchaseState : 'unknown';
+      const baseState =
+        purchase.purchaseState === 'pending' || purchase.purchaseState === 'purchased'
+          ? purchase.purchaseState
+          : 'unknown';
       for (const productId of productIdsOf(purchase)) {
         if (!isPlayProduct(productId)) continue;
         const active = activeByProduct.get(productId);
+        const purchaseState = baseState === 'unknown' && active?.isActive ? 'purchased' : baseState;
         items.push({
           productId,
           basePlanId: purchase.currentPlanId ?? active?.currentPlanId ?? active?.basePlanIdAndroid ?? null,
           purchaseState,
           autoRenewing: active?.autoRenewingAndroid === true || purchase.isAutoRenewing === true,
         });
+        seen.add(productId);
       }
+    }
+    for (const subscription of activeSubscriptions) {
+      if (!subscription.isActive || !isPlayProduct(subscription.productId) || seen.has(subscription.productId)) {
+        continue;
+      }
+      items.push({
+        productId: subscription.productId,
+        basePlanId: subscription.currentPlanId ?? subscription.basePlanIdAndroid ?? null,
+        purchaseState: 'purchased',
+        autoRenewing: subscription.autoRenewingAndroid === true,
+      });
+      seen.add(subscription.productId);
     }
     return entitlementFromPlay(items);
   }

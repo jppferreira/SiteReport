@@ -7,10 +7,15 @@ import { normaliseLevelUnit, type LevelUnit } from './levelUnits';
 
 const STORAGE_KEY = 'levelTool.settings.v1';
 
+/** Portrait / plumb vial: large bullseye bubble, or traditional box level stood on end. */
+export type UprightVialStyle = 'bubble' | 'box';
+
 export type LevelSettings = {
   unit: LevelUnit;
   haptics: boolean;
   sound: boolean;
+  /** Only used when the phone is upright (plumb). Flat stays bullseye; sideways stays box. */
+  uprightVial: UprightVialStyle;
   calibration: CalibrationOffsets;
 };
 
@@ -18,8 +23,13 @@ export const DEFAULT_LEVEL_SETTINGS: LevelSettings = {
   unit: 'deg',
   haptics: true,
   sound: false,
+  uprightVial: 'bubble',
   calibration: {},
 };
+
+export function normaliseUprightVial(value: unknown): UprightVialStyle {
+  return value === 'box' ? 'box' : 'bubble';
+}
 
 export function parseLevelSettings(raw: string | null): LevelSettings {
   if (!raw) return DEFAULT_LEVEL_SETTINGS;
@@ -29,6 +39,7 @@ export function parseLevelSettings(raw: string | null): LevelSettings {
       unit: normaliseLevelUnit(value.unit),
       haptics: value.haptics !== false,
       sound: value.sound === true,
+      uprightVial: normaliseUprightVial(value.uprightVial),
       calibration: parseCalibration(value.calibration),
     };
   } catch {
@@ -67,6 +78,10 @@ export function useLevelSettings() {
   const setUnit = useCallback((unit: LevelUnit) => update((s) => ({ ...s, unit })), [update]);
   const toggleHaptics = useCallback(() => update((s) => ({ ...s, haptics: !s.haptics })), [update]);
   const toggleSound = useCallback(() => update((s) => ({ ...s, sound: !s.sound })), [update]);
+  const setUprightVial = useCallback(
+    (uprightVial: UprightVialStyle) => update((s) => ({ ...s, uprightVial })),
+    [update]
+  );
   const setZero = useCallback(
     (orientation: LevelOrientation, offset: CalibrationOffset | null) =>
       update((s) => {
@@ -78,5 +93,5 @@ export function useLevelSettings() {
     [update]
   );
 
-  return { settings, setUnit, toggleHaptics, toggleSound, setZero };
+  return { settings, setUnit, toggleHaptics, toggleSound, setUprightVial, setZero };
 }

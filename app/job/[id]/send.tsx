@@ -43,7 +43,7 @@ export default function SendReportScreen() {
   const { id, reportId } = useLocalSearchParams<{ id: string; reportId?: string }>();
   const { colors, spacing } = useTheme();
   const { t } = useI18n();
-  const { isPro } = useEntitlement();
+  const { isPro, loading: entitlementLoading } = useEntitlement();
   const [job, setJob] = useState<Job | null>(null);
   const [report, setReport] = useState<Report | null>(null);
   const [business, setBusiness] = useState<BusinessProfile | null>(null);
@@ -52,6 +52,7 @@ export default function SendReportScreen() {
   const [sheetOpen, setSheetOpen] = useState(true);
 
   useEffect(() => {
+    if (entitlementLoading) return;
     if (!isPro) {
       router.replace({ pathname: '/paywall', params: { trigger: 'branded_email' } });
       return;
@@ -89,7 +90,7 @@ export default function SendReportScreen() {
     return () => {
       cancelled = true;
     };
-  }, [id, reportId, isPro]);
+  }, [id, reportId, isPro, entitlementLoading]);
 
   const latestEmail = useMemo(
     () => events.find((event) => event.kind === 'emailed') ?? null,

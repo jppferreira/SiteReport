@@ -83,7 +83,11 @@ function CompactPhotoCard({
             accessibilityLabel={t('photos.viewAnnotationsA11y')}
             style={[styles.markupBadge, { backgroundColor: colors.accent }]}
           >
-            <Ionicons name="document-text" size={14} color={colors.accentOnAccent} />
+            <Text variant="caption" color={colors.accentOnAccent} style={{ fontWeight: '700', fontSize: 11 }}>
+              {photo.annotations!.shapes.length === 1
+                ? t('photoAnnotate.marksCountOne')
+                : t('photoAnnotate.marksCount', { count: photo.annotations!.shapes.length })}
+            </Text>
           </Pressable>
         ) : null}
         {reorderMode ? (
@@ -221,6 +225,15 @@ function FullWidthPhotoCard({
             <PhotoAnnotationShapes annotations={photo.annotations} width={frame.width} height={frame.height} />
           </View>
         ) : null}
+        {hasAnnotations(photo.annotations) && !reorderMode ? (
+          <View style={[styles.markupBadge, { backgroundColor: colors.accent }]}>
+            <Text variant="caption" color={colors.accentOnAccent} style={{ fontWeight: '700', fontSize: 11 }}>
+              {photo.annotations!.shapes.length === 1
+                ? t('photoAnnotate.marksCountOne')
+                : t('photoAnnotate.marksCount', { count: photo.annotations!.shapes.length })}
+            </Text>
+          </View>
+        ) : null}
         {reorderMode ? (
           <View style={[styles.dragBadge, { backgroundColor: 'rgba(16,19,16,0.72)' }]}>
             <Ionicons name="menu" size={14} color="#FFFFFF" />
@@ -288,8 +301,8 @@ const styles = StyleSheet.create({
     top: 8,
     right: 8,
     zIndex: 2,
-    width: 28,
-    height: 28,
+    minHeight: 28,
+    paddingHorizontal: 8,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',

@@ -10,22 +10,42 @@ import {
 import { fitContainRect } from '@/features/photos/fitContainRect';
 
 describe('photo annotations', () => {
-  it('round-trips pen, arrow, circle and callout shapes', () => {
+  it('round-trips pen, arrow, circle, rect, highlight, dimension and callout shapes', () => {
     const annotations = {
       version: 1 as const,
       shapes: [
-        { kind: 'pen' as const, color: '#FF5A36' as const, width: 0.009, points: [{ x: 0.1, y: 0.2 }, { x: 0.3, y: 0.4 }] },
-        { kind: 'arrow' as const, color: '#1FA84A' as const, width: 0.009, from: { x: 0.2, y: 0.2 }, to: { x: 0.8, y: 0.8 } },
+        { kind: 'pen' as const, color: '#FF5A36' as const, width: 0.009, points: [{ x: 0.1, y: 0.2 }, { x: 0.3, y: 0.4 }], outline: true },
+        { kind: 'arrow' as const, color: '#1FA84A' as const, width: 0.009, from: { x: 0.2, y: 0.2 }, to: { x: 0.8, y: 0.8 }, outline: true },
         { kind: 'circle' as const, color: '#FFB020' as const, width: 0.009, from: { x: 0.4, y: 0.4 }, to: { x: 0.6, y: 0.7 } },
-        { kind: 'callout' as const, color: '#121412' as const, at: { x: 0.5, y: 0.25 }, note: 'Crack by the sill' },
+        { kind: 'rect' as const, color: '#FF5A36' as const, width: 0.009, from: { x: 0.1, y: 0.1 }, to: { x: 0.3, y: 0.4 } },
+        { kind: 'highlight' as const, color: '#FFB020' as const, width: 0.009, from: { x: 0.5, y: 0.5 }, to: { x: 0.7, y: 0.8 } },
+        {
+          kind: 'dimension' as const,
+          color: '#1FA84A' as const,
+          width: 0.009,
+          from: { x: 0.2, y: 0.6 },
+          to: { x: 0.8, y: 0.6 },
+          label: '400 mm',
+        },
+        {
+          kind: 'callout' as const,
+          color: '#121412' as const,
+          at: { x: 0.5, y: 0.25 },
+          anchor: { x: 0.62, y: 0.4 },
+          note: 'Crack by the sill',
+          outline: true,
+        },
       ],
     };
 
     const raw = serializePhotoAnnotations(annotations);
     expect(raw).toContain('"pen"');
+    expect(raw).toContain('"dimension"');
+    expect(raw).toContain('"highlight"');
+    expect(raw).toContain('400 mm');
     expect(raw).toContain('Crack by the sill');
     expect(hasAnnotations(parsePhotoAnnotations(raw))).toBe(true);
-    expect(coercePhotoAnnotations(annotations)?.shapes).toHaveLength(4);
+    expect(coercePhotoAnnotations(annotations)?.shapes).toHaveLength(7);
   });
 
   it('maps legacy colours onto the Figma palette', () => {
@@ -117,6 +137,57 @@ describe('photo annotations', () => {
     expect(svg).toContain('fill="#121412"');
     expect(svg).toContain('Recolored');
     expect(svg).toContain('White pin');
+  });
+
+  it('bakes dimension, highlight and outlined arrow into PDF SVG', () => {
+    const svg = annotationsToSvgMarkup(
+      {
+        version: 1,
+        shapes: [
+          {
+            kind: 'arrow',
+            color: '#FF5A36',
+            width: 0.01,
+            from: { x: 0.1, y: 0.2 },
+            to: { x: 0.4, y: 0.5 },
+            outline: true,
+          },
+          {
+            kind: 'dimension',
+            color: '#1FA84A',
+            width: 0.01,
+            from: { x: 0.2, y: 0.7 },
+            to: { x: 0.8, y: 0.7 },
+            label: '900 mm',
+            outline: true,
+          },
+          {
+            kind: 'highlight',
+            color: '#FF5A36',
+            width: 0.01,
+            from: { x: 0.5, y: 0.2 },
+            to: { x: 0.7, y: 0.4 },
+            outline: true,
+          },
+          {
+            kind: 'callout',
+            color: '#FF5A36',
+            at: { x: 0.3, y: 0.25 },
+            anchor: { x: 0.45, y: 0.4 },
+            note: 'Window frame rotten',
+            outline: true,
+          },
+        ],
+      },
+      1200,
+      900,
+      { imageHref: 'data:image/jpeg;base64,xyz', ariaLabel: 'Marked photo' }
+    );
+    expect(svg).toContain('900 mm');
+    expect(svg).toContain('Window frame rotten');
+    expect(svg).toContain('fill-opacity=');
+    expect(svg).toContain('stroke="#FFFFFF"');
+    expect(svg).toContain('<image href="data:image/jpeg;base64,xyz"');
   });
 });
 

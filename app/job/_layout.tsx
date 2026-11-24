@@ -8,6 +8,7 @@ export default function JobLayout() {
       <Stack.Screen name="[id]/index" />
       <Stack.Screen name="[id]/edit" options={{ presentation: 'modal' }} />
       <Stack.Screen name="[id]/photos/index" />
+      <Stack.Screen name="[id]/photos/tools" />
       <Stack.Screen name="[id]/photos/[areaId]" />
       <Stack.Screen name="[id]/photo/[photoId]" options={{ presentation: 'fullScreenModal' }} />
       <Stack.Screen name="[id]/annotate/[photoId]" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />

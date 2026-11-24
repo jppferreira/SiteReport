@@ -49,6 +49,59 @@ export async function ensureJobDirectories(jobId: string): Promise<{ photos: str
   return { photos, reports };
 }
 
+/**
+ * Picks a unique file name under a reports folder. Saved reports are append-only:
+ * regenerating must never reuse a path that already holds a previous PDF/HTML.
+ */
+export function nextReportArtifactName(fileName: string, existingNames: Set<string>, now = Date.now()): string {
+  let name = `${now}-${fileName}`;
+  let attempt = 0;
+  while (existingNames.has(name)) {
+    attempt += 1;
+    name = `${now}-${attempt}-${fileName}`;
+    if (attempt > 50) {
+      throw new Error('Could not allocate a unique report path');
+    }
+  }
+  return name;
+}
+
+async function listDirectoryNames(path: string): Promise<string[]> {
+  const info = await getInfo(path);
+  if (!info.exists || !info.isDirectory) return [];
+  try {
+    return isWeb() ? await getWebFileStore().readDirectory(path) : await FileSystem.readDirectoryAsync(path);
+  } catch {
+    return [];
+  }
+}
+
+/** Absolute/web path for a new report file that does not collide with existing artifacts. */
+export async function allocateUniqueReportPath(reportsDir: string, fileName: string): Promise<string> {
+  const base = reportsDir.endsWith('/') ? reportsDir : `${reportsDir}/`;
+  const existing = new Set(await listDirectoryNames(base));
+  return `${base}${nextReportArtifactName(fileName, existing)}`;
+}
+
+/**
+ * Writes a brand-new report artifact. Refuses to replace an existing file so
+ * template/layout updates cannot silently rewrite a previously saved report.
+ */
+export async function writeNewReportArtifact(
+  path: string,
+  contents: { kind: 'text' | 'base64'; data: string }
+): Promise<void> {
+  const info = await getInfo(path);
+  if (info.exists) {
+    throw new Error('Refusing to overwrite a saved report file');
+  }
+  if (contents.kind === 'text') {
+    await writeTextFile(path, contents.data);
+  } else {
+    await writeBase64File(path, contents.data);
+  }
+}
+
 export async function ensureBusinessDirectory(): Promise<string> {
   await ensureDirectory(BUSINESS_DIR);
   return BUSINESS_DIR;

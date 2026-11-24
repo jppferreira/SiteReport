@@ -46,7 +46,7 @@ export function LevelToolView({ active, onClose, onChangeMode, topReserve = 0 }:
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const { reading: raw, gravity, available, ready } = useDeviceLevel(active);
-  const { settings, setUnit, toggleHaptics, toggleSound, setZero } = useLevelSettings();
+  const { settings, setUnit, toggleHaptics, toggleSound, setUprightVial, setZero } = useLevelSettings();
   const trackerRef = useRef(createOrientationTracker());
   const [orientation, setOrientation] = useState<LevelOrientation>('flat');
   const [held, setHeld] = useState<HeldReading | null>(null);
@@ -173,6 +173,31 @@ export function LevelToolView({ active, onClose, onChangeMode, topReserve = 0 }:
       ))}
     </View>
   );
+  /** Portrait/plumb only — flat always uses the bullseye; sideways always uses the box. */
+  const uprightStyleSwitch = plumb ? (
+    <View style={styles.units}>
+      {([
+        { id: 'bubble' as const, label: t('arTools.level.styleBubble') },
+        { id: 'box' as const, label: t('arTools.level.styleBox') },
+      ]).map((option) => (
+        <Pressable
+          key={option.id}
+          onPress={() => setUprightVial(option.id)}
+          style={[styles.unit, settings.uprightVial === option.id && styles.unitActive]}
+          accessibilityRole="button"
+          accessibilityState={{ selected: settings.uprightVial === option.id }}
+          accessibilityLabel={option.label}
+        >
+          <Text variant="caption" color={settings.uprightVial === option.id ? AR_COLORS.ink : AR_COLORS.textSoft}>
+            {option.label}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  ) : null;
+  const showBullseye = shownOrientation === 'flat' || (plumb && settings.uprightVial === 'bubble');
+  const portraitBoxWidth = Math.min(frameW - 32, 360);
+  const portraitBoxHeight = (portraitBoxWidth / 700) * 128;
   const numbers = (
     <View style={[styles.readouts, longEdge && styles.edgeReadouts]} accessibilityLiveRegion="polite">
       {isLevel ? <View style={styles.levelBadge}><Ionicons name="checkmark" size={13} color={AR_COLORS.brandText} /><Text variant="caption" color={AR_COLORS.brandText}>{t(plumb ? 'arTools.level.plumbBadge' : 'arTools.level.levelBadge')}</Text></View> : null}
@@ -206,7 +231,15 @@ export function LevelToolView({ active, onClose, onChangeMode, topReserve = 0 }:
           <>
             <View style={styles.orientationRow}><View style={styles.orientationChip}><Ionicons name={plumb ? 'phone-portrait-outline' : 'phone-landscape-outline'} color={AR_COLORS.textSoft} size={14} /><Text variant="caption" color={AR_COLORS.textSoft}>{t(`arTools.level.orientation.${shownOrientation}`)}</Text></View></View>
             <View style={styles.stage}>
-              {shownOrientation === 'flat' ? <BullseyeVial size={bezelSize} offsetX={offset.x} offsetY={offset.y} isLevel={isLevel} /> : <BoxLevelVial width={Math.min(frameW - 32, 360)} angleDeg={displayed?.angleDeg ?? 0} isLevel={isLevel} />}
+              {showBullseye ? (
+                <BullseyeVial size={bezelSize} offsetX={offset.x} offsetY={offset.y} isLevel={isLevel} />
+              ) : (
+                <View style={{ width: portraitBoxHeight, height: portraitBoxWidth, alignItems: 'center', justifyContent: 'center' }}>
+                  <View style={{ width: portraitBoxWidth, height: portraitBoxHeight, transform: [{ rotate: '90deg' }] }}>
+                    <BoxLevelVial width={portraitBoxWidth} angleDeg={displayed?.angleDeg ?? 0} isLevel={isLevel} />
+                  </View>
+                </View>
+              )}
             </View>
             {numbers}
             {shownOrientation === 'flat' && !compact ? (
@@ -214,7 +247,7 @@ export function LevelToolView({ active, onClose, onChangeMode, topReserve = 0 }:
                 {(['rollDeg', 'pitchDeg'] as const).map((axis) => <View key={axis} style={styles.axisChip}><Text variant="caption" color={AR_COLORS.textDim} style={styles.axisLabel}>{t(axis === 'rollDeg' ? 'arTools.level.roll' : 'arTools.level.pitch')}</Text><Text variant="bodyMedium" color="#FFFFFF">{displayed ? formatDegrees(displayed[axis]) : '—'}</Text></View>)}
               </View>
             ) : null}
-            <View style={[styles.tray, compact && { marginTop: 10 }]}>{units}{tools}</View>
+            <View style={[styles.tray, compact && { marginTop: 10 }]}>{uprightStyleSwitch}{units}{tools}</View>
           </>
         ) : (
           <>

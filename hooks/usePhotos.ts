@@ -45,7 +45,6 @@ export function usePhotos(jobId: string, type: PhotoType, scope?: PhotoScope) {
 
   useEffect(() => {
     // Fetch when the section or type changes. `refresh` records which request finished.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 
@@ -76,7 +75,6 @@ export function useJobPhotos(jobId: string) {
   }, [jobId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 

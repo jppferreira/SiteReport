@@ -171,7 +171,17 @@ function referencedPaths(manifest: BackupManifest): string[] {
 function parseManifest(value: unknown): BackupManifest | null {
   if (!value || typeof value !== 'object') return null;
   const record = value as Record<string, unknown>;
-  if (record.format !== BACKUP_FORMAT || record.formatVersion !== BACKUP_FORMAT_VERSION) return null;
+  // Accept this version and older manifests so app updates can still restore
+  // backups that already contain frozen report PDFs. Reject unknown newer formats.
+  if (record.format !== BACKUP_FORMAT) return null;
+  if (
+    typeof record.formatVersion !== 'number' ||
+    !Number.isInteger(record.formatVersion) ||
+    record.formatVersion < 1 ||
+    record.formatVersion > BACKUP_FORMAT_VERSION
+  ) {
+    return null;
+  }
   if (typeof record.exportedAt !== 'string') return null;
   if (!Array.isArray(record.files) || !Array.isArray(record.jobs)) return null;
 

@@ -76,7 +76,6 @@ export default function GenerateReportScreen() {
   useEffect(() => {
     // Kick off report generation on mount; `run` manages its own state
     // transitions (working/success/error) as an external async operation.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     run();
   }, [run]);
 

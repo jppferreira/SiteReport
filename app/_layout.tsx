@@ -10,9 +10,14 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, AppState, Platform, StyleSheet } from 'react-native';
+import { Animated, AppState, LogBox, Platform, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+/** Keep store / marketing screenshots free of the Expo “Open debugger…” toast. */
+if (__DEV__) {
+  LogBox.ignoreAllLogs(true);
+}
 
 import { ToastProvider, ErrorState } from '@/components';
 import { AppErrorBoundary } from '@/components/AppErrorBoundary';

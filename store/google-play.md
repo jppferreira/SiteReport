@@ -108,20 +108,20 @@ App content → Data safety. Suggested answers aligned with the privacy policy a
 
 Also complete: content rating questionnaire, target audience (not children), news app / COVID / data encryption declarations as applicable (encryption: standard HTTPS for optional bug report only; jobs are local).
 
+## Done via API (24 Nov 2026)
+
+- en-GB store listing copy (short + full description) committed
+- Data Safety CSV uploaded (optional support messages + app version/platform; no account creation; deletion URL → privacy policy)
+
 ## What J must do by hand
 
-1. **Play Console API service account**
-   - Google Cloud project → create service account → JSON key
-   - Play Console → Users and permissions → invite the service account with **Release to testing tracks** (and metadata if you want API listing edits)
-   - Save the JSON as `store/play-service-account.json` (never commit)
-2. **Upload missing listing graphics** (feature graphic + phone screenshots from `store/play/`) if Console still shows them incomplete
-3. **Store settings:** confirm privacy policy URL `https://tradereportapp.com/privacy.html`, app category, contact email
-4. **Data safety** form (answers above)
-5. **Content rating** questionnaire
-6. **Create / activate** Play Billing products (`tradesreport.pro` + lifetime)
-7. **Personal account production access:** finish closed testing requirements (Google often requires a minimum number of testers and a period of closed testing before production is unlocked) — **Apply for production** stays disabled until then
-8. **Preview and confirm** the internal testing release (dashboard task still open) — draft only, no production rollout
-9. Run `eas submit --platform android --latest` once the service account JSON is in place
+1. **Upload missing listing graphics** (feature graphic + phone screenshots from `store/play/`) if Console still shows them incomplete
+2. **Content rating** questionnaire (if not already complete)
+3. **Create / activate** Play Billing products (`tradesreport.pro` + lifetime) if not already live
+4. **Declare trader status** (account-level; due Feb 2027) from Play Console home → Get started
+5. **Publishing overview:** send pending Trade Report changes for review when ready (Console shows “Changes not yet sent for review”)
+6. **Production access:** finish closed/open testing requirements before production rollout
+7. Run `eas submit --platform android --latest` for the next Android build when ready
 
 ## Explicitly out of scope for this prep
 

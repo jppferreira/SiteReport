@@ -56,6 +56,8 @@ export type AppPreferences = {
   stampShowOnPdf: boolean;
   /** Units used when saving AR measurements. */
   measureUnit: MeasureUnit;
+  /** Last job-type chip from the guided details sheet (remembered next time). */
+  lastJobTrade: string | null;
 };
 
 export function defaultMeasureUnit(): MeasureUnit {
@@ -87,6 +89,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   stampAddress: true,
   stampShowOnPdf: true,
   measureUnit: 'm',
+  lastJobTrade: null,
 };
 
 export async function hasCompletedOnboarding(): Promise<boolean> {
@@ -129,6 +132,7 @@ export async function getPreferences(): Promise<AppPreferences> {
     if (typeof parsed.stampAddress !== 'boolean') parsed.stampAddress = true;
     if (typeof parsed.stampShowOnPdf !== 'boolean') parsed.stampShowOnPdf = true;
     parsed.measureUnit = normalizeMeasureUnit(parsed.measureUnit);
+    if (typeof parsed.lastJobTrade !== 'string') parsed.lastJobTrade = null;
     return parsed;
   } catch {
     return { ...DEFAULT_PREFERENCES, measureUnit: defaultMeasureUnit() };

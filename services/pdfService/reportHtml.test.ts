@@ -551,6 +551,9 @@ describe('buildReportHtml', () => {
     expect(html).toContain('data-preview-edit="photo"');
     expect(html).toContain('data-photo-id="before-1"');
     expect(html).toContain('data-preview-edit="annotate"');
+    expect(html).toContain('data-preview-edit="text"');
+    expect(html).toContain('data-edit-field="work"');
+    expect(html).toContain("field: el.getAttribute('data-edit-field')");
     expect(html).toContain("type: 'preview-edit'");
     expect(html).toContain('ReactNativeWebView');
     // Print HTML keeps the same hooks so preview can target them, but no tap script.
@@ -604,6 +607,39 @@ describe('buildReportHtml', () => {
     expect(html).not.toContain('14 Jan 2026');
     expect(html).not.toContain('Jan 14, 2026');
     expect(prepareAndroidPrintHtml(html)).toContain(formatted);
+  });
+
+  it('bakes multiline AR measurement captions into during-photo figcaptions', () => {
+    const measureCaption =
+      'Hall door opening — 0.76 × 2.04 m\nWidth: 0.76 m\nHeight: 2.04 m';
+    const html = buildReportHtml(
+      sample('modern', {
+        before: [],
+        during: [photo('measure-1', measureCaption)],
+        after: [],
+      })
+    );
+    expect(html).toContain('section-during');
+    expect(html).toContain('Hall door opening — 0.76 × 2.04 m<br/>Width: 0.76 m<br/>Height: 2.04 m');
+    expect(html).not.toMatch(/<figcaption>[^<]*\n[^<]*<\/figcaption>/);
+
+    const tradeHtml = buildReportHtml(
+      sample('trade', {
+        before: [],
+        during: [photo('measure-2', measureCaption)],
+        after: [],
+      })
+    );
+    expect(tradeHtml).toContain('Width: 0.76 m<br/>Height: 2.04 m');
+
+    const premiumHtml = buildReportHtml(
+      sample('atelier', {
+        before: [],
+        during: [photo('measure-3', measureCaption)],
+        after: [],
+      })
+    );
+    expect(premiumHtml).toContain('Width: 0.76 m<br/>Height: 2.04 m');
   });
 
   it('prints the evidence stamp baked into the photo caption', () => {

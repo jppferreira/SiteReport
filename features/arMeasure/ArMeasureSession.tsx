@@ -111,7 +111,6 @@ export function ArMeasureSession({ jobId, areaId, capabilities, active, onClose,
     if (saveRequest !== lastSaveRequest.current) {
       lastSaveRequest.current = saveRequest;
       // The parent asks for the save sheet imperatively (close → "Save to report"); opening it is the point.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (hasMeasurements) void openSave();
     }
   }, [saveRequest, hasMeasurements, openSave]);

@@ -1,9 +1,10 @@
 import enUS, { type TranslationTree } from './en-US';
+import { deepMerge, type DeepPartial } from './deepMerge';
 
 /**
  * Dutch catalog for Trade Report.
  */
-const nl = {
+const nl = deepMerge(enUS, {
   common: {
     close: 'Sluiten',
     cancel: 'Annuleren',
@@ -28,7 +29,7 @@ const nl = {
     proBadge: 'PRO',
     free: 'Gratis',
     enabled: 'INGESCHAKELD',
-    brandName: 'Trade Report',
+    brandName: 'TradeReport',
     brandTrade: 'Trade',
     brandReport: 'Report',
     photo: 'foto',
@@ -1103,7 +1104,7 @@ const nl = {
     profileUpgradeLogo: 'Upgrade om een logo toe te voegen',
     profileCta: 'Mijn eerste klus maken →',
     profileSkip: 'Nu overslaan',
-    brandMarkA11y: 'Trade Report',
+    brandMarkA11y: 'TradeReport',
     stepDotsA11y: 'Stap %{step} van %{total}',
     heroNext: 'Volgende',
     welcomeTagline: 'Bewijs van werk in minuten',
@@ -1127,8 +1128,8 @@ const nl = {
     proofTradespersonName: 'Tom Rivers',
   },
   splash: {
-    accessibilityLabel: 'Trade Report. Professionele klusrapporten in minuten.',
-    wordmarkTrade: 'Trades',
+    accessibilityLabel: 'TradeReport. Professionele klusrapporten in minuten.',
+    wordmarkTrade: 'Trade',
     wordmarkReport: 'Report',
     tagline: 'Professionele klusrapporten in minuten',
   },
@@ -1385,6 +1386,6 @@ const nl = {
     system: 'Apparaattaal gebruiken',
     description: "Kies de taal voor menu's, knoppen en berichten in Trade Report.",
   },
-} as const satisfies TranslationTree;
+} as DeepPartial<TranslationTree>);
 
 export default nl;

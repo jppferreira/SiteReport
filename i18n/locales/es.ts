@@ -1,9 +1,10 @@
 import enUS, { type TranslationTree } from './en-US';
+import { deepMerge, type DeepPartial } from './deepMerge';
 
 /**
  * Spanish (Spain / LatAm neutral) catalog for Trade Report.
  */
-const es = {
+const es = deepMerge(enUS, {
   common: {
     close: 'Cerrar',
     cancel: 'Cancelar',
@@ -28,7 +29,7 @@ const es = {
     proBadge: 'PRO',
     free: 'Gratis',
     enabled: 'ACTIVADO',
-    brandName: 'Trade Report',
+    brandName: 'TradeReport',
     brandTrade: 'Trade',
     brandReport: 'Report',
     photo: 'foto',
@@ -1103,7 +1104,7 @@ const es = {
     profileUpgradeLogo: 'Mejora para añadir un logotipo',
     profileCta: 'Crear mi primer trabajo →',
     profileSkip: 'Omitir por ahora',
-    brandMarkA11y: 'Trade Report',
+    brandMarkA11y: 'TradeReport',
     stepDotsA11y: 'Paso %{step} de %{total}',
     heroNext: 'Siguiente',
     welcomeTagline: 'Prueba de trabajo en minutos',
@@ -1127,8 +1128,8 @@ const es = {
     proofTradespersonName: 'Tom Rivers',
   },
   splash: {
-    accessibilityLabel: 'Trade Report. Informes profesionales de trabajo en minutos.',
-    wordmarkTrade: 'Trades',
+    accessibilityLabel: 'TradeReport. Informes profesionales de trabajo en minutos.',
+    wordmarkTrade: 'Trade',
     wordmarkReport: 'Report',
     tagline: 'Informes profesionales de trabajo en minutos',
   },
@@ -1385,6 +1386,6 @@ const es = {
     system: 'Usar el idioma del dispositivo',
     description: 'Elige el idioma de menús, botones y mensajes en Trade Report.',
   },
-} satisfies TranslationTree;
+} as DeepPartial<TranslationTree>);
 
 export default es;

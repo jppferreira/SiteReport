@@ -25,7 +25,14 @@ import { getPreferences } from '@/services/preferencesService';
 import { buildReportFileName } from '@/utils/fileNaming';
 import { logger } from '@/utils/logger';
 
-import { ensureJobDirectories, getFileSize, readAsBase64, readTextFile, writeBase64File, writeTextFile } from '../fileService';
+import {
+  allocateUniqueReportPath,
+  ensureJobDirectories,
+  getFileSize,
+  readAsBase64,
+  readTextFile,
+  writeNewReportArtifact,
+} from '../fileService';
 import { computeJobContentHash, ReportBrandStamp } from './contentHash';
 import { groupReportPhotos } from './reportAreas';
 import { buildReportHtml, prepareAndroidPrintHtml } from './reportHtml';
@@ -350,12 +357,13 @@ export async function generateReportPdf(jobId: string, template: ReportTemplateI
 
   // Native builds render a PDF on device. The web preview has no PDF engine,
   // so it stores the same self-contained HTML locally and can still be opened offline.
+  // Each generate appends a new file — never overwrite a previously saved report.
   let destination: string;
   if (Platform.OS === 'web') {
     const htmlName = fileName.replace(/\.pdf$/i, '.html');
-    destination = `${reportsDir}${Date.now()}-${htmlName}`;
+    destination = await allocateUniqueReportPath(reportsDir, htmlName);
     try {
-      await writeTextFile(destination, html);
+      await writeNewReportArtifact(destination, { kind: 'text', data: html });
     } catch (error) {
       logger.error('PDF generation failed', error);
       throw new ReportGenerationError("We couldn't create this report. Your job is safe — try again.");
@@ -385,9 +393,9 @@ export async function generateReportPdf(jobId: string, template: ReportTemplateI
       logger.error('PDF generation failed', new Error('Print returned no file'));
       throw new ReportGenerationError("We couldn't create this report. Your job is safe — try again.");
     }
-    destination = `${reportsDir}${Date.now()}-${fileName}`;
+    destination = await allocateUniqueReportPath(reportsDir, fileName);
     try {
-      await writeBase64File(destination, printResult.base64);
+      await writeNewReportArtifact(destination, { kind: 'base64', data: printResult.base64 });
     } catch (error) {
       logger.error('Could not store the generated PDF', error);
       throw new ReportGenerationError("We couldn't create this report. Your job is safe — try again.");

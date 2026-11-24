@@ -9,7 +9,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, IconButton, Text } from '@/components';
 import { useI18n } from '@/i18n/useI18n';
 import { emptyAnnotations, PhotoAnnotations, PhotoType } from '@/models';
-import { useTheme } from '@/theme';
 
 import { PhotoAnnotationEditor } from './PhotoAnnotationEditor';
 
@@ -34,12 +33,10 @@ type Snapshot = {
 };
 
 /**
- * Full-screen take-and-annotate flow: live camera on top, annotation cards
- * and tools underneath. After the shutter fires, the same modal freezes on
- * the still so the user can mark it up without leaving.
+ * Full-screen take-and-annotate flow. After the shutter, the same dark
+ * markup editor opens with Retake in the top bar (Figma redesign).
  */
 export function PhotoCaptureAnnotateModal({ visible, type, onClose, onSave }: PhotoCaptureAnnotateModalProps) {
-  const { spacing } = useTheme();
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<CameraView>(null);
@@ -110,108 +107,99 @@ export function PhotoCaptureAnnotateModal({ visible, type, onClose, onSave }: Ph
     }
   };
 
+  const stageBadge =
+    type === 'before'
+      ? t('photos.stageBefore')
+      : type === 'during'
+        ? t('photos.stageDuring')
+        : t('photos.stageAfter');
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
-      <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <View style={[styles.header, { paddingHorizontal: spacing.md }]}>
-          <IconButton
-            name="close"
-            accessibilityLabel={t('photoAnnotate.closeA11y')}
-            variant="ghost"
-            color="#FFFFFF"
-            onPress={onClose}
+      <View style={styles.root}>
+        {snapshot ? (
+          <PhotoAnnotationEditor
+            key={snapshot.uri}
+            uri={snapshot.uri}
+            photoWidth={snapshot.width}
+            photoHeight={snapshot.height}
+            initial={annotations}
+            stageBadge={stageBadge}
+            onClose={onClose}
+            onRetake={retake}
+            onSave={save}
+            saveLoading={saving}
+            onChange={(next) => {
+              annotationsRef.current = next;
+              setAnnotations(next);
+            }}
           />
-          <Text variant="bodyMedium" color="#FFFFFF">
-            {type === 'before'
-              ? t('photoDetail.beforeBadge')
-              : type === 'during'
-                ? t('photoDetail.duringBadge')
-                : t('photoDetail.afterBadge')}
-          </Text>
-          <View style={{ width: 44 }} />
-        </View>
-
-        <View style={styles.stage}>
-          {snapshot ? (
-            <View style={[styles.annotatePane, { paddingHorizontal: spacing.md }]}>
-              <PhotoAnnotationEditor
-                key={snapshot.uri}
-                uri={snapshot.uri}
-                photoWidth={snapshot.width}
-                photoHeight={snapshot.height}
-                initial={annotations}
-                stageBadge={
-                  type === 'before'
-                    ? t('photos.stageBefore')
-                    : type === 'during'
-                      ? t('photos.stageDuring')
-                      : t('photos.stageAfter')
-                }
-                onDone={save}
-                doneLoading={saving}
-                onChange={(next) => {
-                  annotationsRef.current = next;
-                  setAnnotations(next);
-                }}
+        ) : (
+          <View style={[styles.cameraRoot, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+            <View style={styles.header}>
+              <IconButton
+                name="close"
+                accessibilityLabel={t('photoAnnotate.closeA11y')}
+                variant="ghost"
+                color="#FFFFFF"
+                onPress={onClose}
               />
-              <View style={{ paddingVertical: spacing.sm }}>
-                <Button label={t('photoAnnotate.retake')} variant="secondary" onPress={retake} disabled={saving} />
-              </View>
+              <Text variant="bodyMedium" color="#FFFFFF">
+                {stageBadge}
+              </Text>
+              <View style={{ width: 44 }} />
             </View>
-          ) : (
-            <>
-              <View style={styles.cameraWrap}>
-                {!permission ? (
-                  <View style={styles.centered}>
-                    <ActivityIndicator color="#FFFFFF" />
-                  </View>
-                ) : !permission.granted ? (
-                  <View style={[styles.centered, { padding: spacing.lg, gap: spacing.md }]}>
-                    <Text variant="body" color="#FFFFFF" style={{ textAlign: 'center' }}>
-                      {t('photoAnnotate.cameraPermission')}
-                    </Text>
-                    <Button label={t('photoAnnotate.cameraPermissionAction')} onPress={requestPermission} />
-                  </View>
-                ) : (
-                  <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing={facing} mode="picture" />
-                )}
 
-                {permission?.granted ? (
-                  <View style={[styles.cameraControls, { paddingBottom: spacing.md }]}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={t('photoAnnotate.flipCameraA11y')}
-                      onPress={() => setFacing((current) => (current === 'back' ? 'front' : 'back'))}
-                      style={styles.flipButton}
-                    >
-                      <Ionicons name="camera-reverse-outline" size={22} color="#FFFFFF" />
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={t('photoAnnotate.shutterA11y')}
-                      disabled={busy}
-                      onPress={takePicture}
-                      style={[styles.shutter, busy ? { opacity: 0.5 } : null]}
-                    >
-                      <View style={styles.shutterInner} />
-                    </Pressable>
-                    <View style={{ width: 44 }} />
-                  </View>
-                ) : null}
-              </View>
+            <View style={styles.cameraWrap}>
+              {!permission ? (
+                <View style={styles.centered}>
+                  <ActivityIndicator color="#FFFFFF" />
+                </View>
+              ) : !permission.granted ? (
+                <View style={[styles.centered, { padding: 24, gap: 16 }]}>
+                  <Text variant="body" color="#FFFFFF" style={{ textAlign: 'center' }}>
+                    {t('photoAnnotate.cameraPermission')}
+                  </Text>
+                  <Button label={t('photoAnnotate.cameraPermissionAction')} onPress={requestPermission} />
+                </View>
+              ) : (
+                <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing={facing} mode="picture" />
+              )}
 
-              <View style={[styles.liveCards, { padding: spacing.lg }]}>
-                <Text variant="bodyMedium" color="#FFFFFF" style={{ marginBottom: spacing.xs }}>
-                  {t('photoAnnotate.liveCardsTitle')}
-                </Text>
-                <Text variant="caption" color="rgba(255,255,255,0.6)">
-                  {t('photoAnnotate.liveCardsHint')}
-                </Text>
-              </View>
-            </>
-          )}
-        </View>
+              {permission?.granted ? (
+                <View style={styles.cameraControls}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('photoAnnotate.flipCameraA11y')}
+                    onPress={() => setFacing((current) => (current === 'back' ? 'front' : 'back'))}
+                    style={styles.flipButton}
+                  >
+                    <Ionicons name="camera-reverse-outline" size={22} color="#FFFFFF" />
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('photoAnnotate.shutterA11y')}
+                    disabled={busy}
+                    onPress={takePicture}
+                    style={[styles.shutter, busy ? { opacity: 0.5 } : null]}
+                  >
+                    <View style={styles.shutterInner} />
+                  </Pressable>
+                  <View style={{ width: 44 }} />
+                </View>
+              ) : null}
+            </View>
 
+            <View style={styles.liveHint}>
+              <Text variant="bodyMedium" color="#FFFFFF" style={{ marginBottom: 4 }}>
+                {t('photoAnnotate.liveCardsTitle')}
+              </Text>
+              <Text variant="caption" color="rgba(255,255,255,0.6)">
+                {t('photoAnnotate.liveCardsHint')}
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
     </Modal>
   );
@@ -225,34 +213,30 @@ export function SnapshotPreview({ uri }: { uri: string }) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    backgroundColor: '#121412',
+  },
+  cameraRoot: {
+    flex: 1,
     backgroundColor: '#101310',
   },
   header: {
     height: 52,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  stage: {
-    flex: 1,
-    minHeight: 0,
-  },
-  annotatePane: {
-    flex: 1,
-    minHeight: 0,
-    backgroundColor: '#F4F8F5',
-    paddingTop: 4,
-  },
   cameraWrap: {
-    flex: 1.35,
+    flex: 1,
     minHeight: 220,
     backgroundColor: '#000000',
     overflow: 'hidden',
   },
-  liveCards: {
+  liveHint: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(255,255,255,0.12)',
-    minHeight: 120,
+    padding: 20,
+    minHeight: 100,
   },
   centered: {
     flex: 1,
@@ -268,6 +252,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 28,
+    paddingBottom: 16,
   },
   shutter: {
     width: 74,
@@ -292,9 +277,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  footer: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.12)',
   },
 });
