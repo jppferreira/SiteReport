@@ -951,16 +951,22 @@ const enUS = {
     title: 'Privacy policy',
     deviceDataTitle: 'Your job data stays on your device',
     deviceDataBody:
-      "Jobs, customer names, addresses, job notes, photos, signatures and generated PDF reports are stored only in this app's local storage on your phone or tablet. Trade Report does not operate a server that receives, stores, or processes this information, and it is never uploaded automatically.",
+      "Jobs, customer names, addresses, job notes, photos, signatures, checklists, measurements, review links you enter, pricing for quotes or invoices, and generated PDF reports are stored only in this app's local storage on your phone or tablet. Trade Report does not operate a server that receives, stores, or processes this information, and it is never uploaded automatically to Trade Report.",
     voiceTitle: 'Voice dictation',
     voiceBody:
       'If you use the microphone on a work summary field, audio is recorded and transcribed on this device with an on-device speech model bundled in the app. Temporary recordings are deleted after transcription, cancellation, or failure. Trade Report does not upload audio or transcripts. Where your phone provides an on-device language model, optional “Make professional” rewriting also runs on the device. Otherwise the app applies local formatting only. This reduces how much speech-related personal data leaves your phone; it does not remove your responsibility for customer information you choose to keep in a job.',
+    locationTitle: 'Location stamp',
+    locationBody:
+      'If you turn on the evidence location stamp in Settings, Trade Report may use your location while the app is in use to label photos and PDF captions with an address. Coordinates and addresses stay on this device in the job you are editing. They are not sent to Trade Report’s servers. You can turn the stamp off at any time.',
+    sensorsTitle: 'Camera, AR measure, and spirit level',
+    sensorsBody:
+      'The camera is used for job photos and optional AR measuring. Motion sensors power the spirit level. Measurements and level readings are stored only in the app on your device. Trade Report does not upload them.',
     leavesDeviceTitle: 'What leaves your device',
     leavesDeviceBody:
-      'Information leaves your device only when you choose to share or export it — for example, sending a report through the share sheet, saving a backup file, or exporting a text copy of your job details. Trade Report does not sell personal information.',
+      'Information leaves your device only when you choose to share or export it — for example, sending a report through the share sheet or your mail app, saving a backup file, or exporting a text copy of your job details. Some PDF layouts may load fonts from Google Fonts on your device; Google receives the usual technical data needed to deliver fonts, not your job content. Trade Report does not sell personal information.',
     backupTitle: 'Saving a backup',
     backupBody:
-      'Before a backup is created, the app tells you what is in it. The zip includes every job: customer names and addresses, photos, private notes, signatures, PDF reports, and your business profile, including contact details and any tax numbers you added. The text export leaves out photos and signatures. You choose the folder in the system picker. iCloud Drive and Google Drive can appear there. Trade Report does not sign in to them and does not upload the file. A copy you save stays in that place until you delete it there, including after you delete the app.',
+      'Before a manual backup is created, the app tells you what is in it. The zip includes every job: customer names and addresses, photos, private notes, signatures, checklists, PDF reports, and your business profile, including contact details and any tax numbers you added. The text export leaves out photos and signatures. You choose the folder in the system picker. iCloud Drive and Google Drive can appear there. Trade Report does not sign in to them and does not upload the file. On iPhone, if iCloud auto-backup is on, the app can also write a single zip named tradesreport-icloud-backup.zip to your iCloud Drive when you generate a report and on a daily schedule. You can turn that off in Settings. A copy you save stays in that place until you delete it there, including after you delete the app.',
     bugReportsTitle: 'Messages you send',
     bugReportsBody:
       'If you send a message from Contact us in Settings — support, a bug, a feature request, or something else — or tap Send a report after a screen fails, the text you write or the error text on that screen, the app version, and the device platform (such as iOS or Android) are sent to GitHub as an issue on the Trade Report project repository. A crash is not sent on its own, and the report does not include a stack trace. It does not receive your job photos, signatures, customer details, or PDF reports. Sending a message is optional. If GitHub cannot accept it, the app opens your mail app with the same text so you can send it to hello@jppferreira.com yourself.',
@@ -975,20 +981,20 @@ const enUS = {
       'You can delete an individual job, or all app data, at any time from Settings → Data & privacy. Deleting a job removes its photos, signature and generated reports from your device immediately. That does not remove a backup you already saved to Google Drive, iCloud Drive, or Files. Delete that zip yourself in the place you saved it.',
     analyticsTitle: 'Analytics and crashes',
     analyticsBody:
-      'Trade Report does not use analytics or an automatic crash-reporting service. A failure in the app is not sent anywhere unless you choose Send a report or send a message from Contact us. Last updated 29 October 2026.',
+      'Trade Report does not use analytics or an automatic crash-reporting service. A failure in the app is not sent anywhere unless you choose Send a report or send a message from Contact us. Last updated 24 November 2026.',
   },
 
   terms: {
     title: 'Terms of use',
     usingTitle: 'Using Trade Report',
     usingBody:
-      'These terms apply to the Trade Report app on iOS and Android. Trade Report helps you record a job, keep photos and notes, take an optional customer signature, and generate a PDF report. You are responsible for the accuracy of what you record and for reviewing a report before you send it to a customer.',
+      'These terms apply to the Trade Report app on iOS and Android. Trade Report helps you record a job, keep photos and notes, take an optional customer signature, and generate a PDF report, quote, or invoice. You are responsible for the accuracy of what you record and for reviewing a report before you send it to a customer.',
     contentTitle: 'Your content',
     contentBody:
-      'Jobs, photos, notes, and signatures you create remain yours. They are stored on your device. Trade Report does not claim ownership of them and does not upload them unless you choose to share a report or save a backup. A backup is a copy you control. What it contains, how long it is kept, and how to delete it are set out in the privacy policy. You are responsible for the customer information you choose to keep, including having a lawful reason to record it.',
+      'Jobs, photos, notes, signatures, checklists, review links you enter, pricing for quotes or invoices, photo stamps, and AR measurements you choose to save remain yours. They are stored on your device. Trade Report does not claim ownership of them and does not upload them unless you choose to share a report or save a backup. A backup is a copy you control. What it contains, how long it is kept, and how to delete it are set out in the privacy policy. You are responsible for the customer information you choose to keep, including having a lawful reason to record it.',
     freeProTitle: 'Free and Pro',
     freeProBody:
-      'The free tier includes PDF reports for 3 jobs. Generating another report for a job that already has one does not use a new slot. Pro unlocks unlimited reports, your logo and accent color on reports, and customer signatures. The price is the amount shown in the app at the time you confirm the purchase, charged by Apple or Google.',
+      'The free tier includes PDF reports for 3 jobs. Generating another report for a job that already has one does not use a new slot. Pro unlocks unlimited reports, your logo and accent color on reports, customer signatures, and other Pro tools shown in the app. The price is the amount shown in the app at the time you confirm the purchase, charged by Apple or Google.',
     subscriptionsTitle: 'Subscriptions and the lifetime purchase',
     subscriptionsBody:
       'Monthly and annual Pro plans renew automatically and are billed to the Apple ID or Google account you use to buy them. A plan continues until you cancel it in your App Store or Google Play account settings, at least 24 hours before the end of the current period. The store may charge the renewal within 24 hours before that period ends. A lifetime purchase is charged once and does not renew. Deleting the app, or clearing job data inside it, does not cancel a subscription or refund a purchase. If you reinstall, use Restore purchases on the upgrade screen. Apple and Google handle refunds under their own rules.',
@@ -1000,7 +1006,7 @@ const enUS = {
       'Trade Report is provided as is. Reports are only as complete as the information you enter. You should read each report before you share it. To the extent the law allows, Trade Report is not liable for loss caused by a report you send, by data stored only on your device, or by uninstalling the app.',
     contactTitle: 'Contact',
     contactBody:
-      'Questions about these terms: hello@jppferreira.com. These terms are governed by the laws of England and Wales. Last updated 29 October 2026.',
+      'Questions about these terms: hello@jppferreira.com. These terms are governed by the laws of England and Wales. Last updated 24 November 2026.',
   },
 
   help: {
@@ -1014,7 +1020,7 @@ const enUS = {
       'Jobs, photos, and customer details stay on your device unless you choose to share a report, save a backup, or export a text summary. A backup file contains the jobs, photos, notes, signatures, and PDFs. A message from Contact us, if you send one, contains only the text you type, the app version, and the device platform.',
     faqOfflineQ: 'Can I use Trade Report without an internet connection?',
     faqOfflineA:
-      'Yes. Creating jobs, taking photos, writing notes, signing and generating reports all work offline.',
+      'Yes. Creating jobs, taking photos, writing notes, voice dictation, signing and generating reports all work offline. Optional location stamps need location permission while the app is in use. AR measure needs a supported device and camera access.',
     faqDeleteAppQ: 'What happens to my data if I delete the app?',
     faqDeleteAppA:
       "All job data lives in the app's local storage, so uninstalling the app removes it. A backup you already saved in iCloud Drive, Google Drive, or Files is a separate copy and is not deleted with the app.",

@@ -1,4 +1,4 @@
-import type { TranslationTree } from './en-US';
+import enUS, { type TranslationTree } from './en-US';
 
 /**
  * European Portuguese (Portugal) catalog for Trade Report.
@@ -127,6 +127,7 @@ const pt = {
     deleteConfirmDescription: 'Isto removerá permanentemente as suas informações, fotos e relatórios gerados deste dispositivo.',
     deleteConfirmLabel: 'Eliminar trabalho',
     toastDeleted: 'Trabalho eliminado',
+    guided: enUS.jobDetail.guided,
   },
   checklist: {
     title: 'Lista de verificação',
@@ -419,6 +420,8 @@ const pt = {
   },
   costs: {
     sectionTitle: 'Costs & document',
+    typeNotes: enUS.costs.typeNotes,
+    captionNotes: enUS.costs.captionNotes,
     typeReference: 'Reference',
     typeQuote: 'Quote',
     typeInvoice: 'Invoice',
@@ -561,9 +564,20 @@ const pt = {
     updateReport: 'Atualizar relatório',
     regenerateReport: 'Gerar relatório novamente',
     done: 'Concluído',
-    tapHint: 'Toque na capa ou numa foto para a alterar. Toque nas notas para editar as marcações.',
+    tapHint: 'Toque numa foto para a alterar, ou no texto para o editar.',
     changePhoto: 'Alterar foto',
     editMarkup: 'Editar marcações',
+    textSheetTitle: 'Edit report text',
+    textSheetHint: 'Choose a field, then save. Changes show in the preview straight away.',
+    textFieldTitle: 'Job title',
+    textFieldCustomer: 'Customer',
+    textFieldAddress: 'Address',
+    textFieldDescription: 'Description',
+    textFieldWork: 'Work summary',
+    textFieldMaterials: 'Materials',
+    textFieldRecommendations: 'Aftercare',
+    saveText: 'Save',
+    savingText: 'Saving…',
     coverTitle: 'Imagem de capa',
     coverDescription: 'Escolha que foto aparece na capa.',
     coverFromLibrary: 'Escolher da biblioteca',
@@ -898,13 +912,19 @@ const pt = {
     title: 'Política de privacidade',
     deviceDataTitle: 'Os dados dos seus trabalhos ficam no seu dispositivo',
     deviceDataBody: 'Trabalhos, nomes de clientes, moradas, notas, fotos, assinaturas e relatórios PDF gerados são armazenados apenas no armazenamento local desta aplicação no seu telemóvel ou tablet. O Trade Report não opera um servidor que receba, armazene ou processe esta informação, e nunca é carregada automaticamente.',
-    voiceTitle: 'Voice dictation',
+    voiceTitle: 'Ditação por voz',
     voiceBody:
       'If you use the microphone on a work summary field, audio is recorded and transcribed on this device with an on-device speech model bundled in the app. Temporary recordings are deleted after transcription, cancellation, or failure. Trade Report does not upload audio or transcripts. Where your phone provides an on-device language model, optional “Make professional” rewriting also runs on the device. Otherwise the app applies local formatting only. This reduces how much speech-related personal data leaves your phone; it does not remove your responsibility for customer information you choose to keep in a job.',
+    locationTitle: 'Carimbo de localização',
+    locationBody:
+      'Se ativar o carimbo de localização de evidência em Definições, o Trade Report pode usar a sua localização enquanto a aplicação está em utilização para etiquetar fotos e legendas do PDF com uma morada. As coordenadas e moradas ficam neste dispositivo no trabalho que está a editar. Não são enviadas para os servidores do Trade Report. Pode desativar o carimbo a qualquer momento.',
+    sensorsTitle: 'Câmara, medição AR e nível',
+    sensorsBody:
+      'A câmara é usada para fotos do trabalho e medição AR opcional. Os sensores de movimento alimentam o nível. As medições e leituras do nível são guardadas apenas na aplicação no seu dispositivo. O Trade Report não as carrega.',
     leavesDeviceTitle: 'O que sai do seu dispositivo',
     leavesDeviceBody: 'A informação só sai do seu dispositivo quando escolhe partilhar ou exportar — por exemplo, enviar um relatório pela folha de partilha, guardar um ficheiro de cópia de segurança ou exportar uma cópia em texto dos detalhes do trabalho. O Trade Report não vende informação pessoal.',
     backupTitle: 'Guardar uma cópia de segurança',
-    backupBody: 'Antes de criar uma cópia de segurança, a aplicação indica o que contém. O zip inclui todos os trabalhos: nomes e moradas de clientes, fotos, notas privadas, assinaturas, relatórios PDF e o perfil da sua empresa, incluindo contactos e quaisquer números fiscais que tenha adicionado. A exportação de texto omite fotos e assinaturas. Escolhe a pasta no seletor do sistema. O iCloud Drive e o Google Drive podem aparecer aí. O Trade Report não inicia sessão neles e não carrega o ficheiro. Uma cópia que guarde permanece nesse local até a eliminar aí, inclusive depois de eliminar a aplicação.',
+    backupBody: 'Antes de criar uma cópia de segurança, a aplicação indica o que contém. O zip inclui todos os trabalhos: nomes e moradas de clientes, fotos, notas privadas, assinaturas, relatórios PDF e o perfil da sua empresa, incluindo contactos e quaisquer números fiscais que tenha adicionado. A exportação de texto omite fotos e assinaturas. Escolhe a pasta no seletor do sistema. O iCloud Drive e o Google Drive podem aparecer aí. O Trade Report não inicia sessão neles e não carrega o ficheiro. Uma cópia que guarde permanece nesse local até a eliminar aí, inclusive depois de eliminar a aplicação. No iPhone, se a cópia de segurança automática do iCloud estiver ligada, a aplicação também pode escrever um único zip chamado tradesreport-icloud-backup.zip no seu iCloud Drive quando gera um relatório e segundo um horário diário. Pode desligar isto em Definições.',
     bugReportsTitle: 'Mensagens que envia',
     bugReportsBody: 'Se enviar uma mensagem a partir de Contacte-nos em Definições — suporte, um erro, um pedido de funcionalidade ou outra coisa — ou tocar em Enviar um relatório depois de um ecrã falhar, o texto que escrever ou o texto de erro desse ecrã, a versão da aplicação e a plataforma do dispositivo (como iOS ou Android) são enviados para o GitHub como uma issue no repositório do projeto Trade Report. Uma falha não é enviada por si só e o relatório não inclui um stack trace. Não recebe as suas fotos de trabalhos, assinaturas, dados de clientes nem relatórios PDF. Enviar uma mensagem é opcional. Se o GitHub não puder aceitar a mensagem, a aplicação abre a app de email com o mesmo texto para a enviar você mesmo.',
     noAccountTitle: 'Não é necessária conta',
@@ -914,7 +934,7 @@ const pt = {
     deletingTitle: 'Eliminar os seus dados',
     deletingBody: 'Pode eliminar um trabalho individual, ou todos os dados da aplicação, a qualquer momento em Definições → Dados e privacidade. Eliminar um trabalho remove imediatamente as suas fotos, assinatura e relatórios gerados do seu dispositivo. Isso não remove uma cópia de segurança que já tenha guardado no Google Drive, iCloud Drive ou Ficheiros. Elimine esse zip no local onde o guardou.',
     analyticsTitle: 'Análises e falhas',
-    analyticsBody: 'O Trade Report não usa análises nem um serviço automático de reporte de falhas. Uma falha na aplicação não é enviada para lado nenhum a menos que escolha Enviar um relatório ou envie uma mensagem a partir de Contacte-nos. Última atualização a 29 de outubro de 2026.',
+    analyticsBody: 'O Trade Report não usa análises nem um serviço automático de reporte de falhas. Uma falha na aplicação não é enviada para lado nenhum a menos que escolha Enviar um relatório ou envie uma mensagem a partir de Contacte-nos. Última atualização a 24 de novembro de 2026.',
   },
   terms: {
     title: 'Termos de utilização',
@@ -931,7 +951,7 @@ const pt = {
     asIsTitle: 'A aplicação é fornecida tal como está',
     asIsBody: 'O Trade Report é fornecido tal como está. Os relatórios só são tão completos quanto a informação que introduz. Deve ler cada relatório antes de o partilhar. Na medida em que a lei o permite, o Trade Report não é responsável por perdas causadas por um relatório que envie, por dados armazenados apenas no seu dispositivo ou por desinstalar a aplicação.',
     contactTitle: 'Contacto',
-    contactBody: 'Questões sobre estes termos: hello@jppferreira.com. Estes termos são regidos pelas leis de Inglaterra e do País de Gales. Última atualização a 29 de outubro de 2026.',
+    contactBody: 'Questões sobre estes termos: hello@jppferreira.com. Estes termos são regidos pelas leis de Inglaterra e do País de Gales. Última atualização a 24 de novembro de 2026.',
   },
   help: {
     title: 'Ajuda',
@@ -1225,6 +1245,8 @@ const pt = {
       upright: 'A leitura roda para ficar direita',
       roll: 'ROLAMENTO',
       pitch: 'INCLINAÇÃO',
+      styleBubble: 'Bolha grande',
+      styleBox: 'Tradicional',
       units: {
         deg: '° Graus',
         pct: '% Inclinação',

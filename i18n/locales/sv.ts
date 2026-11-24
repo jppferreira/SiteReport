@@ -1,4 +1,4 @@
-import type { TranslationTree } from './en-US';
+import enUS, { type TranslationTree } from './en-US';
 
 /**
  * Swedish catalog for Trade Report.
@@ -127,6 +127,7 @@ const sv = {
     deleteConfirmDescription: 'Detta tar permanent bort information, foton och genererade rapporter från den här enheten.',
     deleteConfirmLabel: 'Radera jobb',
     toastDeleted: 'Jobb raderat',
+    guided: enUS.jobDetail.guided,
   },
   checklist: {
     title: 'Checklista',
@@ -419,6 +420,8 @@ const sv = {
   },
   costs: {
     sectionTitle: 'Costs & document',
+    typeNotes: enUS.costs.typeNotes,
+    captionNotes: enUS.costs.captionNotes,
     typeReference: 'Reference',
     typeQuote: 'Quote',
     typeInvoice: 'Invoice',
@@ -561,9 +564,20 @@ const sv = {
     updateReport: 'Uppdatera rapport',
     regenerateReport: 'Generera om rapport',
     done: 'Klar',
-    tapHint: 'Tryck på omslaget eller ett foto för att byta det. Tryck på anteckningar för att redigera markeringar.',
+    tapHint: 'Tryck på ett foto för att byta det, eller på text för att redigera den.',
     changePhoto: 'Byt foto',
     editMarkup: 'Redigera markeringar',
+    textSheetTitle: 'Edit report text',
+    textSheetHint: 'Choose a field, then save. Changes show in the preview straight away.',
+    textFieldTitle: 'Job title',
+    textFieldCustomer: 'Customer',
+    textFieldAddress: 'Address',
+    textFieldDescription: 'Description',
+    textFieldWork: 'Work summary',
+    textFieldMaterials: 'Materials',
+    textFieldRecommendations: 'Aftercare',
+    saveText: 'Save',
+    savingText: 'Saving…',
     coverTitle: 'Omslagsbild',
     coverDescription: 'Välj vilket foto som visas på omslaget.',
     coverFromLibrary: 'Välj från bibliotek',
@@ -898,13 +912,19 @@ const sv = {
     title: 'Integritetspolicy',
     deviceDataTitle: 'Din jobbdata stannar på din enhet',
     deviceDataBody: 'Jobb, kundnamn, adresser, jobbanteckningar, foton, signaturer och genererade PDF-rapporter lagras endast i den här appens lokala lagring på din telefon eller surfplatta. Trade Report driver ingen server som tar emot, lagrar eller behandlar den här informationen, och den laddas aldrig upp automatiskt.',
-    voiceTitle: 'Voice dictation',
+    voiceTitle: 'Röstdiktamen',
     voiceBody:
       'If you use the microphone on a work summary field, audio is recorded and transcribed on this device with an on-device speech model bundled in the app. Temporary recordings are deleted after transcription, cancellation, or failure. Trade Report does not upload audio or transcripts. Where your phone provides an on-device language model, optional “Make professional” rewriting also runs on the device. Otherwise the app applies local formatting only. This reduces how much speech-related personal data leaves your phone; it does not remove your responsibility for customer information you choose to keep in a job.',
+    locationTitle: 'Platsstämpel',
+    locationBody:
+      'Om du aktiverar bevisplatsstämpeln i Inställningar kan Trade Report använda din plats medan appen används för att märka foton och PDF-bildtexter med en adress. Koordinater och adresser stannar på den här enheten i jobbet du redigerar. De skickas inte till Trade Reports servrar. Du kan stänga av stämpeln när som helst.',
+    sensorsTitle: 'Kamera, AR-mätning och vattenpass',
+    sensorsBody:
+      'Kameran används för jobbfoton och valfri AR-mätning. Rörelsesensorer driver vattenpasset. Mätningar och vattenpassavläsningar lagras bara i appen på din enhet. Trade Report laddar inte upp dem.',
     leavesDeviceTitle: 'Vad som lämnar din enhet',
     leavesDeviceBody: 'Information lämnar din enhet endast när du väljer att dela eller exportera den — till exempel genom att skicka en rapport via delningsbladet, spara en säkerhetskopia eller exportera en textkopia av dina jobbdetaljer. Trade Report säljer inte personuppgifter.',
     backupTitle: 'Spara en säkerhetskopia',
-    backupBody: 'Innan en säkerhetskopia skapas berättar appen vad som ingår. Zip-filen innehåller varje jobb: kundnamn och adresser, foton, privata anteckningar, signaturer, PDF-rapporter och din företagsprofil, inklusive kontaktuppgifter och eventuella skattenummer. Textexporten utelämnar foton och signaturer. Du väljer mappen i systemväljaren. iCloud Drive och Google Drive kan visas där. Trade Report loggar inte in på dem och laddar inte upp filen. En kopia du sparar stannar på den platsen tills du raderar den där, även efter att du raderat appen.',
+    backupBody: 'Innan en säkerhetskopia skapas berättar appen vad som ingår. Zip-filen innehåller varje jobb: kundnamn och adresser, foton, privata anteckningar, signaturer, PDF-rapporter och din företagsprofil, inklusive kontaktuppgifter och eventuella skattenummer. Textexporten utelämnar foton och signaturer. Du väljer mappen i systemväljaren. iCloud Drive och Google Drive kan visas där. Trade Report loggar inte in på dem och laddar inte upp filen. En kopia du sparar stannar på den platsen tills du raderar den där, även efter att du raderat appen. På iPhone kan appen, om automatisk iCloud-säkerhetskopiering är på, också skriva en enda zip med namnet tradesreport-icloud-backup.zip till din iCloud Drive när du genererar en rapport och enligt ett dagligt schema. Du kan stänga av det i Inställningar.',
     bugReportsTitle: 'Meddelanden du skickar',
     bugReportsBody: 'Om du skickar ett meddelande från Kontakta oss i Inställningar — support, ett fel, ett funktionsönskemål eller något annat — eller trycker på Skicka en rapport efter att en skärm misslyckas, skickas texten du skriver eller feltexten på den skärmen, appversionen och enhetsplattformen (t.ex. iOS eller Android) till GitHub som en issue i Trade Report-projektets repository. En krasch skickas inte av sig själv, och rapporten innehåller ingen stackspårning. Den tar inte emot dina jobbfoton, signaturer, kunduppgifter eller PDF-rapporter. Att skicka ett meddelande är valfritt. Om GitHub inte kan ta emot meddelandet öppnar appen mejlappen med samma text så att du kan skicka det själv.',
     noAccountTitle: 'Inget konto krävs',
@@ -914,7 +934,7 @@ const sv = {
     deletingTitle: 'Radera dina data',
     deletingBody: 'Du kan när som helst radera ett enskilt jobb, eller all appdata, från Inställningar → Data och integritet. Att radera ett jobb tar genast bort dess foton, signatur och genererade rapporter från din enhet. Det tar inte bort en säkerhetskopia du redan sparat i Google Drive, iCloud Drive eller Filer. Radera den zip-filen själv där du sparade den.',
     analyticsTitle: 'Analys och krascher',
-    analyticsBody: 'Trade Report använder inte analys eller en automatisk kraschrapporteringstjänst. Ett fel i appen skickas ingenstans om du inte väljer Skicka en rapport eller skickar ett meddelande från Kontakta oss. Senast uppdaterad 29 oktober 2026.',
+    analyticsBody: 'Trade Report använder inte analys eller en automatisk kraschrapporteringstjänst. Ett fel i appen skickas ingenstans om du inte väljer Skicka en rapport eller skickar ett meddelande från Kontakta oss. Senast uppdaterad 24 november 2026.',
   },
   terms: {
     title: 'Användarvillkor',
@@ -931,7 +951,7 @@ const sv = {
     asIsTitle: 'Appen tillhandahålls i befintligt skick',
     asIsBody: 'Trade Report tillhandahålls i befintligt skick. Rapporter är bara så kompletta som informationen du anger. Du bör läsa varje rapport innan du delar den. I den utsträckning lagen tillåter är Trade Report inte ansvarigt för förlust orsakad av en rapport du skickar, av data som endast lagras på din enhet eller av att avinstallera appen.',
     contactTitle: 'Kontakt',
-    contactBody: 'Frågor om dessa villkor: hello@jppferreira.com. Dessa villkor styrs av lagarna i England och Wales. Senast uppdaterad 29 oktober 2026.',
+    contactBody: 'Frågor om dessa villkor: hello@jppferreira.com. Dessa villkor styrs av lagarna i England och Wales. Senast uppdaterad 24 november 2026.',
   },
   help: {
     title: 'Hjälp',
@@ -1225,6 +1245,8 @@ const sv = {
       upright: 'Visningen vrids så den står rätt',
       roll: 'RULL',
       pitch: 'LUTNING',
+      styleBubble: 'Stor bubbla',
+      styleBox: 'Traditionell',
       units: {
         deg: '° Grader',
         pct: '% Fall',

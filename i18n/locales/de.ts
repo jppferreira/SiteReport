@@ -1,4 +1,4 @@
-import type { TranslationTree } from './en-US';
+import enUS, { type TranslationTree } from './en-US';
 
 /**
  * German catalog for Trade Report.
@@ -127,6 +127,7 @@ const de = {
     deleteConfirmDescription: 'Dadurch werden seine Informationen, Fotos und erstellten Berichte dauerhaft von diesem Gerät entfernt.',
     deleteConfirmLabel: 'Auftrag löschen',
     toastDeleted: 'Auftrag gelöscht',
+    guided: enUS.jobDetail.guided,
   },
   checklist: {
     title: 'Aufgabenliste',
@@ -419,6 +420,8 @@ const de = {
   },
   costs: {
     sectionTitle: 'Costs & document',
+    typeNotes: enUS.costs.typeNotes,
+    captionNotes: enUS.costs.captionNotes,
     typeReference: 'Reference',
     typeQuote: 'Quote',
     typeInvoice: 'Invoice',
@@ -561,9 +564,20 @@ const de = {
     updateReport: 'Bericht aktualisieren',
     regenerateReport: 'Bericht neu erstellen',
     done: 'Fertig',
-    tapHint: 'Tippe auf das Cover oder ein Foto, um es zu ändern. Tippe auf Notizen, um Markierungen zu bearbeiten.',
+    tapHint: 'Tippe auf ein Foto, um es zu ändern, oder auf Text, um ihn zu bearbeiten.',
     changePhoto: 'Foto ändern',
     editMarkup: 'Markierungen bearbeiten',
+    textSheetTitle: 'Edit report text',
+    textSheetHint: 'Choose a field, then save. Changes show in the preview straight away.',
+    textFieldTitle: 'Job title',
+    textFieldCustomer: 'Customer',
+    textFieldAddress: 'Address',
+    textFieldDescription: 'Description',
+    textFieldWork: 'Work summary',
+    textFieldMaterials: 'Materials',
+    textFieldRecommendations: 'Aftercare',
+    saveText: 'Save',
+    savingText: 'Saving…',
     coverTitle: 'Cover-Bild',
     coverDescription: 'Wähle, welches Foto auf dem Cover erscheint.',
     coverFromLibrary: 'Aus Mediathek wählen',
@@ -898,13 +912,19 @@ const de = {
     title: 'Datenschutzerklärung',
     deviceDataTitle: 'Deine Auftragsdaten bleiben auf deinem Gerät',
     deviceDataBody: 'Aufträge, Kundennamen, Adressen, Auftragsnotizen, Fotos, Unterschriften und erstellte PDF-Berichte werden nur im lokalen Speicher dieser App auf deinem Telefon oder Tablet gespeichert. Trade Report betreibt keinen Server, der diese Informationen empfängt, speichert oder verarbeitet, und sie werden nie automatisch hochgeladen.',
-    voiceTitle: 'Voice dictation',
+    voiceTitle: 'Sprachdiktat',
     voiceBody:
       'If you use the microphone on a work summary field, audio is recorded and transcribed on this device with an on-device speech model bundled in the app. Temporary recordings are deleted after transcription, cancellation, or failure. Trade Report does not upload audio or transcripts. Where your phone provides an on-device language model, optional “Make professional” rewriting also runs on the device. Otherwise the app applies local formatting only. This reduces how much speech-related personal data leaves your phone; it does not remove your responsibility for customer information you choose to keep in a job.',
+    locationTitle: 'Standortstempel',
+    locationBody:
+      'Wenn du den Evidence-Standortstempel in den Einstellungen einschaltest, kann Trade Report deinen Standort nutzen, während die App geöffnet ist, um Fotos und PDF-Beschriftungen mit einer Adresse zu versehen. Koordinaten und Adressen bleiben auf diesem Gerät in dem Auftrag, den du bearbeitest. Sie werden nicht an die Server von Trade Report gesendet. Du kannst den Stempel jederzeit ausschalten.',
+    sensorsTitle: 'Kamera, AR-Messung und Wasserwaage',
+    sensorsBody:
+      'Die Kamera wird für Auftragsfotos und optionales AR-Messen verwendet. Bewegungssensoren betreiben die Wasserwaage. Messungen und Wasserwaagenwerte werden nur in der App auf deinem Gerät gespeichert. Trade Report lädt sie nicht hoch.',
     leavesDeviceTitle: 'Was dein Gerät verlässt',
     leavesDeviceBody: 'Informationen verlassen dein Gerät nur, wenn du sie teilst oder exportierst — zum Beispiel durch Senden eines Berichts über das Teilen-Menü, Speichern einer Backup-Datei oder Exportieren einer Textkopie deiner Auftragsdetails. Trade Report verkauft keine personenbezogenen Daten.',
     backupTitle: 'Ein Backup speichern',
-    backupBody: 'Bevor ein Backup erstellt wird, sagt dir die App, was darin ist. Die Zip-Datei enthält jeden Auftrag: Kundennamen und -adressen, Fotos, private Notizen, Unterschriften, PDF-Berichte und dein Unternehmensprofil einschließlich Kontaktdaten und Steuerkennzeichen. Der Textexport lässt Fotos und Unterschriften weg. Du wählst den Ordner im Systemwähler. iCloud Drive und Google Drive können dort erscheinen. Trade Report meldet sich dort nicht an und lädt die Datei nicht hoch. Eine gespeicherte Kopie bleibt dort, bis du sie löschst, auch nach dem Löschen der App.',
+    backupBody: 'Bevor ein Backup erstellt wird, sagt dir die App, was darin ist. Die Zip-Datei enthält jeden Auftrag: Kundennamen und -adressen, Fotos, private Notizen, Unterschriften, PDF-Berichte und dein Unternehmensprofil einschließlich Kontaktdaten und Steuerkennzeichen. Der Textexport lässt Fotos und Unterschriften weg. Du wählst den Ordner im Systemwähler. iCloud Drive und Google Drive können dort erscheinen. Trade Report meldet sich dort nicht an und lädt die Datei nicht hoch. Eine gespeicherte Kopie bleibt dort, bis du sie löschst, auch nach dem Löschen der App. Auf dem iPhone kann die App bei eingeschaltetem iCloud-Auto-Backup auch eine einzelne Zip-Datei namens tradesreport-icloud-backup.zip in deine iCloud Drive schreiben, wenn du einen Bericht erzeugst und nach einem Tagesplan. Das kannst du in den Einstellungen ausschalten.',
     bugReportsTitle: 'Nachrichten, die du sendest',
     bugReportsBody: 'Wenn du eine Nachricht über Kontakt in den Einstellungen sendest — Support, einen Fehler, einen Funktionswunsch oder etwas anderes — oder nach einem Bildschirmfehler auf Bericht senden tippst, werden der von dir geschriebene Text oder der Fehlertext auf diesem Bildschirm, die App-Version und die Geräteplattform (z. B. iOS oder Android) an GitHub als Issue im Trade-Report-Projekt-Repository gesendet. Ein Absturz wird nicht von allein gesendet, und der Bericht enthält keinen Stack-Trace. Er erhält keine Auftragsfotos, Unterschriften, Kundendetails oder PDF-Berichte. Das Senden einer Nachricht ist optional. Wenn GitHub die Nachricht nicht annehmen kann, öffnet die App deine Mail-App mit demselben Text, damit du sie selbst senden kannst.',
     noAccountTitle: 'Kein Konto erforderlich',
@@ -914,7 +934,7 @@ const de = {
     deletingTitle: 'Deine Daten löschen',
     deletingBody: 'Du kannst jederzeit einen einzelnen Auftrag oder alle App-Daten unter Einstellungen → Daten & Datenschutz löschen. Das Löschen eines Auftrags entfernt sofort seine Fotos, Unterschrift und erstellten Berichte von deinem Gerät. Das entfernt kein Backup, das du bereits in Google Drive, iCloud Drive oder Dateien gespeichert hast. Lösche diese Zip-Datei selbst dort, wo du sie gespeichert hast.',
     analyticsTitle: 'Analytik und Abstürze',
-    analyticsBody: 'Trade Report nutzt keine Analytik und keinen automatischen Absturzmelde-Dienst. Ein Fehler in der App wird nirgends gesendet, außer du wählst Bericht senden oder sendest eine Nachricht über Kontakt. Zuletzt aktualisiert am 29. Oktober 2026.',
+    analyticsBody: 'Trade Report nutzt keine Analytik und keinen automatischen Absturzmelde-Dienst. Ein Fehler in der App wird nirgends gesendet, außer du wählst Bericht senden oder sendest eine Nachricht über Kontakt. Zuletzt aktualisiert am 24. November 2026.',
   },
   terms: {
     title: 'Nutzungsbedingungen',
@@ -931,7 +951,7 @@ const de = {
     asIsTitle: 'Die App wird wie besehen bereitgestellt',
     asIsBody: 'Trade Report wird wie besehen bereitgestellt. Berichte sind nur so vollständig wie die Informationen, die du eingibst. Du solltest jeden Bericht lesen, bevor du ihn teilst. Soweit gesetzlich zulässig, haftet Trade Report nicht für Schäden durch einen von dir gesendeten Bericht, durch nur auf deinem Gerät gespeicherte Daten oder durch das Deinstallieren der App.',
     contactTitle: 'Kontakt',
-    contactBody: 'Fragen zu diesen Bedingungen: hello@jppferreira.com. Diese Bedingungen unterliegen dem Recht von England und Wales. Zuletzt aktualisiert am 29. Oktober 2026.',
+    contactBody: 'Fragen zu diesen Bedingungen: hello@jppferreira.com. Diese Bedingungen unterliegen dem Recht von England und Wales. Zuletzt aktualisiert am 24. November 2026.',
   },
   help: {
     title: 'Hilfe',
@@ -1225,6 +1245,8 @@ const de = {
       upright: 'Anzeige dreht sich mit',
       roll: 'ROLLEN',
       pitch: 'NEIGUNG',
+      styleBubble: 'Große Libelle',
+      styleBox: 'Klassisch',
       units: {
         deg: '° Grad',
         pct: '% Gefälle',

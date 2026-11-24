@@ -1,4 +1,4 @@
-import type { TranslationTree } from './en-US';
+import enUS, { type TranslationTree } from './en-US';
 
 /**
  * Polish catalog for Trade Report.
@@ -127,6 +127,7 @@ const pl = {
     deleteConfirmDescription: 'Spowoduje to trwałe usunięcie jego informacji, zdjęć i wygenerowanych raportów z tego urządzenia.',
     deleteConfirmLabel: 'Usuń zlecenie',
     toastDeleted: 'Zlecenie usunięte',
+    guided: enUS.jobDetail.guided,
   },
   checklist: {
     title: 'Lista kontrolna',
@@ -419,6 +420,8 @@ const pl = {
   },
   costs: {
     sectionTitle: 'Costs & document',
+    typeNotes: enUS.costs.typeNotes,
+    captionNotes: enUS.costs.captionNotes,
     typeReference: 'Reference',
     typeQuote: 'Quote',
     typeInvoice: 'Invoice',
@@ -561,9 +564,20 @@ const pl = {
     updateReport: 'Zaktualizuj raport',
     regenerateReport: 'Wygeneruj raport ponownie',
     done: 'Gotowe',
-    tapHint: 'Dotknij okładki lub zdjęcia, aby je zmienić. Dotknij notatek, aby edytować oznaczenia.',
+    tapHint: 'Dotknij zdjęcia, aby je zmienić, albo tekstu, aby go edytować.',
     changePhoto: 'Zmień zdjęcie',
     editMarkup: 'Edytuj oznaczenia',
+    textSheetTitle: 'Edit report text',
+    textSheetHint: 'Choose a field, then save. Changes show in the preview straight away.',
+    textFieldTitle: 'Job title',
+    textFieldCustomer: 'Customer',
+    textFieldAddress: 'Address',
+    textFieldDescription: 'Description',
+    textFieldWork: 'Work summary',
+    textFieldMaterials: 'Materials',
+    textFieldRecommendations: 'Aftercare',
+    saveText: 'Save',
+    savingText: 'Saving…',
     coverTitle: 'Obraz okładki',
     coverDescription: 'Wybierz, które zdjęcie pojawi się na okładce.',
     coverFromLibrary: 'Wybierz z biblioteki',
@@ -898,13 +912,19 @@ const pl = {
     title: 'Polityka prywatności',
     deviceDataTitle: 'Dane Twoich zleceń pozostają na urządzeniu',
     deviceDataBody: 'Zlecenia, imiona klientów, adresy, notatki, zdjęcia, podpisy i wygenerowane raporty PDF są przechowywane tylko w lokalnej pamięci tej aplikacji na telefonie lub tablecie. Trade Report nie prowadzi serwera, który odbiera, przechowuje ani przetwarza tych informacji, i nigdy nie są one automatycznie przesyłane.',
-    voiceTitle: 'Voice dictation',
+    voiceTitle: 'Dyktowanie głosowe',
     voiceBody:
       'If you use the microphone on a work summary field, audio is recorded and transcribed on this device with an on-device speech model bundled in the app. Temporary recordings are deleted after transcription, cancellation, or failure. Trade Report does not upload audio or transcripts. Where your phone provides an on-device language model, optional “Make professional” rewriting also runs on the device. Otherwise the app applies local formatting only. This reduces how much speech-related personal data leaves your phone; it does not remove your responsibility for customer information you choose to keep in a job.',
+    locationTitle: 'Pieczątka lokalizacji',
+    locationBody:
+      'Jeśli włączysz pieczątkę lokalizacji dowodów w Ustawieniach, Trade Report może używać Twojej lokalizacji, gdy aplikacja jest otwarta, aby oznaczać zdjęcia i podpisy PDF adresem. Współrzędne i adresy pozostają na tym urządzeniu w edytowanym zleceniu. Nie są wysyłane na serwery Trade Report. Pieczątkę możesz wyłączyć w dowolnym momencie.',
+    sensorsTitle: 'Aparat, pomiar AR i poziomica',
+    sensorsBody:
+      'Aparat służy do zdjęć zleceń i opcjonalnego pomiaru AR. Czujniki ruchu napędzają poziomicę. Pomiary i odczyty poziomicy są przechowywane tylko w aplikacji na Twoim urządzeniu. Trade Report ich nie przesyła.',
     leavesDeviceTitle: 'Co opuszcza Twoje urządzenie',
     leavesDeviceBody: 'Informacje opuszczają urządzenie tylko wtedy, gdy zdecydujesz się je udostępnić lub wyeksportować — na przykład wysyłając raport przez arkusz udostępniania, zapisując plik kopii zapasowej lub eksportując tekstową kopię szczegółów zleceń. Trade Report nie sprzedaje danych osobowych.',
     backupTitle: 'Zapisywanie kopii zapasowej',
-    backupBody: 'Przed utworzeniem kopii aplikacja informuje, co się w niej znajduje. Zip zawiera każde zlecenie: imiona i adresy klientów, zdjęcia, prywatne notatki, podpisy, raporty PDF oraz profil firmy, w tym dane kontaktowe i numery podatkowe. Eksport tekstowy pomija zdjęcia i podpisy. Wybierasz folder w selektorze systemu. Mogą się tam pojawić iCloud Drive i Google Drive. Trade Report nie loguje się do nich i nie przesyła pliku. Zapisana kopia pozostaje w tym miejscu, dopóki jej nie usuniesz, także po usunięciu aplikacji.',
+    backupBody: 'Przed utworzeniem kopii aplikacja informuje, co się w niej znajduje. Zip zawiera każde zlecenie: imiona i adresy klientów, zdjęcia, prywatne notatki, podpisy, raporty PDF oraz profil firmy, w tym dane kontaktowe i numery podatkowe. Eksport tekstowy pomija zdjęcia i podpisy. Wybierasz folder w selektorze systemu. Mogą się tam pojawić iCloud Drive i Google Drive. Trade Report nie loguje się do nich i nie przesyła pliku. Zapisana kopia pozostaje w tym miejscu, dopóki jej nie usuniesz, także po usunięciu aplikacji. Na iPhonie, gdy automatyczna kopia iCloud jest włączona, aplikacja może też zapisać jeden plik zip o nazwie tradesreport-icloud-backup.zip w Twoim iCloud Drive przy generowaniu raportu oraz według codziennego harmonogramu. Możesz to wyłączyć w Ustawieniach.',
     bugReportsTitle: 'Wiadomości, które wysyłasz',
     bugReportsBody: 'Jeśli wyślesz wiadomość z Kontakt w Ustawieniach — pomoc, błąd, prośbę o funkcję lub coś innego — lub dotkniesz Wyślij raport po awarii ekranu, tekst, który napiszesz, lub tekst błędu na tym ekranie, wersja aplikacji i platforma urządzenia (np. iOS lub Android) są wysyłane do GitHub jako zgłoszenie (issue) w repozytorium projektu Trade Report. Awaria nie jest wysyłana sama z siebie, a raport nie zawiera śladu stosu. Nie otrzymuje zdjęć zleceń, podpisów, danych klientów ani raportów PDF. Wysyłanie wiadomości jest opcjonalne. Jeśli GitHub nie może przyjąć wiadomości, aplikacja otwiera aplikację poczty z tym samym tekstem, abyś mógł ją wysłać samodzielnie.',
     noAccountTitle: 'Konto nie jest wymagane',
@@ -914,7 +934,7 @@ const pl = {
     deletingTitle: 'Usuwanie danych',
     deletingBody: 'Możesz w każdej chwili usunąć pojedyncze zlecenie lub wszystkie dane aplikacji w Ustawienia → Dane i prywatność. Usunięcie zlecenia natychmiast usuwa jego zdjęcia, podpis i wygenerowane raporty z urządzenia. To nie usuwa kopii już zapisanej w Google Drive, iCloud Drive lub Plikach. Usuń ten zip samodzielnie w miejscu, gdzie go zapisałeś.',
     analyticsTitle: 'Analityka i awarie',
-    analyticsBody: 'Trade Report nie używa analityki ani automatycznej usługi zgłaszania awarii. Błąd w aplikacji nie jest nigdzie wysyłany, chyba że wybierzesz Wyślij raport lub wyślesz wiadomość z Kontakt. Ostatnia aktualizacja 29 października 2026.',
+    analyticsBody: 'Trade Report nie używa analityki ani automatycznej usługi zgłaszania awarii. Błąd w aplikacji nie jest nigdzie wysyłany, chyba że wybierzesz Wyślij raport lub wyślesz wiadomość z Kontakt. Ostatnia aktualizacja 24 listopada 2026.',
   },
   terms: {
     title: 'Warunki użytkowania',
@@ -931,7 +951,7 @@ const pl = {
     asIsTitle: 'Aplikacja jest dostarczana w stanie „tak jak jest”',
     asIsBody: 'Trade Report jest dostarczany w stanie „tak jak jest”. Raporty są tak kompletne, jak informacje, które wprowadzisz. Powinieneś przeczytać każdy raport przed udostępnieniem. W zakresie dozwolonym przez prawo Trade Report nie odpowiada za straty spowodowane raportem, który wyślesz, danymi przechowywanymi tylko na urządzeniu ani odinstalowaniem aplikacji.',
     contactTitle: 'Kontakt',
-    contactBody: 'Pytania o te warunki: hello@jppferreira.com. Te warunki podlegają prawu Anglii i Walii. Ostatnia aktualizacja 29 października 2026.',
+    contactBody: 'Pytania o te warunki: hello@jppferreira.com. Te warunki podlegają prawu Anglii i Walii. Ostatnia aktualizacja 24 listopada 2026.',
   },
   help: {
     title: 'Pomoc',
@@ -1225,6 +1245,8 @@ const pl = {
       upright: 'Odczyt obraca się, by był prosto',
       roll: 'PRZECHYŁ',
       pitch: 'POCHYLENIE',
+      styleBubble: 'Duża bańka',
+      styleBox: 'Klasyczna',
       units: {
         deg: '° Stopnie',
         pct: '% Spadek',

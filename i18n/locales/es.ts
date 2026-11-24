@@ -1,4 +1,4 @@
-import type { TranslationTree } from './en-US';
+import enUS, { type TranslationTree } from './en-US';
 
 /**
  * Spanish (Spain / LatAm neutral) catalog for Trade Report.
@@ -127,6 +127,7 @@ const es = {
     deleteConfirmDescription: 'Se eliminarán de forma permanente su información, fotos e informes generados de este dispositivo.',
     deleteConfirmLabel: 'Eliminar trabajo',
     toastDeleted: 'Trabajo eliminado',
+    guided: enUS.jobDetail.guided,
   },
   checklist: {
     title: 'Lista de comprobación',
@@ -419,6 +420,8 @@ const es = {
   },
   costs: {
     sectionTitle: 'Costs & document',
+    typeNotes: enUS.costs.typeNotes,
+    captionNotes: enUS.costs.captionNotes,
     typeReference: 'Reference',
     typeQuote: 'Quote',
     typeInvoice: 'Invoice',
@@ -561,9 +564,20 @@ const es = {
     updateReport: 'Actualizar informe',
     regenerateReport: 'Regenerar informe',
     done: 'Listo',
-    tapHint: 'Toca la portada o una foto para cambiarla. Toca las notas para editar las marcas.',
+    tapHint: 'Toca una foto para cambiarla, o el texto para editarlo.',
     changePhoto: 'Cambiar foto',
     editMarkup: 'Editar marcas',
+    textSheetTitle: 'Edit report text',
+    textSheetHint: 'Choose a field, then save. Changes show in the preview straight away.',
+    textFieldTitle: 'Job title',
+    textFieldCustomer: 'Customer',
+    textFieldAddress: 'Address',
+    textFieldDescription: 'Description',
+    textFieldWork: 'Work summary',
+    textFieldMaterials: 'Materials',
+    textFieldRecommendations: 'Aftercare',
+    saveText: 'Save',
+    savingText: 'Saving…',
     coverTitle: 'Imagen de portada',
     coverDescription: 'Elige qué foto aparece en la portada.',
     coverFromLibrary: 'Elegir de la biblioteca',
@@ -898,13 +912,19 @@ const es = {
     title: 'Política de privacidad',
     deviceDataTitle: 'Los datos de tus trabajos se quedan en tu dispositivo',
     deviceDataBody: 'Los trabajos, nombres de clientes, direcciones, notas, fotos, firmas e informes PDF generados se almacenan solo en el almacenamiento local de esta app en tu teléfono o tableta. Trade Report no opera un servidor que reciba, almacene o procese esta información, y nunca se sube automáticamente.',
-    voiceTitle: 'Voice dictation',
+    voiceTitle: 'Dictado por voz',
     voiceBody:
       'If you use the microphone on a work summary field, audio is recorded and transcribed on this device with an on-device speech model bundled in the app. Temporary recordings are deleted after transcription, cancellation, or failure. Trade Report does not upload audio or transcripts. Where your phone provides an on-device language model, optional “Make professional” rewriting also runs on the device. Otherwise the app applies local formatting only. This reduces how much speech-related personal data leaves your phone; it does not remove your responsibility for customer information you choose to keep in a job.',
+    locationTitle: 'Sello de ubicación',
+    locationBody:
+      'Si activas el sello de ubicación de evidencia en Ajustes, Trade Report puede usar tu ubicación mientras la app está en uso para etiquetar fotos y pies de foto del PDF con una dirección. Las coordenadas y direcciones permanecen en este dispositivo en el trabajo que editas. No se envían a los servidores de Trade Report. Puedes desactivar el sello en cualquier momento.',
+    sensorsTitle: 'Cámara, medición AR y nivel',
+    sensorsBody:
+      'La cámara se usa para fotos del trabajo y la medición AR opcional. Los sensores de movimiento alimentan el nivel. Las mediciones y lecturas del nivel se guardan solo en la app en tu dispositivo. Trade Report no las sube.',
     leavesDeviceTitle: 'Qué sale de tu dispositivo',
     leavesDeviceBody: 'La información sale de tu dispositivo solo cuando tú eliges compartirla o exportarla — por ejemplo, enviando un informe con la hoja de compartir, guardando un archivo de copia o exportando una copia en texto de los detalles del trabajo. Trade Report no vende información personal.',
     backupTitle: 'Guardar una copia de seguridad',
-    backupBody: 'Antes de crear una copia, la app te indica qué contiene. El zip incluye todos los trabajos: nombres y direcciones de clientes, fotos, notas privadas, firmas, informes PDF y tu perfil de negocio, incluidos los datos de contacto y cualquier número fiscal que hayas añadido. La exportación de texto omite fotos y firmas. Tú eliges la carpeta en el selector del sistema. Pueden aparecer iCloud Drive y Google Drive. Trade Report no inicia sesión en ellos y no sube el archivo. Una copia que guardas permanece en ese lugar hasta que la elimines allí, también después de borrar la app.',
+    backupBody: 'Antes de crear una copia, la app te indica qué contiene. El zip incluye todos los trabajos: nombres y direcciones de clientes, fotos, notas privadas, firmas, informes PDF y tu perfil de negocio, incluidos los datos de contacto y cualquier número fiscal que hayas añadido. La exportación de texto omite fotos y firmas. Tú eliges la carpeta en el selector del sistema. Pueden aparecer iCloud Drive y Google Drive. Trade Report no inicia sesión en ellos y no sube el archivo. Una copia que guardas permanece en ese lugar hasta que la elimines allí, también después de borrar la app. En el iPhone, si la copia automática de iCloud está activada, la app también puede escribir un único zip llamado tradesreport-icloud-backup.zip en tu iCloud Drive al generar un informe y según un horario diario. Puedes desactivarlo en Ajustes.',
     bugReportsTitle: 'Mensajes que envías',
     bugReportsBody: 'Si envías un mensaje desde Contáctanos en Ajustes — soporte, un error, una petición de función u otra cosa — o tocas Enviar un informe tras un fallo de pantalla, el texto que escribes o el texto de error de esa pantalla, la versión de la app y la plataforma del dispositivo (como iOS o Android) se envían a GitHub como una issue en el repositorio del proyecto Trade Report. Un fallo no se envía por sí solo, y el informe no incluye un seguimiento de pila. No recibe tus fotos de trabajo, firmas, datos de clientes ni informes PDF. Enviar un mensaje es opcional. Si GitHub no puede aceptar el mensaje, la app abre tu aplicación de correo con el mismo texto para que lo envíes tú.',
     noAccountTitle: 'No se requiere cuenta',
@@ -914,7 +934,7 @@ const es = {
     deletingTitle: 'Eliminar tus datos',
     deletingBody: 'Puedes eliminar un trabajo individual, o todos los datos de la app, en cualquier momento desde Ajustes → Datos y privacidad. Eliminar un trabajo quita de inmediato sus fotos, firma e informes generados de tu dispositivo. Eso no elimina una copia que ya hayas guardado en Google Drive, iCloud Drive o Archivos. Elimina ese zip tú mismo en el lugar donde lo guardaste.',
     analyticsTitle: 'Analítica y fallos',
-    analyticsBody: 'Trade Report no usa analítica ni un servicio automático de informes de fallos. Un fallo en la app no se envía a ningún sitio a menos que elijas Enviar un informe o envíes un mensaje desde Contáctanos. Última actualización: 29 de octubre de 2026.',
+    analyticsBody: 'Trade Report no usa analítica ni un servicio automático de informes de fallos. Un fallo en la app no se envía a ningún sitio a menos que elijas Enviar un informe o envíes un mensaje desde Contáctanos. Última actualización: 24 de noviembre de 2026.',
   },
   terms: {
     title: 'Condiciones de uso',
@@ -931,7 +951,7 @@ const es = {
     asIsTitle: 'La app se ofrece tal cual',
     asIsBody: 'Trade Report se ofrece tal cual. Los informes solo están tan completos como la información que introduces. Debes leer cada informe antes de compartirlo. En la medida en que lo permita la ley, Trade Report no es responsable de las pérdidas causadas por un informe que envíes, por datos almacenados solo en tu dispositivo o por desinstalar la app.',
     contactTitle: 'Contacto',
-    contactBody: 'Preguntas sobre estas condiciones: hello@jppferreira.com. Estas condiciones se rigen por las leyes de Inglaterra y Gales. Última actualización: 29 de octubre de 2026.',
+    contactBody: 'Preguntas sobre estas condiciones: hello@jppferreira.com. Estas condiciones se rigen por las leyes de Inglaterra y Gales. Última actualización: 24 de noviembre de 2026.',
   },
   help: {
     title: 'Ayuda',
@@ -1225,6 +1245,8 @@ const es = {
       upright: 'La lectura gira para verse derecha',
       roll: 'BALANCEO',
       pitch: 'INCLINACIÓN',
+      styleBubble: 'Burbuja grande',
+      styleBox: 'Tradicional',
       units: {
         deg: '° Grados',
         pct: '% Pendiente',

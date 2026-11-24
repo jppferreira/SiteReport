@@ -1,4 +1,4 @@
-import type { TranslationTree } from './en-US';
+import enUS, { type TranslationTree } from './en-US';
 
 /**
  * Dutch catalog for Trade Report.
@@ -127,6 +127,7 @@ const nl = {
     deleteConfirmDescription: "Dit verwijdert permanent de gegevens, foto's en gegenereerde rapporten van dit apparaat.",
     deleteConfirmLabel: 'Klus verwijderen',
     toastDeleted: 'Klus verwijderd',
+    guided: enUS.jobDetail.guided,
   },
   checklist: {
     title: 'Checklist',
@@ -419,6 +420,8 @@ const nl = {
   },
   costs: {
     sectionTitle: 'Costs & document',
+    typeNotes: enUS.costs.typeNotes,
+    captionNotes: enUS.costs.captionNotes,
     typeReference: 'Reference',
     typeQuote: 'Quote',
     typeInvoice: 'Invoice',
@@ -561,9 +564,20 @@ const nl = {
     updateReport: 'Rapport bijwerken',
     regenerateReport: 'Rapport opnieuw genereren',
     done: 'Klaar',
-    tapHint: 'Tik op de omslag of een foto om die te wijzigen. Tik op notities om markeringen te bewerken.',
+    tapHint: 'Tik op een foto om die te wijzigen, of op tekst om die te bewerken.',
     changePhoto: 'Foto wijzigen',
     editMarkup: 'Markeringen bewerken',
+    textSheetTitle: 'Edit report text',
+    textSheetHint: 'Choose a field, then save. Changes show in the preview straight away.',
+    textFieldTitle: 'Job title',
+    textFieldCustomer: 'Customer',
+    textFieldAddress: 'Address',
+    textFieldDescription: 'Description',
+    textFieldWork: 'Work summary',
+    textFieldMaterials: 'Materials',
+    textFieldRecommendations: 'Aftercare',
+    saveText: 'Save',
+    savingText: 'Saving…',
     coverTitle: 'Omslagafbeelding',
     coverDescription: 'Kies welke foto op de omslag verschijnt.',
     coverFromLibrary: 'Kies uit bibliotheek',
@@ -898,13 +912,19 @@ const nl = {
     title: 'Privacybeleid',
     deviceDataTitle: 'Je klusgegevens blijven op je apparaat',
     deviceDataBody: "Klussen, klantnamen, adressen, klusnotities, foto's, handtekeningen en gegenereerde PDF-rapporten worden alleen in de lokale opslag van deze app op je telefoon of tablet bewaard. Trade Report beheert geen server die deze informatie ontvangt, opslaat of verwerkt, en deze wordt nooit automatisch geüpload.",
-    voiceTitle: 'Voice dictation',
+    voiceTitle: 'Spraakdictee',
     voiceBody:
       'If you use the microphone on a work summary field, audio is recorded and transcribed on this device with an on-device speech model bundled in the app. Temporary recordings are deleted after transcription, cancellation, or failure. Trade Report does not upload audio or transcripts. Where your phone provides an on-device language model, optional “Make professional” rewriting also runs on the device. Otherwise the app applies local formatting only. This reduces how much speech-related personal data leaves your phone; it does not remove your responsibility for customer information you choose to keep in a job.',
+    locationTitle: 'Locatiestempel',
+    locationBody:
+      'Als je de bewijs-locatiestempel in Instellingen aanzet, kan Trade Report je locatie gebruiken terwijl de app open is om foto’s en PDF-bijschriften van een adres te voorzien. Coördinaten en adressen blijven op dit apparaat in de klus die je bewerkt. Ze worden niet naar de servers van Trade Report gestuurd. Je kunt de stempel op elk moment uitzetten.',
+    sensorsTitle: 'Camera, AR-meten en waterpas',
+    sensorsBody:
+      'De camera wordt gebruikt voor klusfoto’s en optioneel AR-meten. Bewegingssensoren voeden de waterpas. Metingen en waterpasstanden worden alleen in de app op je apparaat opgeslagen. Trade Report uploadt ze niet.',
     leavesDeviceTitle: 'Wat je apparaat verlaat',
     leavesDeviceBody: 'Informatie verlaat je apparaat alleen wanneer je kiest om te delen of te exporteren — bijvoorbeeld door een rapport via het deelblad te sturen, een back-upbestand op te slaan of een tekstkopie van je klusgegevens te exporteren. Trade Report verkoopt geen persoonsgegevens.',
     backupTitle: 'Een back-up opslaan',
-    backupBody: "Voordat een back-up wordt gemaakt, vertelt de app je wat erin zit. De zip bevat elke klus: klantnamen en adressen, foto's, privénotities, handtekeningen, PDF-rapporten en je bedrijfsprofiel, inclusief contactgegevens en eventuele belastingnummers die je hebt toegevoegd. De tekstexport laat foto's en handtekeningen weg. Jij kiest de map in de systeemkiezer. iCloud Drive en Google Drive kunnen daar verschijnen. Trade Report meldt zich daar niet aan en uploadt het bestand niet. Een kopie die je opslaat blijft daar tot je hem daar verwijdert, ook nadat je de app verwijdert.",
+    backupBody: "Voordat een back-up wordt gemaakt, vertelt de app je wat erin zit. De zip bevat elke klus: klantnamen en adressen, foto's, privénotities, handtekeningen, PDF-rapporten en je bedrijfsprofiel, inclusief contactgegevens en eventuele belastingnummers die je hebt toegevoegd. De tekstexport laat foto's en handtekeningen weg. Jij kiest de map in de systeemkiezer. iCloud Drive en Google Drive kunnen daar verschijnen. Trade Report meldt zich daar niet aan en uploadt het bestand niet. Een kopie die je opslaat blijft daar tot je hem daar verwijdert, ook nadat je de app verwijdert. Op de iPhone kan de app, als iCloud-automatische back-up aan staat, ook één zip met de naam tradesreport-icloud-backup.zip naar je iCloud Drive schrijven wanneer je een rapport maakt en volgens een dagelijks schema. Je kunt dat uitzetten in Instellingen.",
     bugReportsTitle: 'Berichten die je stuurt',
     bugReportsBody: "Als je een bericht stuurt via Contact in Instellingen — support, een bug, een functieverzoek of iets anders — of op Een rapport sturen tikt nadat een scherm faalt, worden de tekst die je schrijft of de fouttekst op dat scherm, de appversie en het apparaatplatform (zoals iOS of Android) naar GitHub gestuurd als issue in de Trade Report-projectrepository. Een crash wordt niet vanzelf gestuurd, en het rapport bevat geen stacktrace. Het ontvangt niet je klusfoto's, handtekeningen, klantgegevens of PDF-rapporten. Een bericht sturen is optioneel. Als GitHub het bericht niet kan aannemen, opent de app je mail-app met dezelfde tekst zodat je het zelf kunt versturen.",
     noAccountTitle: 'Geen account vereist',
@@ -914,7 +934,7 @@ const nl = {
     deletingTitle: 'Je gegevens verwijderen',
     deletingBody: "Je kunt op elk moment een individuele klus of alle appgegevens verwijderen via Instellingen → Gegevens en privacy. Een klus verwijderen verwijdert meteen de foto's, handtekening en gegenereerde rapporten van je apparaat. Dat verwijdert niet een back-up die je al hebt opgeslagen in Google Drive, iCloud Drive of Bestanden. Verwijder die zip zelf op de plek waar je hem hebt opgeslagen.",
     analyticsTitle: 'Analyses en crashes',
-    analyticsBody: 'Trade Report gebruikt geen analyses of een automatische crashrapportageservice. Een fout in de app wordt nergens naartoe gestuurd tenzij je Een rapport sturen kiest of een bericht stuurt via Contact. Laatst bijgewerkt op 29 oktober 2026.',
+    analyticsBody: 'Trade Report gebruikt geen analyses of een automatische crashrapportageservice. Een fout in de app wordt nergens naartoe gestuurd tenzij je Een rapport sturen kiest of een bericht stuurt via Contact. Laatst bijgewerkt op 24 november 2026.',
   },
   terms: {
     title: 'Gebruiksvoorwaarden',
@@ -931,7 +951,7 @@ const nl = {
     asIsTitle: 'De app wordt geleverd zoals die is',
     asIsBody: 'Trade Report wordt geleverd zoals die is. Rapporten zijn alleen zo volledig als de informatie die je invoert. Je moet elk rapport lezen voordat je het deelt. Voor zover de wet dat toelaat, is Trade Report niet aansprakelijk voor verlies veroorzaakt door een rapport dat je stuurt, door gegevens die alleen op je apparaat staan, of door het verwijderen van de app.',
     contactTitle: 'Contact',
-    contactBody: 'Vragen over deze voorwaarden: hello@jppferreira.com. Deze voorwaarden vallen onder het recht van Engeland en Wales. Laatst bijgewerkt op 29 oktober 2026.',
+    contactBody: 'Vragen over deze voorwaarden: hello@jppferreira.com. Deze voorwaarden vallen onder het recht van Engeland en Wales. Laatst bijgewerkt op 24 november 2026.',
   },
   help: {
     title: 'Help',
@@ -1225,6 +1245,8 @@ const nl = {
       upright: 'Weergave draait mee',
       roll: 'ROL',
       pitch: 'HELLING',
+      styleBubble: 'Grote bel',
+      styleBox: 'Traditioneel',
       units: {
         deg: '° Graden',
         pct: '% Afschot',

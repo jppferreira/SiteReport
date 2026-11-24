@@ -65,7 +65,7 @@ const enGBOverrides = {
   },
   terms: {
     freeProBody:
-      'The free tier includes PDF reports for 3 jobs. Generating another report for a job that already has one does not use a new slot. Pro unlocks unlimited reports, your logo and accent colour on reports, and customer signatures. The price is the amount shown in the app at the time you confirm the purchase, charged by Apple or Google.',
+      'The free tier includes PDF reports for 3 jobs. Generating another report for a job that already has one does not use a new slot. Pro unlocks unlimited reports, your logo and accent colour on reports, customer signatures, and other Pro tools shown in the app. The price is the amount shown in the app at the time you confirm the purchase, charged by Apple or Google.',
   },
   paywall: {
     triggerColour:

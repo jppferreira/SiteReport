@@ -1,4 +1,4 @@
-import type { TranslationTree } from './en-US';
+import enUS, { type TranslationTree } from './en-US';
 
 /**
  * Italian catalog for Trade Report.
@@ -127,6 +127,7 @@ const it = {
     deleteConfirmDescription: 'Questo rimuoverà definitivamente le sue informazioni, foto e report generati da questo dispositivo.',
     deleteConfirmLabel: 'Elimina lavoro',
     toastDeleted: 'Lavoro eliminato',
+    guided: enUS.jobDetail.guided,
   },
   checklist: {
     title: 'Lista di controllo',
@@ -419,6 +420,8 @@ const it = {
   },
   costs: {
     sectionTitle: 'Costs & document',
+    typeNotes: enUS.costs.typeNotes,
+    captionNotes: enUS.costs.captionNotes,
     typeReference: 'Reference',
     typeQuote: 'Quote',
     typeInvoice: 'Invoice',
@@ -561,9 +564,20 @@ const it = {
     updateReport: 'Aggiorna report',
     regenerateReport: 'Rigenera report',
     done: 'Fine',
-    tapHint: 'Tocca la copertina o una foto per cambiarla. Tocca le note per modificare i markup.',
+    tapHint: 'Tocca una foto per cambiarla, o il testo per modificarlo.',
     changePhoto: 'Cambia foto',
     editMarkup: 'Modifica markup',
+    textSheetTitle: 'Edit report text',
+    textSheetHint: 'Choose a field, then save. Changes show in the preview straight away.',
+    textFieldTitle: 'Job title',
+    textFieldCustomer: 'Customer',
+    textFieldAddress: 'Address',
+    textFieldDescription: 'Description',
+    textFieldWork: 'Work summary',
+    textFieldMaterials: 'Materials',
+    textFieldRecommendations: 'Aftercare',
+    saveText: 'Save',
+    savingText: 'Saving…',
     coverTitle: 'Immagine di copertina',
     coverDescription: 'Scegli quale foto appare in copertina.',
     coverFromLibrary: 'Scegli dalla libreria',
@@ -898,13 +912,19 @@ const it = {
     title: 'Informativa sulla privacy',
     deviceDataTitle: 'I dati dei tuoi lavori restano sul tuo dispositivo',
     deviceDataBody: 'Lavori, nomi dei clienti, indirizzi, note, foto, firme e report PDF generati sono memorizzati solo nello storage locale di questa app sul telefono o tablet. Trade Report non gestisce un server che riceve, memorizza o elabora queste informazioni, e non vengono mai caricate automaticamente.',
-    voiceTitle: 'Voice dictation',
+    voiceTitle: 'Dettatura vocale',
     voiceBody:
       'If you use the microphone on a work summary field, audio is recorded and transcribed on this device with an on-device speech model bundled in the app. Temporary recordings are deleted after transcription, cancellation, or failure. Trade Report does not upload audio or transcripts. Where your phone provides an on-device language model, optional “Make professional” rewriting also runs on the device. Otherwise the app applies local formatting only. This reduces how much speech-related personal data leaves your phone; it does not remove your responsibility for customer information you choose to keep in a job.',
+    locationTitle: 'Timbro di posizione',
+    locationBody:
+      'Se attivi il timbro di posizione delle prove in Impostazioni, Trade Report può usare la tua posizione mentre l’app è in uso per etichettare foto e didascalie PDF con un indirizzo. Coordinate e indirizzi restano su questo dispositivo nel lavoro che stai modificando. Non vengono inviati ai server di Trade Report. Puoi disattivare il timbro in qualsiasi momento.',
+    sensorsTitle: 'Fotocamera, misura AR e livella',
+    sensorsBody:
+      'La fotocamera serve per le foto del lavoro e la misura AR opzionale. I sensori di movimento alimentano la livella. Misure e letture della livella sono salvate solo nell’app sul tuo dispositivo. Trade Report non le carica.',
     leavesDeviceTitle: 'Cosa lascia il tuo dispositivo',
     leavesDeviceBody: 'Le informazioni lasciano il dispositivo solo quando scegli di condividerle o esportarle — ad esempio inviando un report tramite il foglio di condivisione, salvando un file di backup o esportando una copia testo dei dettagli dei lavori. Trade Report non vende informazioni personali.',
     backupTitle: 'Salvare un backup',
-    backupBody: 'Prima che venga creato un backup, l’app ti dice cosa contiene. Lo zip include ogni lavoro: nomi e indirizzi dei clienti, foto, note private, firme, report PDF e il tuo profilo attività, comprese le informazioni di contatto e eventuali numeri fiscali. L’esportazione testo esclude foto e firme. Scegli la cartella nel selettore di sistema. iCloud Drive e Google Drive possono apparire lì. Trade Report non accede a essi e non carica il file. Una copia che salvi resta in quel posto finché non la elimini, anche dopo aver eliminato l’app.',
+    backupBody: 'Prima che venga creato un backup, l’app ti dice cosa contiene. Lo zip include ogni lavoro: nomi e indirizzi dei clienti, foto, note private, firme, report PDF e il tuo profilo attività, comprese le informazioni di contatto e eventuali numeri fiscali. L’esportazione testo esclude foto e firme. Scegli la cartella nel selettore di sistema. iCloud Drive e Google Drive possono apparire lì. Trade Report non accede a essi e non carica il file. Una copia che salvi resta in quel posto finché non la elimini, anche dopo aver eliminato l’app. Su iPhone, se il backup automatico iCloud è attivo, l’app può anche scrivere un unico zip chiamato tradesreport-icloud-backup.zip nel tuo iCloud Drive quando generi un report e secondo una pianificazione giornaliera. Puoi disattivarlo in Impostazioni.',
     bugReportsTitle: 'Messaggi che invii',
     bugReportsBody: 'Se invii un messaggio da Contattaci in Impostazioni — supporto, un bug, una richiesta di funzione o altro — o tocchi Invia un report dopo il fallimento di una schermata, il testo che scrivi o il testo di errore di quella schermata, la versione dell’app e la piattaforma del dispositivo (come iOS o Android) vengono inviati a GitHub come issue nel repository del progetto Trade Report. Un crash non viene inviato da solo e il report non include uno stack trace. Non riceve foto dei lavori, firme, dettagli clienti o report PDF. Inviare un messaggio è facoltativo. Se GitHub non può accettare il messaggio, l’app apre l’app di posta con lo stesso testo così puoi inviarlo tu.',
     noAccountTitle: 'Nessun account richiesto',
@@ -914,7 +934,7 @@ const it = {
     deletingTitle: 'Eliminare i tuoi dati',
     deletingBody: 'Puoi eliminare un singolo lavoro, o tutti i dati dell’app, in qualsiasi momento da Impostazioni → Dati e privacy. Eliminare un lavoro rimuove subito le sue foto, firma e report generati dal dispositivo. Ciò non rimuove un backup già salvato in Google Drive, iCloud Drive o File. Elimina quello zip tu stesso nel posto in cui l’hai salvato.',
     analyticsTitle: 'Analitica e crash',
-    analyticsBody: 'Trade Report non usa analitica né un servizio automatico di segnalazione crash. Un errore nell’app non viene inviato da nessuna parte a meno che tu non scelga Invia un report o invii un messaggio da Contattaci. Ultimo aggiornamento 29 ottobre 2026.',
+    analyticsBody: 'Trade Report non usa analitica né un servizio automatico di segnalazione crash. Un errore nell’app non viene inviato da nessuna parte a meno che tu non scelga Invia un report o invii un messaggio da Contattaci. Ultimo aggiornamento 24 novembre 2026.',
   },
   terms: {
     title: 'Termini di utilizzo',
@@ -931,7 +951,7 @@ const it = {
     asIsTitle: 'L’app è fornita così com’è',
     asIsBody: 'Trade Report è fornito così com’è. I report sono completi solo quanto le informazioni che inserisci. Dovresti leggere ogni report prima di condividerlo. Nella misura consentita dalla legge, Trade Report non è responsabile di perdite causate da un report che invii, da dati memorizzati solo sul tuo dispositivo o dalla disinstallazione dell’app.',
     contactTitle: 'Contatto',
-    contactBody: 'Domande su questi termini: hello@jppferreira.com. Questi termini sono regolati dalle leggi di Inghilterra e Galles. Ultimo aggiornamento 29 ottobre 2026.',
+    contactBody: 'Domande su questi termini: hello@jppferreira.com. Questi termini sono regolati dalle leggi di Inghilterra e Galles. Ultimo aggiornamento 24 novembre 2026.',
   },
   help: {
     title: 'Aiuto',
@@ -1225,6 +1245,8 @@ const it = {
       upright: 'La lettura ruota per restare dritta',
       roll: 'ROLLIO',
       pitch: 'BECCHEGGIO',
+      styleBubble: 'Bolla grande',
+      styleBox: 'Tradizionale',
       units: {
         deg: '° Gradi',
         pct: '% Pendenza',
