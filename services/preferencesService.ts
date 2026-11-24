@@ -18,6 +18,16 @@ const PREFERENCES_KEY = 'sitereport.preferences';
 
 export type PhotoQuality = 'standard' | 'high';
 
+/** AR tape-measure display unit. */
+export type MeasureUnit = 'm' | 'cm' | 'mm' | 'ftIn';
+
+/** Accepts the old 'metric' / 'imperial' values too. */
+export function normalizeMeasureUnit(value: unknown): MeasureUnit {
+  if (value === 'm' || value === 'cm' || value === 'mm' || value === 'ftIn') return value;
+  if (value === 'imperial') return 'ftIn';
+  return 'm';
+}
+
 export type AppPreferences = {
   defaultPhotoQuality: PhotoQuality;
   includeSignatureByDefault: boolean;
@@ -40,6 +50,8 @@ export type AppPreferences = {
   stampAddress: boolean;
   /** Print the evidence stamp under each photo on the PDF. */
   stampShowOnPdf: boolean;
+  /** Unit for AR Measure lengths (areas follow: m² or ft²). */
+  measureUnit: MeasureUnit;
 };
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -56,6 +68,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   stampDateTime: true,
   stampAddress: true,
   stampShowOnPdf: true,
+  measureUnit: 'm',
 };
 
 export async function hasCompletedOnboarding(): Promise<boolean> {
@@ -87,6 +100,7 @@ export async function getPreferences(): Promise<AppPreferences> {
     if (typeof parsed.stampDateTime !== 'boolean') parsed.stampDateTime = true;
     if (typeof parsed.stampAddress !== 'boolean') parsed.stampAddress = true;
     if (typeof parsed.stampShowOnPdf !== 'boolean') parsed.stampShowOnPdf = true;
+    parsed.measureUnit = normalizeMeasureUnit(parsed.measureUnit);
     return parsed;
   } catch {
     return DEFAULT_PREFERENCES;

@@ -105,6 +105,19 @@
           "locationWhenInUsePermission": "Trade Report uses your location to stamp the job address on photos when you turn on the evidence location stamp."
         }
       ],
+      [
+        "@stewmore/expo-ar",
+        {
+          "cameraPermission": "Trade Report uses your camera to take before and after job photos and to measure walls, doors and floors for your reports.",
+          "arRequired": false
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Trade Report uses motion sensors for the spirit level, so you can check that surfaces are level."
+        }
+      ],
       "./plugins/withStoreKitConfig.js",
       "./plugins/withIcloudDocuments.js",
       "./plugins/withRecordAudioPermission.js"
