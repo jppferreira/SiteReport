@@ -60,6 +60,8 @@ describe('computeJobContentHash', () => {
       recommendations: null,
       notes: 'Gate code 4821 — do not print',
       pricing: { enabled: false, lines: [] },
+      documentType: 'reference',
+      invoiceNumber: null,
       updatedAt: '2026-10-04T00:00:00.000Z',
     };
     const photo: Photo = {
@@ -74,6 +76,7 @@ describe('computeJobContentHash', () => {
       width: 800,
       height: 600,
       takenAt: '2026-10-04T14:30:00',
+      annotations: null,
       createdAt: '2026-10-23T18:00:00.000Z',
     };
     const withNotes = await computeJobContentHash(job(), [photo], summary, null);

@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
-import React, { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { NavigationHeader, Screen, SettingRow, Text } from '@/components';
+import { ContactSheet } from '@/features/settings/ContactSheet';
 import { SettingsGroup } from '@/features/settings/SettingsGroup';
 import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
@@ -12,6 +13,7 @@ import { useTheme } from '@/theme';
 export default function HelpScreen() {
   const { colors, spacing } = useTheme();
   const { t } = useI18n();
+  const [contactOpen, setContactOpen] = useState(false);
 
   const faq = useMemo(
     () => [
@@ -28,14 +30,14 @@ export default function HelpScreen() {
       <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl }}>
         <SettingsGroup title={t('help.groupContact')}>
           <SettingRow
+            label={t('help.contactUs')}
+            icon="chatbubble-ellipses-outline"
+            onPress={() => setContactOpen(true)}
+          />
+          <SettingRow
             label={t('help.emailSupport')}
             icon="mail-outline"
             onPress={() => Linking.openURL('mailto:hello@jppferreira.com')}
-          />
-          <SettingRow
-            label={t('help.reportABug')}
-            icon="bug-outline"
-            onPress={() => router.push('/settings/bug-report')}
           />
         </SettingsGroup>
 
@@ -55,6 +57,7 @@ export default function HelpScreen() {
           ))}
         </View>
       </ScrollView>
+      <ContactSheet visible={contactOpen} onClose={() => setContactOpen(false)} />
     </Screen>
   );
 }

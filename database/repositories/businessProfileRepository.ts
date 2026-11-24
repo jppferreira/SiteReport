@@ -1,7 +1,14 @@
 import { getDatabase } from '@/database/client';
-import { BusinessProfile, DEFAULT_BUSINESS_PROFILE, normalizeReportImageMask } from '@/models';
+import {
+  BusinessProfile,
+  coerceBusinessProfileFields,
+  DEFAULT_BUSINESS_PROFILE,
+  formatInvoiceNumber,
+  normalizeReportImageMask,
+} from '@/models';
 
 function rowToProfile(row: Record<string, unknown>): BusinessProfile {
+  const extra = coerceBusinessProfileFields(row);
   return {
     businessName: (row.businessName as string | null) ?? null,
     logoUri: (row.logoUri as string | null) ?? null,
@@ -17,6 +24,7 @@ function rowToProfile(row: Record<string, unknown>): BusinessProfile {
     vatNumber: (row.vatNumber as string | null) ?? null,
     accentColor: (row.accentColor as string | null) ?? null,
     footerMessage: (row.footerMessage as string | null) ?? null,
+    ...extra,
     updatedAt: row.updatedAt as string,
   };
 }
@@ -38,8 +46,8 @@ export async function saveBusinessProfile(patch: Partial<Omit<BusinessProfile, '
 
   await db.runAsync(
     `INSERT INTO business_profile
-       (id, businessName, logoUri, ownerName, email, phone, website, address, registrationNumber, vatNumber, accentColor, footerMessage, coverImageUri, thanksImageUri, imageMask, updatedAt)
-     VALUES (1, $businessName, $logoUri, $ownerName, $email, $phone, $website, $address, $registrationNumber, $vatNumber, $accentColor, $footerMessage, $coverImageUri, $thanksImageUri, $imageMask, $updatedAt)
+       (id, businessName, logoUri, ownerName, email, phone, website, address, registrationNumber, vatNumber, accentColor, footerMessage, coverImageUri, thanksImageUri, imageMask, reviewUrl, reviewProvider, bankName, sortCode, accountNumber, paymentTerms, defaultDueDays, nextInvoiceSequence, updatedAt)
+     VALUES (1, $businessName, $logoUri, $ownerName, $email, $phone, $website, $address, $registrationNumber, $vatNumber, $accentColor, $footerMessage, $coverImageUri, $thanksImageUri, $imageMask, $reviewUrl, $reviewProvider, $bankName, $sortCode, $accountNumber, $paymentTerms, $defaultDueDays, $nextInvoiceSequence, $updatedAt)
      ON CONFLICT(id) DO UPDATE SET
        businessName = excluded.businessName,
        logoUri = excluded.logoUri,
@@ -55,6 +63,14 @@ export async function saveBusinessProfile(patch: Partial<Omit<BusinessProfile, '
        vatNumber = excluded.vatNumber,
        accentColor = excluded.accentColor,
        footerMessage = excluded.footerMessage,
+       reviewUrl = excluded.reviewUrl,
+       reviewProvider = excluded.reviewProvider,
+       bankName = excluded.bankName,
+       sortCode = excluded.sortCode,
+       accountNumber = excluded.accountNumber,
+       paymentTerms = excluded.paymentTerms,
+       defaultDueDays = excluded.defaultDueDays,
+       nextInvoiceSequence = excluded.nextInvoiceSequence,
        updatedAt = excluded.updatedAt`,
     {
       $businessName: next.businessName,
@@ -71,9 +87,25 @@ export async function saveBusinessProfile(patch: Partial<Omit<BusinessProfile, '
       $coverImageUri: next.coverImageUri,
       $thanksImageUri: next.thanksImageUri,
       $imageMask: next.imageMask,
+      $reviewUrl: next.reviewUrl,
+      $reviewProvider: next.reviewProvider,
+      $bankName: next.bankName,
+      $sortCode: next.sortCode,
+      $accountNumber: next.accountNumber,
+      $paymentTerms: next.paymentTerms,
+      $defaultDueDays: next.defaultDueDays,
+      $nextInvoiceSequence: next.nextInvoiceSequence,
       $updatedAt: next.updatedAt,
     }
   );
 
   return next;
+}
+
+/** Allocates the next invoice number and advances the sequence. */
+export async function allocateInvoiceNumber(): Promise<string> {
+  const profile = await getBusinessProfile();
+  const number = formatInvoiceNumber(profile.nextInvoiceSequence);
+  await saveBusinessProfile({ nextInvoiceSequence: profile.nextInvoiceSequence + 1 });
+  return number;
 }

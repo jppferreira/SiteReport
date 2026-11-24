@@ -29,6 +29,7 @@ export default function PrivacyScreen() {
       <NavigationHeader title={t('privacy.title')} onBack={() => router.back()} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl }}>
         <Paragraph title={t('privacy.deviceDataTitle')}>{t('privacy.deviceDataBody')}</Paragraph>
+        <Paragraph title={t('privacy.voiceTitle')}>{t('privacy.voiceBody')}</Paragraph>
         <Paragraph title={t('privacy.leavesDeviceTitle')}>{t('privacy.leavesDeviceBody')}</Paragraph>
         <Paragraph title={t('privacy.backupTitle')}>{t('privacy.backupBody')}</Paragraph>
         <Paragraph title={t('privacy.bugReportsTitle')}>{t('privacy.bugReportsBody')}</Paragraph>

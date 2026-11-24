@@ -1,8 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
-import { Dimensions, FlatList, KeyboardAvoidingView, Pressable, StyleSheet, View } from 'react-native';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Dimensions,
+  FlatList,
+  KeyboardAvoidingView,
+  type LayoutChangeEvent,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 
 import {
   ConfirmationDialog,
@@ -14,18 +22,26 @@ import {
   Screen,
   StatusBadge,
   Text,
+  ToggleRow,
   useToast,
 } from '@/components';
 import { jobsRepository, photosRepository } from '@/database';
 import { BottomSheetMenu } from '@/features/jobs/BottomSheetMenu';
+import { EvidenceStamp } from '@/features/photos/EvidenceStamp';
+import { PhotoAnnotationShapes } from '@/features/photos/PhotoAnnotationShapes';
+import { fitContainRect } from '@/features/photos/fitContainRect';
 import { useAutosaveField } from '@/hooks/useAutosaveField';
+import { useEntitlement } from '@/hooks/useEntitlement';
 import { usePhotoAreas } from '@/hooks/usePhotoAreas';
 import { usePhotos } from '@/hooks/usePhotos';
-import { Photo, PhotoType } from '@/models';
+import { hasAnnotations, listCallouts, Photo, PhotoType } from '@/models';
+import { formatStampDateTime } from '@/services/evidenceStamp';
 import { deleteFileSafely } from '@/services/fileService';
 import { requestPhotoLibraryAccess } from '@/services/photoLibraryAccess';
 import { processJobPhoto } from '@/services/imageService';
+import { resolveStampAddress } from '@/services/locationStamp';
 import { resolveTakenAt } from '@/services/photoTakenAt';
+import { AppPreferences, DEFAULT_PREFERENCES, getPreferences, savePreferences } from '@/services/preferencesService';
 import { generateId } from '@/utils/id';
 import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
@@ -36,6 +52,7 @@ export default function PhotoDetailScreen() {
   const { id, photoId } = useLocalSearchParams<{ id: string; photoId: string }>();
   const { spacing } = useTheme();
   const { t } = useI18n();
+  const { isPro } = useEntitlement();
   const { showToast } = useToast();
   const [currentPhoto, setCurrentPhoto] = useState<Photo | null>(null);
   const [type, setType] = useState<PhotoType | null>(null);
@@ -44,9 +61,16 @@ export default function PhotoDetailScreen() {
   const [replacing, setReplacing] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [coverPhotoId, setCoverPhotoId] = useState<string | null>(null);
+  const [jobAddress, setJobAddress] = useState<string | null>(null);
+  const [stampAddressLabel, setStampAddressLabel] = useState<string | null>(null);
+  const [stampPrefs, setStampPrefs] = useState<Pick<AppPreferences, 'stampDateTime' | 'stampAddress' | 'stampShowOnPdf'>>({
+    stampDateTime: DEFAULT_PREFERENCES.stampDateTime,
+    stampAddress: DEFAULT_PREFERENCES.stampAddress,
+    stampShowOnPdf: DEFAULT_PREFERENCES.stampShowOnPdf,
+  });
   const { areas } = usePhotoAreas(id);
 
-  useEffect(() => {
+  const loadPhoto = useCallback(() => {
     photosRepository.getPhoto(photoId).then((photo) => {
       setCurrentPhoto(photo);
       setType(photo?.type ?? null);
@@ -54,8 +78,52 @@ export default function PhotoDetailScreen() {
   }, [photoId]);
 
   useEffect(() => {
-    jobsRepository.getJob(id).then((job) => setCoverPhotoId(job?.coverPhotoId ?? null));
+    loadPhoto();
+  }, [loadPhoto]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadPhoto();
+    }, [loadPhoto])
+  );
+
+  useEffect(() => {
+    jobsRepository.getJob(id).then((job) => {
+      setCoverPhotoId(job?.coverPhotoId ?? null);
+      setJobAddress(job?.address ?? null);
+    });
+    getPreferences().then((prefs) =>
+      setStampPrefs({
+        stampDateTime: prefs.stampDateTime,
+        stampAddress: prefs.stampAddress,
+        stampShowOnPdf: prefs.stampShowOnPdf,
+      })
+    );
   }, [id]);
+
+  useEffect(() => {
+    if (!isPro || !stampPrefs.stampAddress) {
+      setStampAddressLabel(null);
+      return;
+    }
+    let cancelled = false;
+    void resolveStampAddress(jobAddress).then((label) => {
+      if (!cancelled) setStampAddressLabel(label);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isPro, stampPrefs.stampAddress, jobAddress]);
+
+  const updateStampPref = async (patch: Partial<typeof stampPrefs>) => {
+    if (patch.stampAddress !== undefined && !isPro) {
+      router.push({ pathname: '/paywall', params: { trigger: 'stamp_address' } });
+      return;
+    }
+    const next = { ...stampPrefs, ...patch };
+    setStampPrefs(next);
+    await savePreferences(patch);
+  };
 
   const { photos, loading: photosLoading } = usePhotos(
     id,
@@ -80,10 +148,17 @@ export default function PhotoDetailScreen() {
   }
 
   const handleToggleCategory = async () => {
-    const nextType: PhotoType = type === 'before' ? 'after' : 'before';
+    const nextType: PhotoType =
+      type === 'before' ? 'during' : type === 'during' ? 'after' : 'before';
     await flush();
     await photosRepository.updatePhoto(photoId, { type: nextType });
-    showToast({ message: nextType === 'before' ? t('photoDetail.toastMovedToBefore') : t('photoDetail.toastMovedToAfter'), tone: 'success' });
+    const message =
+      nextType === 'before'
+        ? t('photoDetail.toastMovedToBefore')
+        : nextType === 'during'
+          ? t('photoDetail.toastMovedToDuring')
+          : t('photoDetail.toastMovedToAfter');
+    showToast({ message, tone: 'success' });
     router.back();
   };
 
@@ -181,7 +256,16 @@ export default function PhotoDetailScreen() {
             router.back();
           }}
         />
-        <StatusBadge label={type === 'before' ? t('photoDetail.beforeBadge') : t('photoDetail.afterBadge')} tone={type === 'before' ? 'warning' : 'success'} />
+        <StatusBadge
+          label={
+            type === 'before'
+              ? t('photoDetail.beforeBadge')
+              : type === 'during'
+                ? t('photoDetail.duringBadge')
+                : t('photoDetail.afterBadge')
+          }
+          tone={type === 'before' ? 'warning' : type === 'during' ? 'neutral' : 'success'}
+        />
         <IconButton
           name="trash-outline"
           accessibilityLabel={t('photoDetail.deleteA11y')}
@@ -207,15 +291,59 @@ export default function PhotoDetailScreen() {
           }
         }}
         renderItem={({ item }) => (
-          <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
-            <LocalImage uri={item.localUri} style={StyleSheet.absoluteFill} contentFit="contain" />
-          </View>
+          <AnnotatedPhotoSlide
+            photo={item}
+            stampDateTime={stampPrefs.stampDateTime ? formatStampDateTime(item.takenAt ?? item.createdAt) : null}
+            stampAddress={isPro && stampPrefs.stampAddress ? stampAddressLabel : null}
+            stageLabel={
+              item.type === 'before'
+                ? t('photos.stageBefore')
+                : item.type === 'during'
+                  ? t('photos.stageDuring')
+                  : t('photos.stageAfter')
+            }
+          />
         )}
         style={{ flex: 1 }}
       />
 
       <KeyboardAvoidingView behavior="padding">
         <View style={[styles.footer, { padding: spacing.lg, backgroundColor: '#101310' }]}>
+          {listCallouts(currentPhoto.annotations).length > 0 ? (
+            <View style={{ gap: spacing.sm, marginBottom: spacing.sm }}>
+              {listCallouts(currentPhoto.annotations).map((item) => (
+                <View
+                  key={item.number}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'flex-start',
+                    gap: 10,
+                    padding: 10,
+                    borderRadius: 12,
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 11,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: item.shape.color,
+                    }}
+                  >
+                    <Text variant="caption" color={item.shape.color === '#FFFFFF' ? '#101310' : '#FFFFFF'}>
+                      {item.number}
+                    </Text>
+                  </View>
+                  <Text variant="bodySmall" color="#FFFFFF" style={{ flex: 1 }}>
+                    {item.shape.note.trim() || t('photoAnnotate.cardPlaceholder')}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
           <Input
             placeholder={t('photoDetail.captionPlaceholder')}
             placeholderTextColor="rgba(255,255,255,0.5)"
@@ -224,13 +352,83 @@ export default function PhotoDetailScreen() {
             onBlur={flush}
             style={{ backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.16)', color: '#FFFFFF' }}
           />
+          <View
+            style={{
+              marginTop: spacing.sm,
+              backgroundColor: 'rgba(255,255,255,0.08)',
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.12)',
+              paddingHorizontal: 12,
+            }}
+          >
+            <ToggleRow
+              label={t('stamp.dateTime')}
+              description={t('stamp.dateTimeHint')}
+              value={stampPrefs.stampDateTime}
+              onValueChange={(value) => void updateStampPref({ stampDateTime: value })}
+            />
+            <ToggleRow
+              label={t('stamp.address')}
+              description={isPro ? t('stamp.addressHint') : t('stamp.addressProHint')}
+              value={isPro && stampPrefs.stampAddress}
+              onValueChange={(value) => void updateStampPref({ stampAddress: value })}
+            />
+            <ToggleRow
+              label={t('stamp.showOnPdf')}
+              description={t('stamp.showOnPdfHint')}
+              value={stampPrefs.stampShowOnPdf}
+              onValueChange={(value) => void updateStampPref({ stampShowOnPdf: value })}
+            />
+          </View>
+          <View
+            style={{
+              marginTop: spacing.sm,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+              paddingHorizontal: 12,
+              paddingVertical: 11,
+              borderRadius: 14,
+              backgroundColor: 'rgba(255,255,255,0.06)',
+            }}
+          >
+            <Ionicons name="lock-closed-outline" size={16} color="rgba(255,255,255,0.7)" />
+            <Text variant="caption" color="rgba(255,255,255,0.7)" style={{ flex: 1 }}>
+              {t('stamp.privacy')}
+            </Text>
+          </View>
           {isCover ? (
             <Text variant="caption" color="rgba(255,255,255,0.72)" style={{ marginTop: spacing.sm }}>
               {t('photoDetail.coverHint')}
             </Text>
           ) : null}
           <View style={[styles.actionsRow, { marginTop: spacing.sm, gap: spacing.sm }]}>
-            <FooterAction icon="swap-horizontal" label={type === 'before' ? t('photoDetail.markAsAfter') : t('photoDetail.markAsBefore')} onPress={handleToggleCategory} />
+            <FooterAction
+              icon="pencil"
+              label={hasAnnotations(currentPhoto.annotations) ? t('photoDetail.editMarkup') : t('photoDetail.markup')}
+              onPress={async () => {
+                if (!isPro) {
+                  router.push({ pathname: '/paywall', params: { trigger: 'photo_markup' } });
+                  return;
+                }
+                await flush();
+                router.push(`/job/${id}/annotate/${currentPhoto.id}`);
+              }}
+            />
+            <FooterAction
+              icon="swap-horizontal"
+              label={
+                type === 'before'
+                  ? t('photoDetail.markAsDuring')
+                  : type === 'during'
+                    ? t('photoDetail.markAsAfter')
+                    : t('photoDetail.markAsBefore')
+              }
+              onPress={handleToggleCategory}
+            />
+          </View>
+          <View style={[styles.actionsRow, { marginTop: spacing.sm, gap: spacing.sm }]}>
             <FooterAction icon="images-outline" label={replacing ? t('photoDetail.replacing') : t('photoDetail.replace')} onPress={handleReplace} disabled={replacing} />
           </View>
           <View style={{ marginTop: spacing.sm }}>
@@ -261,6 +459,55 @@ export default function PhotoDetailScreen() {
 
       <BottomSheetMenu visible={moveOpen} onClose={() => setMoveOpen(false)} items={moveTargets} />
     </Screen>
+  );
+}
+
+function AnnotatedPhotoSlide({
+  photo,
+  stampDateTime,
+  stampAddress,
+  stageLabel,
+}: {
+  photo: Photo;
+  stampDateTime: string | null;
+  stampAddress: string | null;
+  stageLabel: string;
+}) {
+  const [box, setBox] = useState({ width: SCREEN_WIDTH, height: 0 });
+  const rect = fitContainRect(box.width, box.height, photo.width, photo.height);
+
+  const onLayout = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    setBox({ width, height });
+  };
+
+  return (
+    <View style={{ width: SCREEN_WIDTH, flex: 1 }} onLayout={onLayout}>
+      <LocalImage uri={photo.localUri} style={StyleSheet.absoluteFill} contentFit="contain" />
+      {rect ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: rect.x,
+            top: rect.y,
+            width: rect.width,
+            height: rect.height,
+          }}
+        >
+          {hasAnnotations(photo.annotations) ? (
+            <PhotoAnnotationShapes annotations={photo.annotations} width={rect.width} height={rect.height} />
+          ) : null}
+          <View style={styles.stageBadge}>
+            <View style={styles.stageDot} />
+            <Text variant="caption" color="#FFFFFF" style={{ fontSize: 11.5, fontWeight: '600' }}>
+              {stageLabel}
+            </Text>
+          </View>
+          <EvidenceStamp dateTimeLabel={stampDateTime} addressLabel={stampAddress} />
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -313,5 +560,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
+  },
+  stageBadge: {
+    position: 'absolute',
+    top: 14,
+    left: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(16,19,16,0.72)',
+  },
+  stageDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#1FA84A',
   },
 });

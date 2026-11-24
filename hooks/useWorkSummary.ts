@@ -27,7 +27,14 @@ export function useWorkSummary(jobId: string) {
   }, [refresh]);
 
   const save = useCallback(
-    async (patch: Partial<Pick<WorkSummary, 'workCompleted' | 'materials' | 'recommendations' | 'notes' | 'pricing'>>) => {
+    async (
+      patch: Partial<
+        Pick<
+          WorkSummary,
+          'workCompleted' | 'materials' | 'recommendations' | 'notes' | 'pricing' | 'documentType' | 'invoiceNumber'
+        >
+      >
+    ) => {
       const next = await workSummaryRepository.saveWorkSummary(jobId, patch);
       setSummary(next);
       return next;

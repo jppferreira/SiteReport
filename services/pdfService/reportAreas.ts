@@ -18,6 +18,9 @@ function asReportPhoto(photo: TaggedPhoto): ReportPhotoData {
     width: photo.width,
     height: photo.height,
     takenAt: photo.takenAt,
+    // Keep markup + callout notes when photos are grouped by section.
+    // Without this, sectioned jobs print bare images and drop annotation cards.
+    annotations: photo.annotations ?? null,
   };
 }
 
@@ -44,9 +47,10 @@ export function groupReportPhotos(areas: AreaRef[], photos: TaggedPhoto[]): Repo
   for (const area of ordered) {
     const inArea = photos.filter((photo) => photo.areaId === area.id).sort(byOrder);
     const before = inArea.filter((photo) => photo.type === 'before').map(asReportPhoto);
+    const during = inArea.filter((photo) => photo.type === 'during').map(asReportPhoto);
     const after = inArea.filter((photo) => photo.type === 'after').map(asReportPhoto);
-    if (before.length === 0 && after.length === 0) continue;
-    groups.push({ name: area.name, before, after });
+    if (before.length === 0 && during.length === 0 && after.length === 0) continue;
+    groups.push({ name: area.name, before, during, after });
   }
 
   const loose = photos.filter((photo) => !belongs(photo)).sort(byOrder);
@@ -54,6 +58,7 @@ export function groupReportPhotos(areas: AreaRef[], photos: TaggedPhoto[]): Repo
     groups.push({
       name: 'Other photos',
       before: loose.filter((photo) => photo.type === 'before').map(asReportPhoto),
+      during: loose.filter((photo) => photo.type === 'during').map(asReportPhoto),
       after: loose.filter((photo) => photo.type === 'after').map(asReportPhoto),
     });
   }

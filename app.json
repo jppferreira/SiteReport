@@ -3,7 +3,7 @@
     "name": "Trade Report",
     "slug": "tradesreport",
     "scheme": "tradesreport",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "automatic",
@@ -14,36 +14,35 @@
     ],
     "ios": {
       "bundleIdentifier": "com.tradesreport.app",
-      "buildNumber": "3",
+      "buildNumber": "10",
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Trade Report uses your camera to take before and after job photos for your reports.",
         "NSPhotoLibraryUsageDescription": "Trade Report needs access to your photo library so you can add existing photos to a job report.",
+        "NSMicrophoneUsageDescription": "Trade Report uses the microphone so you can dictate job notes. Audio is transcribed on this device and is not uploaded.",
+        "NSLocationWhenInUseUsageDescription": "Trade Report uses your location to stamp the job address on photos when you turn on the evidence location stamp.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.tradesreport.app",
-      "versionCode": 7,
+      "versionCode": 12,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundColor": "#045C42"
       },
       "permissions": [
         "CAMERA",
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
       ],
       "blockedPermissions": [
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_MEDIA_VIDEO",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -53,6 +52,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-asset",
       "expo-localization",
       [
         "expo-splash-screen",
@@ -67,7 +67,23 @@
         {
           "photosPermission": "Trade Report needs access to your photo library so you can add existing photos to a job report.",
           "cameraPermission": "Trade Report uses your camera to take before and after job photos for your reports.",
-          "microphonePermission": false
+          "microphonePermission": "Trade Report uses the microphone so you can dictate job notes. Audio is transcribed on this device and is not uploaded."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Trade Report uses your camera to take before and after job photos for your reports.",
+          "microphonePermission": "Trade Report uses the microphone so you can dictate job notes. Audio is transcribed on this device and is not uploaded.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Trade Report uses the microphone so you can dictate job notes. Audio is transcribed on this device and is not uploaded.",
+          "recordAudioAndroid": true,
+          "enableBackgroundRecording": false
         }
       ],
       "expo-sqlite",
@@ -82,8 +98,29 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-iap",
+      "expo-mail-composer",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Trade Report uses your location to stamp the job address on photos when you turn on the evidence location stamp."
+        }
+      ],
+      [
+        "@stewmore/expo-ar",
+        {
+          "cameraPermission": "Trade Report uses your camera to take before and after job photos and to measure walls, doors and floors for your reports.",
+          "arRequired": false
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Trade Report uses motion sensors for the spirit level, so you can check that surfaces are level."
+        }
+      ],
       "./plugins/withStoreKitConfig.js",
-      "./plugins/withIcloudDocuments.js"
+      "./plugins/withIcloudDocuments.js",
+      "./plugins/withRecordAudioPermission.js"
     ],
     "experiments": {
       "typedRoutes": true

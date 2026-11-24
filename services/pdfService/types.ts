@@ -1,4 +1,14 @@
-import { CoverDesignId, JobStatus, ReportImageMask, ReportPricing, ReportTemplateId } from '@/models';
+import {
+  CoverDesignId,
+  DocumentType,
+  JobStatus,
+  PhotoAnnotationLayout,
+  PhotoAnnotations,
+  ReportImageMask,
+  ReportPricing,
+  ReportTemplateId,
+  ReviewProvider,
+} from '@/models';
 
 export type ReportPhotoData = {
   id: string;
@@ -8,13 +18,31 @@ export type ReportPhotoData = {
   height: number;
   /** Camera time. Omitted when the photo has no capture metadata. */
   takenAt?: string | null;
+  /** Markup drawn over the photo in the app. Printed on top of the image. */
+  annotations?: PhotoAnnotations | null;
 };
 
-/** Before and after photos for one named part of the job, such as Kitchen. */
+/** Before / during / after photos for one named part of the job, such as Kitchen. */
 export type ReportPhotoGroup = {
   name: string;
   before: ReportPhotoData[];
+  during: ReportPhotoData[];
   after: ReportPhotoData[];
+};
+
+export type ReportReviewLink = {
+  url: string;
+  provider: ReviewProvider;
+};
+
+export type ReportInvoiceDetails = {
+  invoiceNumber: string;
+  dueDate: string;
+  dueDays: number;
+  bankName: string | null;
+  sortCode: string | null;
+  accountNumber: string | null;
+  paymentTerms: string | null;
 };
 
 export type ReportHtmlInput = {
@@ -42,6 +70,7 @@ export type ReportHtmlInput = {
     status: JobStatus;
   };
   before: ReportPhotoData[];
+  during: ReportPhotoData[];
   after: ReportPhotoData[];
   /** Photo the user saved as the cover for this job. Null when they have not chosen one. */
   coverDataUri?: string | null;
@@ -61,8 +90,16 @@ export type ReportHtmlInput = {
   workCompleted: string | null;
   materials: string | null;
   recommendations: string | null;
+  /** Optional job checklist printed as a ticked list when includeInPdf is on. */
+  checklist?: { label: string; checked: boolean }[] | null;
   /** Optional cost figures. Omitted from the document when off or empty. */
   pricing: ReportPricing | null;
+  /** How pricing is titled. Defaults to reference. */
+  documentType?: DocumentType;
+  /** Present when documentType is invoice. */
+  invoice?: ReportInvoiceDetails | null;
+  /** Review card on the last page when Pro and a URL are set. */
+  review?: ReportReviewLink | null;
   signature: {
     svgMarkup: string;
     customerName: string | null;
@@ -70,4 +107,6 @@ export type ReportHtmlInput = {
   } | null;
   generatedAt: string;
   template: ReportTemplateId;
+  /** Annotated photo cards: full-width stack, or before/after side by side. */
+  photoAnnotationLayout?: PhotoAnnotationLayout;
 };

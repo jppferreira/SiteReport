@@ -25,6 +25,16 @@ function isFileName(label?: string): label is string {
   return Boolean(label && /\.[a-z0-9]{1,8}$/i.test(label) && !label.includes('/') && !label.includes('\\'));
 }
 
+function shareType(fileName: string): { mimeType: string; uti: string } {
+  if (/\.zip$/i.test(fileName)) {
+    return { mimeType: 'application/zip', uti: 'public.zip-archive' };
+  }
+  if (/\.json$/i.test(fileName)) {
+    return { mimeType: 'application/json', uti: 'public.json' };
+  }
+  return { mimeType: 'application/pdf', uti: 'com.adobe.pdf' };
+}
+
 /**
  * Share sheets name the attachment from the file path. Stage a cache copy so
  * Expo Go on Android can open the file and the PDF keeps the chosen name.
@@ -96,7 +106,11 @@ export async function saveFileCopy(uri: string, fileName: string): Promise<SaveR
   return shared ? 'saved' : 'unsupported';
 }
 
-export async function shareFile(uri: string, fileName?: string): Promise<boolean> {
+export async function shareFile(
+  uri: string,
+  fileName?: string,
+  options?: { dialogTitle?: string }
+): Promise<boolean> {
   if (Platform.OS === 'web') {
     return downloadLocalFile(uri, fileName);
   }
@@ -107,10 +121,11 @@ export async function shareFile(uri: string, fileName?: string): Promise<boolean
   try {
     const name = isFileName(fileName) ? fileName : downloadName(uri, fileName);
     const shareUri = await materializeShareableUri(uri, name);
+    const type = shareType(name);
     await Sharing.shareAsync(shareUri, {
-      dialogTitle: fileName,
-      mimeType: 'application/pdf',
-      UTI: 'com.adobe.pdf',
+      dialogTitle: options?.dialogTitle ?? fileName,
+      mimeType: type.mimeType,
+      UTI: type.uti,
     });
     return true;
   } catch (error) {

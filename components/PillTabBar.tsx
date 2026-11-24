@@ -21,7 +21,7 @@ const INDICATOR_TIMING = {
 const ICON_SIZE = 22;
 
 /** How far the fade reaches above the pill, so content dissolves instead of hitting a hard edge. */
-const WASH_ABOVE = 72;
+export const PILL_TAB_BAR_WASH_ABOVE = 72;
 
 type TabFrame = {
   x: number;
@@ -101,8 +101,8 @@ export function PillTabBar({ state, descriptors, emitter, navigateToTab, insets 
         right: 0,
         bottom: 0,
         zIndex: 2,
-        paddingTop: WASH_ABOVE,
-        paddingBottom: insets.bottom + spacing.xxl,
+        paddingTop: PILL_TAB_BAR_WASH_ABOVE,
+        paddingBottom: Math.max(insets.bottom, spacing.sm),
         paddingHorizontal: Math.max(spacing.lg, insets.left, insets.right),
         pointerEvents: 'box-none',
       }}

@@ -15,8 +15,9 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Button, ErrorState, NavigationHeader, Screen, Text, useToast } from '@/components';
-import { reportsRepository } from '@/database';
+import { reportEventsRepository, reportsRepository } from '@/database';
 import { RenameReportDialog } from '@/features/reports/RenameReportDialog';
+import { useEntitlement } from '@/hooks/useEntitlement';
 import { normalizeReportTemplateId, Report, ReportTemplateId } from '@/models';
 import { runIcloudAutoBackup } from '@/services/backup/icloudAutoBackup';
 import { goBack } from '@/utils/goBack';
@@ -36,6 +37,7 @@ export default function GenerateReportScreen() {
   const template: ReportTemplateId = normalizeReportTemplateId(templateParam);
   const { colors, spacing, radius, shadows } = useTheme();
   const { t } = useI18n();
+  const { isPro } = useEntitlement();
   const { showToast } = useToast();
   const [state, setState] = useState<GenerationState>('working');
   const [report, setReport] = useState<Report | null>(null);
@@ -60,6 +62,12 @@ export default function GenerateReportScreen() {
       const result = await generateReportPdf(id, template);
       setReport(result);
       setState('success');
+      void reportEventsRepository.addEvent({
+        reportId: result.id,
+        jobId: id,
+        kind: 'created',
+        label: t('sendEmail.logCreated', { template: reportTemplateLabel(template) }),
+      });
       if (Platform.OS === 'ios') void runIcloudAutoBackup('report');
     } catch (error) {
       logger.error('Report generation failed', error);
@@ -100,6 +108,13 @@ export default function GenerateReportScreen() {
       const shared = await shareFile(report.localPdfUri, report.fileName);
       if (!shared) {
         showToast({ message: t('generate.toastShareError'), tone: 'destructive' });
+      } else {
+        void reportEventsRepository.addEvent({
+          reportId: report.id,
+          jobId: id,
+          kind: 'shared',
+          label: t('sendEmail.logShared'),
+        });
       }
     } catch {
       showToast({ message: t('generate.toastShareError'), tone: 'destructive' });
@@ -206,7 +221,18 @@ export default function GenerateReportScreen() {
             </Pressable>
 
             <View style={styles.actions}>
-              <Button label={t('generate.share')} onPress={handleShare} loading={sharing} />
+              <Button
+                label={t('sendEmail.send')}
+                icon={<Ionicons name="mail-outline" size={18} color={colors.accentOnAccent} />}
+                onPress={() => {
+                  if (!isPro) {
+                    router.push({ pathname: '/paywall', params: { trigger: 'branded_email' } });
+                    return;
+                  }
+                  router.push(`/job/${id}/send?reportId=${report?.id ?? ''}`);
+                }}
+              />
+              <Button label={t('generate.share')} onPress={handleShare} loading={sharing} variant="secondary" />
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t('generate.saveCopy')}

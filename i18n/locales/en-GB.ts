@@ -41,6 +41,14 @@ type DeepPartial<T> = {
 const enGBOverrides = {
   summary: {
     fieldLabour: 'Labour Details (optional)',
+    speechHint: 'Tap the mic to describe the job. Nothing leaves this device.',
+  },
+  voiceReport: {
+    micA11y: 'Dictate job notes',
+    summaryHint:
+      'Tap the mic once and talk naturally — work done, materials, labour, private notes, and costs. Trade Report sorts them into the right boxes on this device.',
+    formatterFallbackHint:
+      'Full on-device AI rewriting is not available on this phone. This version uses local sorting only — it does not invent work or prices.',
   },
   pricing: {
     includeDescription: 'Add materials, labour and other costs as a reference on this report.',
@@ -62,6 +70,11 @@ const enGBOverrides = {
   paywall: {
     triggerColour:
       'Upgrade to choose the accent colour on your reports. Pro includes your colour on every report.',
+  },
+  arTools: {
+    measure: {
+      units: { m: 'Metres', cm: 'Centimetres', mm: 'Millimetres' },
+    },
   },
   onboarding: {
     captureBody: 'Snap the job as you go. Photos stay organised by area in the report.',

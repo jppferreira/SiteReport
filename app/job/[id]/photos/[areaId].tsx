@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import {
@@ -21,13 +21,22 @@ import {
 import { photoAreasRepository, photosRepository } from '@/database';
 import { AreaNameDialog } from '@/features/photos/AreaNameDialog';
 import { BottomSheetMenu } from '@/features/jobs/BottomSheetMenu';
+import {
+  CapturedAnnotateResult,
+  PhotoCaptureAnnotateModal,
+} from '@/features/photos/PhotoCaptureAnnotateModal';
 import { PhotoCaptureSheet } from '@/features/photos/PhotoCaptureSheet';
 import { PhotoGrid } from '@/features/photos/PhotoGrid';
+import { useEntitlement } from '@/hooks/useEntitlement';
 import { usePhotoArea } from '@/hooks/usePhotoAreas';
 import { usePhotoCapture } from '@/hooks/usePhotoCapture';
 import { usePhotos } from '@/hooks/usePhotos';
-import { isWholeJobArea, PhotoType } from '@/models';
+import { isWholeJobArea, normalizePhotoBrowseLayout, PhotoBrowseLayout, PhotoType } from '@/models';
 import { deleteFileSafely } from '@/services/fileService';
+import { processJobPhoto } from '@/services/imageService';
+import { resolveTakenAt } from '@/services/photoTakenAt';
+import { getPreferences, savePreferences } from '@/services/preferencesService';
+import { generateId } from '@/utils/id';
 import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
 import { goBack } from '@/utils/goBack';
@@ -38,39 +47,93 @@ export default function SectionPhotosScreen() {
   const wholeJob = isWholeJobArea(areaId);
   const { colors, spacing } = useTheme();
   const { t } = useI18n();
+  const { isPro } = useEntitlement();
   const { showToast } = useToast();
   const { area, loading: areaLoading, missing, setArea } = usePhotoArea(wholeJob ? null : areaId);
   const [type, setType] = useState<PhotoType>('before');
+  const [browseLayout, setBrowseLayout] = useState<PhotoBrowseLayout>('fullWidth');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [reorderMode, setReorderMode] = useState(false);
+  const [reorderingDrag, setReorderingDrag] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [savingName, setSavingName] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [savingCapture, setSavingCapture] = useState(false);
+
+  useEffect(() => {
+    getPreferences().then((prefs) => setBrowseLayout(normalizePhotoBrowseLayout(prefs.photoBrowseLayout)));
+  }, []);
 
   const storedAreaId = wholeJob ? null : areaId;
   const before = usePhotos(id, 'before', { areaId: storedAreaId });
+  const during = usePhotos(id, 'during', { areaId: storedAreaId });
   const after = usePhotos(id, 'after', { areaId: storedAreaId });
-  const active = type === 'before' ? before : after;
+  const active = type === 'before' ? before : type === 'during' ? during : after;
 
   const { capture, processing, error, permissionDenied, clearPermissionDenied } = usePhotoCapture(
     id,
     type,
     storedAreaId,
-    () => {
+    (photo, meta) => {
       active.refresh();
+      // Library picks still open the markup screen; camera uses the live modal.
+      if (meta.source === 'library' && meta.total === 1 && meta.index === 0) {
+        if (!isPro) {
+          router.push({ pathname: '/paywall', params: { trigger: 'photo_markup' } });
+          return;
+        }
+        router.push(`/job/${id}/annotate/${photo.id}`);
+      }
     }
   );
 
+  const openCamera = () => setCameraOpen(true);
+
+  const saveCapturedPhoto = async (result: CapturedAnnotateResult) => {
+    setSavingCapture(true);
+    try {
+      const photoId = generateId();
+      const { defaultPhotoQuality } = await getPreferences();
+      const processed = await processJobPhoto(
+        id,
+        photoId,
+        result.uri,
+        result.width,
+        result.height,
+        defaultPhotoQuality
+      );
+      await photosRepository.addPhoto({
+        jobId: id,
+        areaId: storedAreaId,
+        type,
+        localUri: processed.localUri,
+        thumbnailUri: processed.thumbnailUri,
+        caption: null,
+        width: processed.width,
+        height: processed.height,
+        takenAt: resolveTakenAt({ source: 'camera', exif: null, capturedAt: new Date().toISOString() }),
+        annotations: result.annotations,
+      });
+      active.refresh();
+      showToast({ message: t('photoAnnotate.toastSaved'), tone: 'success' });
+    } finally {
+      setSavingCapture(false);
+    }
+  };
+
   const refreshBefore = before.refresh;
+  const refreshDuring = during.refresh;
   const refreshAfter = after.refresh;
 
   useFocusEffect(
     useCallback(() => {
       refreshBefore();
+      refreshDuring();
       refreshAfter();
-    }, [refreshBefore, refreshAfter])
+    }, [refreshBefore, refreshDuring, refreshAfter])
   );
 
   const handleReorder = async (orderedIds: string[]) => {
@@ -135,12 +198,19 @@ export default function SectionPhotosScreen() {
             ? t('photos.emptyBeforeWholeJob')
             : t('photos.emptyBeforeNamed', { name: title }),
         }
-      : {
-          title: t('photos.emptyAfterTitle'),
-          description: wholeJob
-            ? t('photos.emptyAfterWholeJob')
-            : t('photos.emptyAfterNamed', { name: title }),
-        };
+      : type === 'during'
+        ? {
+            title: t('photos.emptyDuringTitle'),
+            description: wholeJob
+              ? t('photos.emptyDuringWholeJob')
+              : t('photos.emptyDuringNamed', { name: title }),
+          }
+        : {
+            title: t('photos.emptyAfterTitle'),
+            description: wholeJob
+              ? t('photos.emptyAfterWholeJob')
+              : t('photos.emptyAfterNamed', { name: title }),
+          };
 
   return (
     <Screen>
@@ -149,9 +219,22 @@ export default function SectionPhotosScreen() {
         onBack={() => goBack(`/job/${id}/photos`)}
         right={
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {active.photos.length > 0 ? (
-              <TextButton label={reorderMode ? t('photos.done') : t('photos.reorder')} onPress={() => setReorderMode((value) => !value)} />
+            {reorderMode ? (
+              <TextButton
+                label={t('photos.done')}
+                onPress={() => {
+                  setReorderMode(false);
+                  setReorderingDrag(false);
+                }}
+              />
             ) : null}
+            {reorderMode ? null : (
+              <IconButton
+                name="resize-outline"
+                accessibilityLabel={t('arTools.openA11y')}
+                onPress={() => router.push({ pathname: '/job/[id]/measure', params: { id, areaId } })}
+              />
+            )}
             {wholeJob ? null : (
               <IconButton name="ellipsis-horizontal" accessibilityLabel={t('photos.sectionOptionsA11y')} onPress={() => setMenuOpen(true)} />
             )}
@@ -159,10 +242,11 @@ export default function SectionPhotosScreen() {
         }
       />
 
-      <View style={{ paddingHorizontal: spacing.lg }}>
+      <View style={{ paddingHorizontal: spacing.lg, gap: spacing.sm }}>
         <SegmentedControl
           segments={[
             { key: 'before', label: t('photos.beforeCount', { count: before.photos.length }) },
+            { key: 'during', label: t('photos.duringCount', { count: during.photos.length }) },
             { key: 'after', label: t('photos.afterCount', { count: after.photos.length }) },
           ]}
           value={type}
@@ -171,6 +255,26 @@ export default function SectionPhotosScreen() {
             setType(key as PhotoType);
           }}
         />
+        {active.photos.length > 0 ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
+            <Text variant="bodyMedium" color={colors.textPrimary} style={{ flexShrink: 1 }}>
+              {t('photos.viewLayoutTitle')}
+            </Text>
+            <SegmentedControl
+              iconsOnly
+              segments={[
+                { key: 'fullWidth', label: t('photos.layoutFullWidth'), icon: 'square-outline' },
+                { key: 'compact', label: t('photos.layoutCompact'), icon: 'grid-outline' },
+              ]}
+              value={browseLayout}
+              onChange={(key) => {
+                const next = normalizePhotoBrowseLayout(key);
+                setBrowseLayout(next);
+                void savePreferences({ photoBrowseLayout: next });
+              }}
+            />
+          </View>
+        ) : null}
       </View>
 
       {error || active.error ? (
@@ -181,7 +285,10 @@ export default function SectionPhotosScreen() {
         </View>
       ) : null}
 
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, flexGrow: 1 }}>
+      <ScrollView
+        scrollEnabled={!reorderingDrag}
+        contentContainerStyle={{ padding: spacing.lg, flexGrow: 1 }}
+      >
         {active.loading ? (
           <Skeleton height={110} radius={12} />
         ) : active.photos.length === 0 ? (
@@ -195,11 +302,18 @@ export default function SectionPhotosScreen() {
         ) : (
           <PhotoGrid
             photos={active.photos}
+            layout={browseLayout}
             reorderMode={reorderMode}
             onReorder={handleReorder}
+            onDraggingChange={setReorderingDrag}
             onPressPhoto={(photo) => {
               if (reorderMode) return;
               router.push(`/job/${id}/photo/${photo.id}`);
+            }}
+            onLongPressPhoto={() => {
+              if (reorderMode) return;
+              setReorderMode(true);
+              showToast({ message: t('photos.reorderHint'), tone: 'neutral' });
             }}
           />
         )}
@@ -221,8 +335,8 @@ export default function SectionPhotosScreen() {
             <Button
               label={t('photos.camera')}
               icon={<Ionicons name="camera" size={18} color={colors.accentOnAccent} />}
-              onPress={() => capture('camera')}
-              loading={processing}
+              onPress={openCamera}
+              loading={processing || savingCapture}
             />
           </View>
           <View style={{ flex: 1 }}>
@@ -239,9 +353,16 @@ export default function SectionPhotosScreen() {
       <PhotoCaptureSheet
         visible={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        onTakePhoto={() => capture('camera')}
+        onTakePhoto={openCamera}
         onChooseFromLibrary={() => capture('library')}
         label={type}
+      />
+
+      <PhotoCaptureAnnotateModal
+        visible={cameraOpen}
+        type={type}
+        onClose={() => setCameraOpen(false)}
+        onSave={saveCapturedPhoto}
       />
 
       <PermissionNotice

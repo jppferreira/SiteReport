@@ -1,0 +1,49 @@
+# Local tooling / caches (not needed on EAS)
+.cursor/
+.cursor-tmp/
+.expo/
+.git/
+.github/
+dist/
+web-build/
+website/
+node_modules/
+
+# Native folders are regenerated on EAS; keep local copies out of the archive
+/ios/
+/android/
+
+# Secrets and local signing material
+.env
+.env*.local
+credentials/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+keystore.properties
+*.aab
+store/play-service-account.json
+**/play-service-account.json
+
+# Marketing / store helpers not required to compile the app
+store/facebook/
+store/threads/
+store/asc-placeholders/
+store/*.aab
+tradesreport-*.aab
+qrcode-terminal-*.tgz
+
+# Whisper weights are fetched in eas-build-post-install
+assets/whisper/*.bin
+assets/whisper/*.partial
+
+# Misc
+*.tsbuildinfo
+.DS_Store
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+example

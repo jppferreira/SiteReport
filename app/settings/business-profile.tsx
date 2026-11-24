@@ -16,6 +16,23 @@ import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
 import { validateEmail } from '@/utils/validation';
 
+type Draft = {
+  businessName: string;
+  ownerName: string;
+  email: string;
+  phone: string;
+  website: string;
+  address: string;
+  registrationNumber: string;
+  vatNumber: string;
+  reviewUrl: string;
+  bankName: string;
+  sortCode: string;
+  accountNumber: string;
+  paymentTerms: string;
+  defaultDueDays: string;
+};
+
 export default function BusinessProfileScreen() {
   const { colors, radius, spacing } = useTheme();
   const { t } = useI18n();
@@ -30,6 +47,12 @@ export default function BusinessProfileScreen() {
   const [address, setAddress] = useState('');
   const [registrationNumber, setRegistrationNumber] = useState('');
   const [vatNumber, setVatNumber] = useState('');
+  const [reviewUrl, setReviewUrl] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [sortCode, setSortCode] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [paymentTerms, setPaymentTerms] = useState('');
+  const [defaultDueDays, setDefaultDueDays] = useState('14');
   const [logoUri, setLogoUri] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [permissionDenied, setPermissionDenied] = useState(false);
@@ -38,11 +61,76 @@ export default function BusinessProfileScreen() {
   const hydrated = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef(false);
-  const draftRef = useRef({ businessName, ownerName, email, phone, website, address, registrationNumber, vatNumber });
+  const draftRef = useRef<Draft>({
+    businessName,
+    ownerName,
+    email,
+    phone,
+    website,
+    address,
+    registrationNumber,
+    vatNumber,
+    reviewUrl,
+    bankName,
+    sortCode,
+    accountNumber,
+    paymentTerms,
+    defaultDueDays,
+  });
 
   useEffect(() => {
-    draftRef.current = { businessName, ownerName, email, phone, website, address, registrationNumber, vatNumber };
-  }, [businessName, ownerName, email, phone, website, address, registrationNumber, vatNumber]);
+    draftRef.current = {
+      businessName,
+      ownerName,
+      email,
+      phone,
+      website,
+      address,
+      registrationNumber,
+      vatNumber,
+      reviewUrl,
+      bankName,
+      sortCode,
+      accountNumber,
+      paymentTerms,
+      defaultDueDays,
+    };
+  }, [
+    businessName,
+    ownerName,
+    email,
+    phone,
+    website,
+    address,
+    registrationNumber,
+    vatNumber,
+    reviewUrl,
+    bankName,
+    sortCode,
+    accountNumber,
+    paymentTerms,
+    defaultDueDays,
+  ]);
+
+  const toPatch = (draft: Draft) => {
+    const days = Number(draft.defaultDueDays);
+    return {
+      businessName: draft.businessName,
+      ownerName: draft.ownerName,
+      email: draft.email,
+      phone: draft.phone,
+      website: draft.website,
+      address: draft.address,
+      registrationNumber: draft.registrationNumber,
+      vatNumber: draft.vatNumber,
+      reviewUrl: draft.reviewUrl.trim() || null,
+      bankName: draft.bankName.trim() || null,
+      sortCode: draft.sortCode.trim() || null,
+      accountNumber: draft.accountNumber.trim() || null,
+      paymentTerms: draft.paymentTerms.trim() || null,
+      defaultDueDays: Number.isFinite(days) ? Math.min(365, Math.max(0, Math.round(days))) : 14,
+    };
+  };
 
   const persistPending = useCallback(() => {
     if (!pendingRef.current || !hydrated.current) return;
@@ -53,7 +141,7 @@ export default function BusinessProfileScreen() {
       clearTimeout(timer.current);
       timer.current = null;
     }
-    void businessProfileRepository.saveBusinessProfile(draft).catch(() => undefined);
+    void businessProfileRepository.saveBusinessProfile(toPatch(draft)).catch(() => undefined);
   }, []);
 
   useFlushWhenHidden(persistPending);
@@ -68,6 +156,12 @@ export default function BusinessProfileScreen() {
       setAddress(profile.address ?? '');
       setRegistrationNumber(profile.registrationNumber ?? '');
       setVatNumber(profile.vatNumber ?? '');
+      setReviewUrl(profile.reviewUrl ?? '');
+      setBankName(profile.bankName ?? '');
+      setSortCode(profile.sortCode ?? '');
+      setAccountNumber(profile.accountNumber ?? '');
+      setPaymentTerms(profile.paymentTerms ?? '');
+      setDefaultDueDays(String(profile.defaultDueDays ?? 14));
       setLogoUri(profile.logoUri ?? null);
       hydrated.current = true;
     }
@@ -88,14 +182,30 @@ export default function BusinessProfileScreen() {
     timer.current = setTimeout(async () => {
       pendingRef.current = false;
       timer.current = null;
-      await save({ businessName, ownerName, email, phone, website, address, registrationNumber, vatNumber });
+      await save(toPatch(draftRef.current));
       setSavedState('saved');
     }, 500);
 
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [businessName, ownerName, email, phone, website, address, registrationNumber, vatNumber, save]);
+  }, [
+    businessName,
+    ownerName,
+    email,
+    phone,
+    website,
+    address,
+    registrationNumber,
+    vatNumber,
+    reviewUrl,
+    bankName,
+    sortCode,
+    accountNumber,
+    paymentTerms,
+    defaultDueDays,
+    save,
+  ]);
 
   const openPaywall = () => {
     router.push({ pathname: '/paywall', params: { trigger: 'logo' } });
@@ -176,9 +286,31 @@ export default function BusinessProfileScreen() {
           <Input label={t('businessProfile.email')} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" error={emailError ?? undefined} placeholder={t('businessProfile.emailPlaceholder')} />
           <Input label={t('businessProfile.yourName')} value={ownerName} onChangeText={setOwnerName} />
           <Input label={t('businessProfile.website')} value={website} onChangeText={setWebsite} autoCapitalize="none" />
+          <Input
+            label={t('businessProfile.reviewUrl')}
+            value={reviewUrl}
+            onChangeText={setReviewUrl}
+            autoCapitalize="none"
+            keyboardType="url"
+            placeholder={t('businessProfile.reviewUrlPlaceholder')}
+          />
           <Input label={t('businessProfile.businessAddress')} value={address} onChangeText={setAddress} />
           <Input label={t('businessProfile.registrationNumber')} value={registrationNumber} onChangeText={setRegistrationNumber} />
           <Input label={t('businessProfile.vatNumber')} value={vatNumber} onChangeText={setVatNumber} />
+
+          <Text variant="label" color={colors.textSecondary} style={{ marginTop: spacing.sm }}>
+            {t('businessProfile.bankSection')}
+          </Text>
+          <Input label={t('businessProfile.bankName')} value={bankName} onChangeText={setBankName} placeholder={t('businessProfile.bankNamePlaceholder')} />
+          <Input label={t('businessProfile.sortCode')} value={sortCode} onChangeText={setSortCode} placeholder={t('businessProfile.sortCodePlaceholder')} />
+          <Input label={t('businessProfile.accountNumber')} value={accountNumber} onChangeText={setAccountNumber} placeholder={t('businessProfile.accountNumberPlaceholder')} keyboardType="number-pad" />
+          <Input label={t('businessProfile.defaultDueDays')} value={defaultDueDays} onChangeText={setDefaultDueDays} keyboardType="number-pad" />
+          <Input
+            label={t('businessProfile.paymentTerms')}
+            value={paymentTerms}
+            onChangeText={setPaymentTerms}
+            placeholder={t('businessProfile.paymentTermsPlaceholder')}
+          />
 
           <Text variant="caption" color={colors.textSecondary}>
             {savedState === 'saving'

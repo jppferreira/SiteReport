@@ -1,24 +1,36 @@
 import {
+  annotationLabelColor,
+  annotationsToSvgMarkup,
+  hasAnnotations,
+  listCallouts,
   CoverDesignId,
+  displayReviewUrl,
+  DOCUMENT_TYPE_LABELS,
+  DocumentType,
   formatPence,
+  groupPricingLines,
   imageMaskClipPath,
   ImageMaskEdge,
   isFreeReportTemplate,
   JobStatus,
   linesForReport,
   normalizeCoverDesignId,
+  normalizeDocumentType,
   normalizeReportImageMask,
   normalizeReportTemplateId,
   parseAmountToPence,
+  PRICING_CATEGORIES,
   PRICING_CATEGORY_LABELS,
-  pricingTotalPence,
+  pricingVatBreakdown,
   ReportImageMask,
   ReportTemplateId,
+  REVIEW_PROVIDER_LABELS,
+  VAT_RATE_PERCENT,
 } from '@/models';
-import { formatTakenAt } from '@/services/photoTakenAt';
 import { formatDate, formatDateTime } from '@/utils/format';
 
 import { DEFAULT_COVER_SCENE, DEFAULT_THANKS_SCENE } from './defaultScenes';
+import { reviewQrDataUri } from './qrSvg';
 import { ReportHtmlInput, ReportPhotoData } from './types';
 
 const FALLBACK_ACCENT = '#1FA84A';
@@ -208,24 +220,127 @@ function listSection(title: string, body: string | null, className: string): str
   return `<section class="block ${className}"><h2 class="block-title">${escapeHtml(title)}</h2>${inner}</section>`;
 }
 
+function documentTypeOf(input: ReportHtmlInput): DocumentType {
+  return normalizeDocumentType(input.documentType);
+}
+
 function pricingSection(input: ReportHtmlInput): string {
   const lines = linesForReport(input.pricing);
   if (lines.length === 0) return '';
-  const rows = lines
-    .map((line) => {
+  const type = documentTypeOf(input);
+  const title =
+    type === 'invoice' ? 'Invoice' : type === 'quote' ? 'Quote' : 'Pricing reference';
+  const lede =
+    type === 'reference'
+      ? 'Figures for this job. This is not an invoice.'
+      : type === 'quote'
+        ? 'Quoted figures for this job.'
+        : 'Amount due for the work in this report.';
+
+  const groups = groupPricingLines(lines);
+  const bodyRows: string[] = [];
+  for (const category of PRICING_CATEGORIES) {
+    const group = groups[category];
+    if (!group?.length) continue;
+    bodyRows.push(
+      `<tr class="price-group"><td colspan="2">${escapeHtml(PRICING_CATEGORY_LABELS[category].toUpperCase())}</td></tr>`
+    );
+    for (const line of group) {
       const pence = parseAmountToPence(line.amount);
       const label = line.description.trim() || '—';
-      return `<tr><td>${escapeHtml(label)}</td><td>${escapeHtml(PRICING_CATEGORY_LABELS[line.category])}</td><td class="num">${
-        pence === null ? '—' : escapeHtml(formatPence(pence))
-      }</td></tr>`;
-    })
+      bodyRows.push(
+        `<tr><td>${escapeHtml(label)}</td><td class="num">${
+          pence === null ? '—' : escapeHtml(formatPence(pence))
+        }</td></tr>`
+      );
+    }
+  }
+
+  const includeVat = type !== 'reference' && Boolean(input.business.vatNumber?.trim());
+  const breakdown = pricingVatBreakdown(lines, includeVat ? VAT_RATE_PERCENT : 0);
+  let foot = '';
+  if (breakdown) {
+    if (includeVat) {
+      foot = `<tfoot>
+        <tr><td>Subtotal</td><td class="num">${escapeHtml(formatPence(breakdown.subtotalPence))}</td></tr>
+        <tr><td>VAT ${VAT_RATE_PERCENT}%</td><td class="num">${escapeHtml(formatPence(breakdown.vatPence))}</td></tr>
+        <tr class="price-total"><td>Total</td><td class="num">${escapeHtml(formatPence(breakdown.totalPence))}</td></tr>
+      </tfoot>`;
+    } else {
+      foot = `<tfoot><tr class="price-total"><td>Total</td><td class="num">${escapeHtml(
+        formatPence(breakdown.totalPence)
+      )}</td></tr></tfoot>`;
+    }
+  }
+
+  const invoiceMeta = type === 'invoice' && input.invoice ? invoiceDetailsBlock(input) : '';
+
+  return `<section class="block section-pricing"><h2 class="block-title">${escapeHtml(
+    title
+  )}</h2><p class="lede">${escapeHtml(lede)}</p><table class="price-table price-table-compact"><thead><tr><th>Item</th><th class="num">Amount</th></tr></thead><tbody>${bodyRows.join(
+    ''
+  )}</tbody>${foot}</table>${invoiceMeta}</section>`;
+}
+
+function invoiceDetailsBlock(input: ReportHtmlInput): string {
+  const inv = input.invoice;
+  if (!inv) return '';
+  const bankBits = [inv.bankName, inv.sortCode].filter((v) => v && v.trim()).join(' · ');
+  const rows = [
+    `<div class="invoice-row"><span class="invoice-label">Invoice no.</span><span class="invoice-value">${escapeHtml(
+      inv.invoiceNumber
+    )}</span></div>`,
+    `<div class="invoice-row"><span class="invoice-label">Due</span><span class="invoice-value">In ${inv.dueDays} days · ${escapeHtml(
+      formatDate(inv.dueDate)
+    )}</span></div>`,
+  ];
+  if (bankBits) {
+    rows.push(
+      `<div class="invoice-row"><span class="invoice-label">Bank</span><span class="invoice-value">${escapeHtml(
+        bankBits
+      )}</span></div>`
+    );
+  }
+  const terms =
+    inv.paymentTerms?.trim() ||
+    (inv.accountNumber
+      ? `Payment due within ${inv.dueDays} days to account ${inv.accountNumber}. Please use ${inv.invoiceNumber} as your reference.`
+      : `Payment due within ${inv.dueDays} days. Please use ${inv.invoiceNumber} as your reference.`);
+  return `<div class="invoice-details">
+    <div class="invoice-head"><span>Invoice details</span><span class="invoice-pill">${escapeHtml(
+      DOCUMENT_TYPE_LABELS.invoice.toUpperCase()
+    )}</span></div>
+    ${rows.join('')}
+    <div class="invoice-terms"><div class="eyebrow">Payment terms</div><p>${escapeHtml(terms)}</p></div>
+  </div>`;
+}
+
+function reviewCardBlock(input: ReportHtmlInput): string {
+  const review = input.review;
+  if (!review?.url?.trim()) return '';
+  const url = review.url.trim();
+  const display = displayReviewUrl(url);
+  const qr = reviewQrDataUri(url, 70);
+  const providerLabel = REVIEW_PROVIDER_LABELS[review.provider] ?? 'Review';
+  const stars = Array.from({ length: 5 })
+    .map(
+      () =>
+        `<span class="review-star" aria-hidden="true">★</span>`
+    )
     .join('');
-  const total = pricingTotalPence(lines);
-  const totalRow =
-    total === null
-      ? ''
-      : `<tfoot><tr><td colspan="2">Total</td><td class="num">${escapeHtml(formatPence(total))}</td></tr></tfoot>`;
-  return `<section class="block section-pricing"><h2 class="block-title">Pricing reference</h2><p class="lede">Figures for this job. This is not an invoice.</p><table class="price-table"><thead><tr><th>Item</th><th>Type</th><th class="num">Amount</th></tr></thead><tbody>${rows}</tbody>${totalRow}</table></section>`;
+  const qrHtml = qr
+    ? `<div class="review-qr"><img src="${qr}" alt="" width="70" height="70" /><span>Scan to review</span></div>`
+    : '';
+  return `<section class="review-card section-review">
+    <div class="review-copy">
+      <p class="review-title">Happy with our work?</p>
+      <p class="review-lede">Leave a quick review — it takes 30 seconds.</p>
+      <div class="review-stars">${stars}</div>
+      <div class="review-badges"><span class="review-badge">${escapeHtml(providerLabel)}</span></div>
+      <a class="review-link" href="${escapeHtml(url)}">${escapeHtml(display)}</a>
+    </div>
+    ${qrHtml}
+  </section>`;
 }
 
 function extraOverview(input: ReportHtmlInput): string {
@@ -241,36 +356,114 @@ function cardRow(sections: string[]): string {
 }
 
 function photoCaption(photo: ReportPhotoData, fallback = ''): string {
-  const caption = photo.caption?.trim() ?? '';
-  const taken = formatTakenAt(photo.takenAt);
-  const takenLabel = taken ? `Taken ${taken}` : '';
-  if (caption && takenLabel) return `${caption} — ${takenLabel}`;
-  return caption || takenLabel || fallback;
+  // Date / address stamps are baked into `caption` upstream from preferences.
+  return photo.caption?.trim() || fallback;
 }
 
-function shotFigure(photo: ReportPhotoData, label: 'Before' | 'After', showTag: boolean): string {
-  const caption = photoCaption(photo);
-  const section = label === 'Before' ? 'section-before' : 'section-after';
+function jobChecklistSection(input: ReportHtmlInput): string {
+  const items = input.checklist ?? [];
+  if (items.length === 0) return '';
+  const rows = items
+    .map((item) => {
+      const mark = item.checked ? '✓' : '○';
+      return `<li><span class="box">${mark}</span><span>${escapeHtml(item.label)}</span></li>`;
+    })
+    .join('');
+  return `<section class="block section-checklist"><h2 class="block-title">Job checklist</h2><ul class="checks">${rows}</ul></section>`;
+}
+
+/** Content-area frame used to decide if a marked photo letterboxes (side bands). */
+const MARKED_FRAME_W_MM = 180;
+const MARKED_FRAME_H_MM = 120;
+
+/**
+ * When the photo is taller than the frame, fitting it leaves empty side bands.
+ * Those get a blurred fill; full-width fits do not need one.
+ */
+function markedPhotoNeedsBlurBackdrop(photoW: number, photoH: number): boolean {
+  if (photoW <= 0 || photoH <= 0) return false;
+  return photoW / photoH < MARKED_FRAME_W_MM / MARKED_FRAME_H_MM - 0.01;
+}
+
+/**
+ * The photo plus any markup drawn in the app.
+ *
+ * Annotated shots are one SVG (photo + strokes). The element keeps the photo's
+ * aspect ratio and is limited by max-width/max-height, so image and pins scale
+ * down together — never cover-cropped by a fixed frame. When that scale leaves
+ * side bands, a separate blurred copy of the photo fills the frame behind.
+ */
+function photoImage(photo: ReportPhotoData, alt: string): string {
   const width = photo.width > 0 ? photo.width : 1600;
   const height = photo.height > 0 ? photo.height : 1200;
-  return `<figure class="shot ${section}">
-    <div class="shot-frame">
-      <img src="${photo.dataUri}" width="${width}" height="${height}" alt="${escapeHtml(caption || `${label} photo`)}" />
+  if (!hasAnnotations(photo.annotations)) {
+    return `<img src="${photo.dataUri}" width="${width}" height="${height}" alt="${escapeHtml(alt)}" />`;
+  }
+  const baked = annotationsToSvgMarkup(photo.annotations, width, height, {
+    // Box matches the photo aspect via CSS; meet is a safety net for print engines.
+    preserveAspectRatio: 'xMidYMid meet',
+    className: 'photo-with-marks',
+    imageHref: photo.dataUri,
+    ariaLabel: alt || 'Annotated photo',
+  });
+  // Inline aspect-ratio so max-height shrinks width uniformly (photo + pins as one).
+  const sized = baked.replace(
+    '<svg',
+    `<svg style="aspect-ratio:${width}/${height};max-width:100%;max-height:120mm;width:auto;height:auto;display:block;margin:0 auto"`
+  );
+  // rgb() fills survive Android's `#` → `&num;` print sanitizer.
+  const sharp = svgWithoutHash(sized);
+  if (!markedPhotoNeedsBlurBackdrop(width, height)) return sharp;
+
+  return `<div class="marked-photo-stage">
+    <img class="marked-photo-blur" src="${photo.dataUri}" alt="" aria-hidden="true" />
+    ${sharp}
+  </div>`;
+}
+
+function annotationCardsMarkup(photo: ReportPhotoData): string {
+  const callouts = listCallouts(photo.annotations);
+  if (callouts.length === 0) return '';
+  const cards = callouts
+    .map((item) => {
+      const note = item.shape.note.trim() || `Note ${item.number}`;
+      return `<div class="annotation-card"><span class="annotation-card-n" style="background:${cssColor(item.shape.color)};color:${cssColor(annotationLabelColor(item.shape.color))}">${item.number}</span><span class="annotation-card-text">${escapeHtml(note)}</span></div>`;
+    })
+    .join('');
+  // Preview taps these cards to open markup editing for this photo.
+  return `<div class="annotation-cards" data-preview-edit="annotate" data-photo-id="${escapeHtml(photo.id)}">${cards}</div>`;
+}
+
+type PhotoStageLabel = 'Before' | 'During' | 'After';
+
+function shotFigure(photo: ReportPhotoData, label: PhotoStageLabel, showTag: boolean): string {
+  const caption = photoCaption(photo);
+  const section =
+    label === 'Before' ? 'section-before' : label === 'During' ? 'section-during' : 'section-after';
+  const marked = hasAnnotations(photo.annotations);
+  return `<figure class="shot ${section}" data-preview-edit="photo" data-photo-id="${escapeHtml(photo.id)}">
+    <div class="shot-frame${marked ? ' shot-frame-marked' : ''}">
+      ${photoImage(photo, caption || `${label} photo`)}
       ${showTag ? `<span class="photo-tag">${label}</span>` : ''}
     </div>
+    ${annotationCardsMarkup(photo)}
     ${caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : ''}
   </figure>`;
 }
 
-type PhotoPair = Pick<ReportHtmlInput, 'before' | 'after'>;
+type PhotoPair = Pick<ReportHtmlInput, 'before' | 'during' | 'after'>;
 
 function photoCount(pair: PhotoPair): number {
-  return pair.before.length + pair.after.length;
+  return pair.before.length + pair.during.length + pair.after.length;
 }
 
-/** Prints one before/after set, or one set per named section when the job has them. */
+function hasPhotos(pair: PhotoPair): boolean {
+  return photoCount(pair) > 0;
+}
+
+/** Prints one before/during/after set, or one set per named section when the job has them. */
 function photosMarkup(input: ReportHtmlInput, render: (pair: PhotoPair) => string): string {
-  const areas = (input.areas ?? []).filter((area) => area.before.length > 0 || area.after.length > 0);
+  const areas = (input.areas ?? []).filter(hasPhotos);
   if (areas.length === 0) return render(input);
   return areas
     .map((area) => {
@@ -281,53 +474,123 @@ function photosMarkup(input: ReportHtmlInput, render: (pair: PhotoPair) => strin
     .join('');
 }
 
-/** Before photos in one column, after photos in the other, so extra images stack instead of being dropped. */
-function compareBlock(pair: PhotoPair, options: { tags: boolean; large?: boolean }): string {
-  const { before, after } = pair;
-  if (before.length === 0 && after.length === 0) return '';
+/**
+ * One before/after pair per row. Rows stay intact, but a section can stop at a
+ * page boundary and continue on the next page instead of leaving that page blank.
+ */
+function pairRows(before: ReportPhotoData[], after: ReportPhotoData[], tags: boolean): string {
+  const count = Math.max(before.length, after.length);
+  const rows: string[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const beforePhoto = before[index];
+    const afterPhoto = after[index];
+    const left = beforePhoto ? shotFigure(beforePhoto, 'Before', tags) : '<div class="pair-gap"></div>';
+    const right = afterPhoto ? shotFigure(afterPhoto, 'After', tags) : '<div class="pair-gap"></div>';
+    rows.push(`<div class="pair-row">${left}${right}</div>`);
+  }
+  return rows.join('');
+}
+
+function shotRows(photos: ReportPhotoData[], label: PhotoStageLabel, tags: boolean): string {
+  if (photos.length === 1) {
+    const only = photos[0];
+    return only ? `<div class="shot-row">${shotFigure(only, label, tags)}</div>` : '';
+  }
+  const rows: string[] = [];
+  for (let index = 0; index < photos.length; index += 2) {
+    const first = photos[index];
+    const second = photos[index + 1];
+    if (!first) continue;
+    rows.push(
+      `<div class="shot-row${second ? '' : ' short'}">${shotFigure(first, label, tags)}${
+        second ? shotFigure(second, label, tags) : ''
+      }</div>`
+    );
+  }
+  return rows.join('');
+}
+
+function stageItems(pair: PhotoPair): { photo: ReportPhotoData; label: PhotoStageLabel }[] {
+  return [
+    ...pair.before.map((photo) => ({ photo, label: 'Before' as const })),
+    ...pair.during.map((photo) => ({ photo, label: 'During' as const })),
+    ...pair.after.map((photo) => ({ photo, label: 'After' as const })),
+  ];
+}
+
+function compareBlock(
+  pair: PhotoPair,
+  options: { tags: boolean; large?: boolean; layout?: 'fullWidth' | 'sideBySide' }
+): string {
+  const { before, during, after } = pair;
+  if (!hasPhotos(pair)) return '';
   const count = ` data-photo-count="${photoCount(pair)}"`;
   const large = options.large ? ' large' : '';
+  // Full-width photo cards with annotation notes underneath is the default.
+  const fullWidth = options.layout !== 'sideBySide';
+  const stack = fullWidth ? ' stack' : '';
+
+  if (fullWidth || during.length > 0) {
+    const items = stageItems(pair);
+    if (fullWidth) {
+      const rows = items
+        .map((item) => `<div class="shot-row">${shotFigure(item.photo, item.label, options.tags)}</div>`)
+        .join('');
+      return `<div class="shot-grid one${large}${stack}"${count}>${rows}</div>`;
+    }
+    const rows = [
+      before.length ? shotRows(before, 'Before', options.tags) : '',
+      during.length ? shotRows(during, 'During', options.tags) : '',
+      after.length ? shotRows(after, 'After', options.tags) : '',
+    ]
+      .filter(Boolean)
+      .join('');
+    return `<div class="shot-grid${large}"${count}>${rows}</div>`;
+  }
 
   if (before.length === 0 || after.length === 0) {
     const photos = before.length > 0 ? before : after;
     const label = before.length > 0 ? 'Before' : 'After';
     const one = photos.length === 1 ? ' one' : '';
-    return `<div class="shot-grid${one}${large}"${count}>${photos.map((photo) => shotFigure(photo, label, options.tags)).join('')}</div>`;
+    return `<div class="shot-grid${one}${large}"${count}>${shotRows(photos, label, options.tags)}</div>`;
   }
 
-  return `<div class="compare${large}"${count}>
-    <div class="compare-col">${before.map((photo) => shotFigure(photo, 'Before', options.tags)).join('')}</div>
-    <div class="compare-col">${after.map((photo) => shotFigure(photo, 'After', options.tags)).join('')}</div>
-  </div>`;
+  return `<div class="compare${large}"${count}>${pairRows(before, after, options.tags)}</div>`;
 }
 
 function labeledCompare(pair: PhotoPair): string {
-  const { before, after } = pair;
-  if (before.length === 0 && after.length === 0) return '';
+  const { before, during, after } = pair;
+  if (!hasPhotos(pair)) return '';
   const count = ` data-photo-count="${photoCount(pair)}"`;
-  if (before.length === 0 || after.length === 0) {
-    const photos = before.length > 0 ? before : after;
-    const label = before.length > 0 ? 'Before' : 'After';
-    return `<div class="compare"${count}><div class="compare-col"><h2 class="col-label">${label}</h2>${photos
-      .map((photo) => shotFigure(photo, label, false))
-      .join('')}</div></div>`;
+  const parts = [
+    before.length ? `<h2 class="col-label">Before</h2>${shotRows(before, 'Before', false)}` : '',
+    during.length ? `<h2 class="col-label">During</h2>${shotRows(during, 'During', false)}` : '',
+    after.length ? `<h2 class="col-label">After</h2>${shotRows(after, 'After', false)}` : '',
+  ].filter(Boolean);
+  if (during.length > 0 || before.length === 0 || after.length === 0) {
+    return `<div class="compare"${count}>${parts.join('')}</div>`;
   }
   return `<div class="compare large"${count}>
-    <div class="compare-col"><h2 class="col-label">Before</h2>${before.map((photo) => shotFigure(photo, 'Before', false)).join('')}</div>
-    <div class="compare-col"><h2 class="col-label">After</h2>${after.map((photo) => shotFigure(photo, 'After', false)).join('')}</div>
+    <div class="pair-row pair-labels"><h2 class="col-label">Before</h2><h2 class="col-label">After</h2></div>
+    ${pairRows(before, after, false)}
   </div>`;
 }
 
 function filmstrip(pair: PhotoPair): string {
-  const items: { photo: ReportPhotoData; label: 'Before' | 'After' }[] = [
-    ...pair.before.map((photo) => ({ photo, label: 'Before' as const })),
-    ...pair.after.map((photo) => ({ photo, label: 'After' as const })),
-  ];
+  const items = stageItems(pair);
   if (items.length === 0) return '';
+  const perRow = items.length <= 1 ? 1 : items.length === 2 ? 2 : items.length === 3 ? 3 : 5;
   const size = items.length <= 1 ? ' one' : items.length === 2 ? ' few' : items.length === 3 ? ' three' : '';
-  return `<div class="filmstrip${size}" data-photo-count="${items.length}">${items
-    .map((item) => shotFigure(item.photo, item.label, true))
-    .join('')}</div>`;
+  const rows: string[] = [];
+  for (let index = 0; index < items.length; index += perRow) {
+    rows.push(
+      `<div class="film-row">${items
+        .slice(index, index + perRow)
+        .map((item) => shotFigure(item.photo, item.label, true))
+        .join('')}</div>`
+    );
+  }
+  return `<div class="filmstrip${size}" data-photo-count="${items.length}">${rows.join('')}</div>`;
 }
 
 function signatureBlock(input: ReportHtmlInput, variant: 'block' | 'inline'): string {
@@ -355,7 +618,7 @@ function signatureBlock(input: ReportHtmlInput, variant: 'block' | 'inline'): st
 function footerBlock(input: ReportHtmlInput): string {
   const message = isNonEmpty(input.business.footerMessage) ? `<p class="footer-message">${escapeHtml(input.business.footerMessage)}</p>` : '';
   const registration = [input.business.registrationNumber, input.business.vatNumber].filter(isNonEmpty).map(escapeHtml).join(' · ');
-  return `<footer class="doc-footer">
+  return `${reviewCardBlock(input)}<footer class="doc-footer">
     ${message}
     ${registration ? `<p>${registration}</p>` : ''}
     <p class="footer-meta">Generated ${formatDateTime(input.generatedAt)} · Created with Trade Report</p>
@@ -437,11 +700,12 @@ function coverBadgeList(input: ReportHtmlInput, className = 'cover-badges'): str
 }
 
 function coverPhotoTag(input: ReportHtmlInput, className = 'cover-photo'): string {
-  return `<img class="${className}" src="${coverPhotoUri(input)}" alt="" />`;
+  return `<img class="${className}" src="${coverPhotoUri(input)}" alt="" data-preview-edit="cover" />`;
 }
 
 function coverSection(design: CoverDesignId, body: string): string {
-  return `<section class="sheet-cover" data-cover="${design}">${body}</section>`;
+  // Preview: tap anywhere on the front cover to change the cover image.
+  return `<section class="sheet-cover" data-cover="${design}" data-preview-edit="cover">${body}</section>`;
 }
 
 function renderEditorialCover(input: ReportHtmlInput, theme: Theme): string {
@@ -584,20 +848,19 @@ function tradeSection(number: number, title: string, body: string, options?: { t
   return `<section class="trade-block${sectionClass}"><h2 class="trade-h"><span>${number}.</span> <span${titleClass}>${escapeHtml(title)}</span></h2>${body}</section>`;
 }
 
-function tradeShot(photo: ReportPhotoData, label: 'Before' | 'After'): string {
+function tradeShot(photo: ReportPhotoData, label: PhotoStageLabel): string {
   const caption = photoCaption(photo, label);
-  const width = photo.width > 0 ? photo.width : 1600;
-  const height = photo.height > 0 ? photo.height : 1200;
-  const section = label === 'Before' ? 'section-before' : 'section-after';
-  return `<figure class="trade-shot ${section}">
+  const section =
+    label === 'Before' ? 'section-before' : label === 'During' ? 'section-during' : 'section-after';
+  return `<figure class="trade-shot ${section}" data-preview-edit="photo" data-photo-id="${escapeHtml(photo.id)}">
     <div class="trade-frame">
-      <img src="${photo.dataUri}" width="${width}" height="${height}" alt="${escapeHtml(caption)}" />
+      ${photoImage(photo, caption)}
       <figcaption class="trade-bar">${escapeHtml(caption)}</figcaption>
     </div>
   </figure>`;
 }
 
-function tradeStack(photos: ReportPhotoData[], label: 'Before' | 'After'): string {
+function tradeStack(photos: ReportPhotoData[], label: PhotoStageLabel): string {
   return photos.map((photo) => tradeShot(photo, label)).join('');
 }
 
@@ -605,8 +868,8 @@ function tradeMast(input: ReportHtmlInput, theme: Theme): string {
   return `<header class="trade-mast">${brandLockup(input, theme)}</header>`;
 }
 
-function tradePage(input: ReportHtmlInput, theme: Theme, body: string, next: boolean): string {
-  return `<article class="trade-page${next ? ' trade-next' : ''}">
+function tradePage(input: ReportHtmlInput, theme: Theme, body: string): string {
+  return `<article class="trade-page">
     ${tradeMast(input, theme)}
     ${body}
     <p class="trade-foot">${escapeHtml(input.business.name)}</p>
@@ -641,7 +904,7 @@ function tradeCompanyBody(input: ReportHtmlInput): string {
 }
 
 function renderTrade(input: ReportHtmlInput, theme: Theme): string {
-  const chunks: string[] = [];
+  const parts: string[] = [];
   let number = 1;
   const overview = `<dl class="facts">${[
     isNonEmpty(input.job.customerName) ? factRow('Client name', escapeHtml(input.job.customerName.trim())) : '',
@@ -653,24 +916,40 @@ function renderTrade(input: ReportHtmlInput, theme: Theme): string {
     .filter((row) => row.length > 0)
     .join('')}</dl>`;
   const scopeItems = listItems(input.workCompleted);
-  const intro = [
-    tradeSection(number++, 'Project overview', overview),
-    scopeItems ? tradeSection(number++, 'Scope of work', checkList(scopeItems)) : '',
-  ].join('');
-  chunks.push(intro);
+  parts.push(tradeSection(number++, 'Project overview', overview));
+  if (scopeItems) parts.push(tradeSection(number++, 'Scope of work', checkList(scopeItems)));
+  if ((input.checklist ?? []).length > 0) {
+    const rows = (input.checklist ?? []).map((item) => item.label);
+    const marks = (input.checklist ?? []).map((item) => (item.checked ? '✓' : '○'));
+    parts.push(
+      tradeSection(
+        number++,
+        'Job checklist',
+        `<ul class="checks">${rows
+          .map((label, index) => `<li><span class="box">${marks[index]}</span><span>${escapeHtml(label)}</span></li>`)
+          .join('')}</ul>`
+      )
+    );
+  }
 
-  const areas = (input.areas ?? []).filter((area) => area.before.length > 0 || area.after.length > 0);
+  const areas = (input.areas ?? []).filter(hasPhotos);
   if (areas.length > 0) {
     for (const area of areas) {
-      chunks.push(
-        tradeSection(number++, area.name, `${tradeStack(area.before, 'Before')}${tradeStack(area.after, 'After')}`, {
-          titleClass: 'area-title',
-        })
+      parts.push(
+        tradeSection(
+          number++,
+          area.name,
+          `${tradeStack(area.before, 'Before')}${tradeStack(area.during, 'During')}${tradeStack(area.after, 'After')}`,
+          {
+            titleClass: 'area-title',
+          }
+        )
       );
     }
   } else {
-    if (input.before.length > 0) chunks.push(tradeSection(number++, 'Before images', tradeStack(input.before, 'Before')));
-    if (input.after.length > 0) chunks.push(tradeSection(number++, 'After images', tradeStack(input.after, 'After')));
+    if (input.before.length > 0) parts.push(tradeSection(number++, 'Before images', tradeStack(input.before, 'Before')));
+    if (input.during.length > 0) parts.push(tradeSection(number++, 'During images', tradeStack(input.during, 'During')));
+    if (input.after.length > 0) parts.push(tradeSection(number++, 'After images', tradeStack(input.after, 'After')));
   }
 
   const details = [
@@ -678,23 +957,26 @@ function renderTrade(input: ReportHtmlInput, theme: Theme): string {
     proseSection('Notes', input.recommendations, 'section-labour'),
     pricingSection(input),
   ].join('');
-  if (details.trim()) chunks.push(tradeSection(number++, 'Details and materials', details));
+  if (details.trim()) parts.push(tradeSection(number++, 'Details and materials', details));
 
-  chunks.push(
+  parts.push(
     tradeSection(number++, 'Client sign-off', tradeClientBody(input), { sectionClass: 'section-signature' }) +
       tradeSection(number++, 'Company sign-off', tradeCompanyBody(input))
   );
+  const review = reviewCardBlock(input);
+  if (review) parts.push(review);
 
-  return `<div class="trade-pack" data-photo-count="${photoCount(input)}">${chunks
-    .map((chunk, index) => tradePage(input, theme, chunk, index > 0))
-    .join('')}</div>`;
+  // One flowing article. Short sections share a page; a long section continues
+  // on the next page instead of forcing a blank one.
+  return `<div class="trade-pack" data-photo-count="${photoCount(input)}">${tradePage(input, theme, parts.join(''))}</div>`;
 }
 
 function renderModern(input: ReportHtmlInput, theme: Theme): string {
   const ref = refLine(input);
-  const photos = photosMarkup(input, (pair) => compareBlock(pair, { tags: true }));
+  const photos = photosMarkup(input, (pair) => compareBlock(pair, { tags: true, layout: input.photoAnnotationLayout }));
   const overview = proseSection('Overview', input.job.description, 'section-overview');
   const work = proseSection('Work summary', input.workCompleted, 'section-work');
+  const checklist = jobChecklistSection(input);
   const notes = cardRow([
     listSection('Materials used', input.materials, 'section-materials'),
     proseSection('Labour details', input.recommendations, 'section-labour'),
@@ -732,6 +1014,7 @@ function renderModern(input: ReportHtmlInput, theme: Theme): string {
     </div>
     ${overview}
     ${work}
+    ${checklist}
     ${photos}
     ${notes}
     ${pricingSection(input)}
@@ -760,13 +1043,13 @@ function renderImage(input: ReportHtmlInput, theme: Theme): string {
     overviewIsWork ? 'section-overview section-work' : 'section-overview'
   );
   const work = overviewIsWork ? '' : proseSection('Work summary', input.workCompleted, 'section-work');
-  const photos = photosMarkup(input, (pair) => compareBlock(pair, { tags: true, large: true }));
+  const photos = photosMarkup(input, (pair) => compareBlock(pair, { tags: true, large: true, layout: input.photoAnnotationLayout }));
   const cover = input.coverDataUri
-    ? `<img class="hero-photo" src="${input.coverDataUri}" alt="" /><div class="hero-shade"></div>`
+    ? `<img class="hero-photo" src="${input.coverDataUri}" alt="" data-preview-edit="cover" /><div class="hero-shade"></div>`
     : '';
 
   return `
-    <header class="hero">
+    <header class="hero" data-preview-edit="cover">
       ${cover}
       <div class="hero-copy">
         <div class="hero-top">
@@ -798,7 +1081,7 @@ function renderImage(input: ReportHtmlInput, theme: Theme): string {
 
 function renderSide(input: ReportHtmlInput, theme: Theme): string {
   const ref = refLine(input);
-  const photos = photosMarkup(input, (pair) => compareBlock(pair, { tags: true }));
+  const photos = photosMarkup(input, (pair) => compareBlock(pair, { tags: true, layout: input.photoAnnotationLayout }));
   const sections: string[] = [];
   const workBody = input.workCompleted || input.job.description;
   const work = proseSection('Work summary', workBody, input.workCompleted ? 'section-work' : 'section-work section-overview');
@@ -894,7 +1177,7 @@ function renderCards(input: ReportHtmlInput, theme: Theme): string {
     </div>
     <div class="info-cards">${cards.join('')}</div>
     ${extraOverview(input)}
-    ${photosMarkup(input, (pair) => compareBlock(pair, { tags: true }))}
+    ${photosMarkup(input, (pair) => compareBlock(pair, { tags: true, layout: input.photoAnnotationLayout }))}
     ${cardRow([
       proseSection('Work completed', input.workCompleted || input.job.description, 'section-work'),
       listSection('Materials used', input.materials, 'section-materials'),
@@ -940,6 +1223,7 @@ function renderMinimal(input: ReportHtmlInput, theme: Theme): string {
       proseSection('Labour details', input.recommendations, 'section-labour'),
     ])}
     ${pricingSection(input)}
+    ${reviewCardBlock(input)}
     <footer class="min-foot">
       <div>
         <div class="brand-name">${escapeHtml(input.business.name)}</div>
@@ -1003,6 +1287,57 @@ function stylesheet(theme: Theme): string {
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   html { background: ${cssColor(PAPER)}; }
+  /*
+   * Annotated photo + pins share one SVG. Aspect-ratio + max-height/max-width
+   * scale the whole unit down to fit; never use cover/slice cropping.
+   * When the sharp SVG is narrower than the frame, a blurred copy fills behind.
+   */
+  .photo-with-marks {
+    display: block;
+    position: relative;
+    z-index: 1;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 120mm;
+    margin: 0 auto;
+    border-radius: 12mm;
+  }
+  .marked-photo-stage {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 12mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgb(231, 235, 231);
+  }
+  .marked-photo-blur {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12mm;
+    filter: blur(14px);
+    -webkit-filter: blur(14px);
+    transform: scale(1.08);
+    transform-origin: center;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .annotation-cards { display: flex; flex-direction: column; gap: 2.2mm; margin-top: 2.5mm; width: 100%; }
+  .annotation-card {
+    display: flex; align-items: flex-start; gap: 2.4mm;
+    padding: 2.2mm 2.6mm; border-radius: 2mm; background: ${cssColor(WASH)}; border: 0.3mm solid ${cssColor(LINE)};
+  }
+  .annotation-card-n {
+    flex: none; width: 5.2mm; height: 5.2mm; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: ${cssColor('#FFFFFF')}; font-size: 7.5pt; font-weight: 700; line-height: 1;
+  }
+  .annotation-card-text { flex: 1; min-width: 0; font-size: 8.5pt; line-height: 1.35; color: ${cssColor(INK)}; }
   body {
     margin: 0 auto;
     max-width: 210mm;
@@ -1014,8 +1349,14 @@ function stylesheet(theme: Theme): string {
     line-height: 1.45;
   }
   .sheet-body {
-    padding: 14mm 15mm 16mm;
+    padding: 14mm 15mm 0;
     background: ${cssColor(PAPER)};
+    break-after: avoid;
+    page-break-after: avoid;
+    /* Repeat the top inset on every sheet this section flows onto. Cover and
+       thank-you pages are separate elements, so they stay full bleed. */
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
   }
   img { max-width: 100%; }
   p { margin: 0; }
@@ -1067,6 +1408,9 @@ function stylesheet(theme: Theme): string {
   .split.rule { padding-top: 4mm; border-top: 1px solid ${cssColor(LINE)}; }
   .block { margin: 0 0 6mm; }
   .block-title { font-size: 13pt; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 1.8mm; }
+  .area-block, .trade-block, .block, .num-row, .num-copy, .side-main, .side-shell {
+    break-inside: auto; page-break-inside: auto;
+  }
   .area-block { margin: 1mm 0 5mm; }
   .area-title { font-size: 12.5pt; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 2mm; }
   .area-block .compare, .area-block .shot-grid, .area-block .filmstrip { margin-top: 0; }
@@ -1090,19 +1434,58 @@ function stylesheet(theme: Theme): string {
   }
   .card-row .block-title { font-size: 11.5pt; }
   .photos, .compare, .shot-grid, .filmstrip { margin: 1mm 0 6mm; }
-  .compare { display: flex; gap: 3.5mm; align-items: flex-start; }
-  .compare-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3mm; }
-  .shot-grid { display: flex; flex-wrap: wrap; gap: 3.5mm; }
-  .shot-grid .shot { width: calc((100% - 3.5mm) / 2); }
-  .shot-grid.one .shot { width: 100%; }
+  .compare, .shot-grid { display: block; }
+  .pair-row, .shot-row {
+    display: flex; gap: 3.5mm; align-items: flex-start;
+    margin: 0 0 3mm;
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .pair-row:last-child, .shot-row:last-child { margin-bottom: 0; }
+  .pair-row > .shot, .pair-row > .pair-gap, .shot-row > .shot { width: calc((100% - 3.5mm) / 2); flex: none; min-width: 0; }
+  .shot-grid.one .shot-row > .shot,
+  .shot-grid.stack .shot-row > .shot,
+  .compare.stack .pair-row > .shot { width: 100%; }
+  .compare.stack .pair-row { flex-direction: column; }
+  .pair-labels { break-after: avoid; page-break-after: avoid; }
+  .pair-labels .col-label { flex: 1; min-width: 0; margin: 0; }
   .shot { margin: 0; break-inside: avoid; page-break-inside: avoid; }
   .shot-frame {
     position: relative; width: 100%; overflow: hidden;
-    border-radius: 2.4mm; background: rgb(231, 235, 231);
+    border-radius: 12mm; background: rgb(231, 235, 231);
   }
-  .shot-frame img { display: block; width: 100%; height: 58mm; object-fit: cover; }
-  .compare.large .shot-frame img { height: 64mm; }
-  .shot-grid.one .shot-frame img { height: 105mm; }
+  .shot-frame > img {
+    display: block; width: 100%; height: 58mm; object-fit: cover;
+    border-radius: 12mm;
+  }
+  .compare.large .shot-frame > img { height: 64mm; }
+  .shot-grid.one .shot-frame > img { height: 105mm; }
+  /* Marked frames grow with the scaled SVG — clip blur + sharp to the same radius. */
+  .shot-frame-marked {
+    height: auto;
+    overflow: hidden;
+    border-radius: 12mm;
+    background: rgb(231, 235, 231);
+  }
+  .shot-frame .marked-photo-stage {
+    border-radius: 12mm;
+    overflow: hidden;
+  }
+  .shot-frame .photo-with-marks,
+  .shot-frame .marked-photo-stage .photo-with-marks {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 120mm;
+    border-radius: 12mm;
+  }
+  .compare.large .shot-frame .photo-with-marks { max-height: 130mm; }
+  .shot-grid.one .shot-frame .photo-with-marks { max-height: 140mm; }
+  .pair-row .shot-frame .photo-with-marks { max-height: 85mm; }
+  .shot-frame .marked-photo-blur {
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12mm;
+  }
   .photo-tag {
     position: absolute; left: 2.2mm; top: 2.2mm;
     background: ${cssColor(PAPER)}; color: ${cssColor(INK)};
@@ -1125,8 +1508,9 @@ function stylesheet(theme: Theme): string {
   .sign-inline .sign-pad svg { margin-left: auto; }
   .sign-when { color: ${cssColor(MUTED)}; font-size: 8.5pt; }
   .doc-footer {
-    margin-top: 8mm; padding-top: 3.5mm; border-top: 1px solid ${cssColor(LINE)};
+    margin-top: 8mm; padding: 3.5mm 0 14mm; border-top: 1px solid ${cssColor(LINE)};
     text-align: center; color: ${cssColor(MUTED)}; font-size: 8pt; line-height: 1.45;
+    break-inside: avoid; page-break-inside: avoid;
   }
   .doc-footer p { margin: 0 0 0.5mm; }
   .footer-message { color: ${cssColor(INK)}; font-size: 10pt; font-weight: 600; margin-bottom: 1.2mm !important; }
@@ -1172,19 +1556,19 @@ function stylesheet(theme: Theme): string {
   .stat-value { margin-top: 0.6mm; font-size: 10.5pt; font-weight: 700; }
 
   .sheet-body.template-side { background: ${theme.tint}; }
-  .side-shell { display: flex; gap: 6mm; align-items: flex-start; }
-  .rail { width: 52mm; flex-shrink: 0; }
+  .side-shell { display: block; }
+  .rail { float: left; width: 52mm; margin: 0 6mm 4mm 0; }
   .rail-kicker { margin-top: 6mm; font-size: 16pt; font-weight: 800; letter-spacing: -0.03em; }
   .rail-tag { margin-top: 1mm; color: ${cssColor(MUTED)}; font-size: 9.5pt; }
   .rail-title { margin-top: 4mm; font-size: 13pt; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
   .rail-block { margin-top: 4.5mm; }
   .rail-value { margin-top: 0.6mm; font-size: 10.5pt; font-weight: 700; }
-  .side-main { flex: 1; min-width: 0; }
-  .num-row { display: flex; gap: 3mm; margin-bottom: 5mm; }
-  .num { width: 6mm; flex-shrink: 0; font-size: 13pt; font-weight: 800; line-height: 1.2; }
-  .num-copy { flex: 1; min-width: 0; }
+  .side-main { display: block; min-width: 0; }
+  .num-row { display: flow-root; margin-bottom: 5mm; }
+  .num { float: left; width: 6mm; margin-right: 3mm; font-size: 13pt; font-weight: 800; line-height: 1.2; }
+  .num-copy { display: block; margin-left: 9mm; min-width: 0; }
   .num-copy .block { margin-bottom: 0; }
-  .template-side .doc-footer { border-top-color: rgba(20,24,22,0.12); }
+  .template-side .doc-footer { clear: both; border-top-color: rgba(20,24,22,0.12); }
 
   .info-cards { display: flex; gap: 3mm; margin: 0 0 5mm; }
   .info-card {
@@ -1199,12 +1583,18 @@ function stylesheet(theme: Theme): string {
   .template-minimal .job-title { margin: 1mm 0 2mm; }
   .min-foot {
     display: flex; justify-content: space-between; align-items: flex-end; gap: 8mm;
-    margin-top: 4mm; padding-top: 4mm; border-top: 1px solid ${cssColor(LINE)};
+    margin-top: 4mm; padding: 4mm 0 14mm; border-top: 1px solid ${cssColor(LINE)};
+    break-inside: avoid; page-break-inside: avoid;
   }
   .min-foot .brand-name { font-size: 11pt; }
 
-  .sheet-body.template-dark { padding: 0 0 14mm; }
-  .dark-head { background: ${cssColor(HERO)}; color: ${cssColor(PAPER)}; padding: 12mm 15mm 10mm; }
+  .sheet-body.template-dark { padding: 14mm 0 14mm; }
+  .dark-head {
+    margin-top: -14mm;
+    background: ${cssColor(HERO)};
+    color: ${cssColor(PAPER)};
+    padding: 12mm 15mm 10mm;
+  }
   .dark-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8mm; }
   .dark-title-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 8mm; margin-top: 8mm; }
   .dark-meta { text-align: right; }
@@ -1213,22 +1603,90 @@ function stylesheet(theme: Theme): string {
   .dark-main { padding: 6mm 15mm 0; }
   .trio { display: flex; gap: 5mm; align-items: flex-start; margin-bottom: 5mm; }
   .trio-col { flex: 1; min-width: 0; margin: 0; }
-  .filmstrip { display: flex; flex-wrap: wrap; gap: 2.4mm; }
-  .filmstrip .shot { width: calc((100% - 9.6mm) / 5); }
+  .filmstrip { display: block; }
+  .film-row {
+    display: flex; gap: 2.4mm; align-items: flex-start;
+    margin: 0 0 2.4mm;
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .film-row:last-child { margin-bottom: 0; }
+  .filmstrip .shot { width: calc((100% - 9.6mm) / 5); flex: none; }
   .filmstrip.one .shot { width: 48%; }
   .filmstrip.few .shot { width: calc((100% - 2.4mm) / 2); }
   .filmstrip.three .shot { width: calc((100% - 4.8mm) / 3); }
-  .filmstrip .shot-frame img { height: 32mm; }
-  .filmstrip.one .shot-frame img { height: 78mm; }
-  .filmstrip.few .shot-frame img { height: 72mm; }
-  .filmstrip.three .shot-frame img { height: 48mm; }
-  .filmstrip .shot-frame { border-radius: 1.8mm; }
+  .filmstrip .shot-frame > img { height: 32mm; }
+  .filmstrip.one .shot-frame > img { height: 78mm; }
+  .filmstrip.few .shot-frame > img { height: 72mm; }
+  .filmstrip.three .shot-frame > img { height: 48mm; }
+  .filmstrip .shot-frame .photo-with-marks { max-height: 40mm; }
+  .filmstrip.one .shot-frame .photo-with-marks { max-height: 78mm; }
+  .filmstrip.few .shot-frame .photo-with-marks { max-height: 72mm; }
+  .filmstrip.three .shot-frame .photo-with-marks { max-height: 48mm; }
+  .filmstrip .shot-frame,
+  .filmstrip .shot-frame > img,
+  .filmstrip .marked-photo-stage,
+  .filmstrip .photo-with-marks,
+  .filmstrip .marked-photo-blur { border-radius: 12mm; }
   .filmstrip .photo-tag { font-size: 6.4pt; left: 1.3mm; top: 1.3mm; padding: 0.5mm 1.5mm; }
   .filmstrip .shot figcaption {
     font-size: 7pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .section-pricing { break-inside: avoid; page-break-inside: avoid; }
+  .section-pricing { break-inside: auto; page-break-inside: auto; }
+  .price-table tr { break-inside: avoid; page-break-inside: avoid; }
   .price-table { width: 100%; border-collapse: collapse; margin-top: 1mm; }
+  .price-table-compact .price-group td {
+    padding-top: 3mm; font-size: 8pt; font-weight: 700; letter-spacing: 0.08em;
+    color: ${cssColor(MUTED)}; border-bottom: none;
+  }
+  .price-table .price-total td { font-size: 12pt; }
+  .invoice-details {
+    margin-top: 4mm; padding: 3.5mm; border: 1px solid ${cssColor(LINE)};
+    border-radius: 2.4mm; background: ${cssColor(PAPER)};
+  }
+  .invoice-head {
+    display: flex; justify-content: space-between; align-items: center;
+    font-weight: 700; font-size: 11pt; margin-bottom: 2.5mm;
+  }
+  .invoice-pill {
+    background: ${theme.tint}; color: ${theme.accent}; border-radius: 999px;
+    padding: 1mm 2.4mm; font-size: 8pt; letter-spacing: 0.08em; font-weight: 700;
+  }
+  .invoice-row {
+    display: flex; justify-content: space-between; gap: 3mm;
+    font-size: 10pt; margin-bottom: 1.6mm;
+  }
+  .invoice-label { color: ${cssColor(MUTED)}; }
+  .invoice-value { font-weight: 700; text-align: right; }
+  .invoice-terms {
+    margin-top: 2mm; padding: 2.4mm 2.8mm; border-radius: 2mm; background: ${cssColor(WASH)};
+  }
+  .invoice-terms p { margin: 1mm 0 0; font-size: 9pt; color: ${cssColor(MUTED)}; line-height: 1.4; }
+  .review-card {
+    display: flex; gap: 3mm; align-items: center; justify-content: space-between;
+    margin: 4mm 0 0; padding: 3.5mm 3.2mm; border-radius: 2.6mm;
+    background: ${theme.tint}; border: 1px solid ${theme.accent}44;
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .review-copy { flex: 1; min-width: 0; }
+  .review-title { margin: 0; font-size: 12pt; font-weight: 700; color: ${cssColor(INK)}; }
+  .review-lede { margin: 1mm 0 0; font-size: 8.5pt; color: ${cssColor(MUTED)}; line-height: 1.35; }
+  .review-stars { margin-top: 1.6mm; color: #E6A700; font-size: 11pt; letter-spacing: 0.5px; }
+  .review-badges { display: flex; gap: 1.5mm; flex-wrap: wrap; margin-top: 2mm; }
+  .review-badge {
+    display: inline-flex; align-items: center; background: ${cssColor(PAPER)};
+    border: 1px solid ${cssColor(LINE)}; border-radius: 999px;
+    padding: 0.8mm 2.2mm; font-size: 8pt; font-weight: 700; color: ${cssColor(INK)};
+  }
+  .review-link {
+    display: inline-block; margin-top: 2mm; color: ${theme.accent};
+    font-size: 9pt; font-weight: 600; text-decoration: underline;
+  }
+  .review-qr { display: flex; flex-direction: column; align-items: center; gap: 1.2mm; flex-shrink: 0; }
+  .review-qr img {
+    width: 18mm; height: 18mm; padding: 1.2mm; background: ${cssColor(PAPER)};
+    border: 1px solid ${cssColor(LINE)}; border-radius: 1.6mm;
+  }
+  .review-qr span { font-size: 7pt; color: ${cssColor(MUTED)}; font-weight: 600; }
   .price-table th {
     text-align: left; font-size: 7.4pt; font-weight: 700; letter-spacing: 0.12em;
     text-transform: uppercase; color: ${cssColor(MUTED)};
@@ -1493,11 +1951,8 @@ function stylesheet(theme: Theme): string {
   .poster-meta .fact { width: calc(50% - 3mm); margin: 0; }
   .sheet-cover[data-cover="poster"] .cover-badges { margin-top: 4mm; padding: 4mm 0 0; }
 
-  .trade-page { break-inside: auto; }
-  .trade-next { break-before: page; page-break-before: always; }
-  @media screen {
-    .trade-next { margin-top: 8mm; padding-top: 2mm; }
-  }
+  .trade-page, .trade-block { break-inside: auto; page-break-inside: auto; }
+  .trade-shot { break-inside: avoid; page-break-inside: avoid; }
   .trade-mast { text-align: center; margin-bottom: 7mm; }
   .trade-mast .brand { justify-content: center; }
   .trade-mast .brand-name {
@@ -1554,9 +2009,26 @@ function stylesheet(theme: Theme): string {
     text-align: center;
     flex-shrink: 0;
   }
-  .trade-shot { margin: 0 0 3.5mm; break-inside: avoid; page-break-inside: avoid; }
-  .trade-frame { position: relative; overflow: hidden; background: rgb(231, 235, 231); }
-  .trade-frame img { display: block; width: 100%; height: 62mm; object-fit: cover; }
+  .trade-shot { margin: 0 0 3.5mm; }
+  .trade-frame {
+    position: relative; overflow: hidden; background: rgb(231, 235, 231);
+    border-radius: 12mm;
+  }
+  .trade-frame > img {
+    display: block; width: 100%; height: 62mm; object-fit: cover;
+    border-radius: 12mm;
+  }
+  .trade-frame .marked-photo-stage,
+  .trade-frame .marked-photo-blur,
+  .trade-frame .photo-with-marks { border-radius: 12mm; }
+  .trade-frame .photo-with-marks {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100mm;
+    margin: 0 auto;
+  }
   .trade-bar {
     position: absolute;
     left: 0;
@@ -1578,7 +2050,8 @@ function stylesheet(theme: Theme): string {
   .script { font-family: "Segoe Script", "Snell Roundhand", "Apple Chancery", cursive; font-weight: 500; }
   .trade-foot {
     margin-top: 8mm;
-    padding-top: 2.5mm;
+    margin-bottom: 0;
+    padding: 2.5mm 0 0;
     border-top: 1px solid ${cssColor(LINE)};
     color: ${cssColor(MUTED)};
     font-size: 7.5pt;
@@ -1586,7 +2059,7 @@ function stylesheet(theme: Theme): string {
     letter-spacing: 0.12em;
     text-transform: uppercase;
   }
-  .sheet-basic { padding: 16mm 16mm 18mm; }
+  .sheet-basic { padding: 16mm 16mm 0; }
   .sheet-basic .display,
   .sheet-basic .job-title {
     font-size: 16pt;
@@ -1690,51 +2163,173 @@ body[data-template="trade"] .trade-page {
   padding: 14mm 15mm 16mm;
   background: ${cssColor(PAPER)};
 }
-body[data-template="trade"] .trade-next {
-  margin-top: 0;
-  padding-top: 14mm;
+/* Overflow pages are new frames. Keep the same top inset as the first inner
+   page. Cover and thank-you frames are not continuation pages. */
+body:not([data-template="trade"]) .sheet-body[data-page-cont="1"] { padding-top: 14mm; }
+body:not([data-template="trade"]) .sheet-body.template-image[data-page-cont="1"] { padding-top: 12mm; }
+body:not([data-template="trade"]) .sheet-body.sheet-basic[data-page-cont="1"] { padding-top: 16mm; }
+body[data-template="trade"] .trade-page[data-page-cont="1"] { padding-top: 14mm; }
+/* Preview-only: let users tap cover, photos, and annotation notes. */
+[data-preview-edit] { -webkit-tap-highlight-color: rgba(31, 168, 74, 0.28); cursor: pointer; }
+[data-preview-edit="photo"] .shot-frame,
+[data-preview-edit="photo"] .trade-frame,
+[data-preview-edit="cover"] .cover-hero,
+[data-preview-edit="cover"] .split-photo,
+[data-preview-edit="cover"] .poster-photo,
+img[data-preview-edit="cover"],
+.annotation-cards[data-preview-edit="annotate"] {
+  outline: 0 solid transparent;
+  transition: outline-color 120ms ease;
 }
+[data-preview-edit="photo"]:active .shot-frame,
+[data-preview-edit="photo"]:active .trade-frame,
+.annotation-cards[data-preview-edit="annotate"]:active {
+  outline: 1.2px solid rgba(31, 168, 74, 0.9);
+}
+.sheet-cover[data-preview-edit="cover"]:active,
+.hero[data-preview-edit="cover"]:active {
+  outline: 1.6px solid rgba(31, 168, 74, 0.85);
+  outline-offset: -1.6px;
+}
+.photo-with-marks, .bleed-shade, .hero-shade { pointer-events: none !important; }
 `.trim();
+
+/** Preview taps post a message to the native app so photos and cover can be edited. */
+const PREVIEW_EDIT_SCRIPT = `(function(){
+  function send(payload){
+    var raw = JSON.stringify(payload);
+    try {
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        window.ReactNativeWebView.postMessage(raw);
+        return;
+      }
+    } catch (err) {}
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(raw, '*');
+      }
+    } catch (err) {}
+  }
+  document.addEventListener('click', function(event){
+    var target = event.target;
+    if (!target || !target.closest) return;
+    var el = target.closest('[data-preview-edit]');
+    if (!el) return;
+    var action = el.getAttribute('data-preview-edit');
+    if (!action) return;
+    event.preventDefault();
+    event.stopPropagation();
+    send({
+      type: 'preview-edit',
+      action: action,
+      photoId: el.getAttribute('data-photo-id') || ''
+    });
+  }, true);
+})();`;
 
 /** Splits overflowing A4 frames into extra pages, then scales the stack to the viewport width. */
 const PREVIEW_SCREEN_SCRIPT = `(function(){
   var PAGE_SELECTOR = 'body[data-template="trade"] .trade-page, body:not([data-template="trade"]) .sheet-body';
-  function overflows(el){
-    return el.scrollHeight > el.clientHeight + 1;
+  var ATOM = '.pair-row, .shot-row, .film-row, .trade-shot, .signoff, .meta-card, .info-card, .stat, .hero, .text-card, .sign-inline, .top, .title-row, .split, .dark-head, .card-row, .info-cards, .stats, .trade-mast, .trade-foot, .min-foot, .doc-footer, .trio, .rail';
+  function overflows(page){
+    return page.scrollHeight > page.clientHeight + 1;
   }
-  function splitOversizedChild(page){
-    var only = page.children[0];
-    if (!only || only.children.length < 2) return false;
+  function sticksWithNext(el){
+    if (!el || el.nodeType !== 1) return false;
+    var tag = el.tagName;
+    if (tag === 'H1' || tag === 'H2' || tag === 'H3') return true;
+    return el.classList.contains('pair-labels') || el.classList.contains('num');
+  }
+  function isAtom(el){
+    if (!el || el.nodeType !== 1) return true;
+    if (sticksWithNext(el)) return true;
+    if (el.matches(ATOM)) return true;
+    var tag = el.tagName;
+    if (tag === 'P' || tag === 'LI' || tag === 'TR' || tag === 'THEAD' || tag === 'TFOOT') return true;
+    if (el.classList.contains('fact')) return true;
+    return el.children.length === 0;
+  }
+  function innerPadTop(page){
+    if (page.classList.contains('template-image')) return '12mm';
+    if (page.classList.contains('sheet-basic')) return '16mm';
+    return '14mm';
+  }
+  function continuation(page){
     var cont = page.cloneNode(false);
-    var contInner = only.cloneNode(false);
-    cont.appendChild(contInner);
+    cont.setAttribute('data-page-cont', '1');
+    if (!cont.classList.contains('sheet-cover') && !cont.classList.contains('sheet-close')) {
+      cont.style.paddingTop = innerPadTop(page);
+    }
     page.parentNode.insertBefore(cont, page.nextSibling);
-    while (overflows(page) && only.children.length > 1) {
-      contInner.insertBefore(only.lastElementChild, contInner.firstChild);
-    }
-    if (!contInner.children.length) {
-      cont.parentNode.removeChild(cont);
-      return false;
-    }
     return cont;
+  }
+  function take(into, node){
+    into.insertBefore(node, into.firstChild);
+  }
+  function removeIfEmpty(node){
+    if (!node || !node.parentNode || node.matches(PAGE_SELECTOR)) return;
+    if (!node.children.length) node.parentNode.removeChild(node);
+  }
+  function bubbleStick(from, into){
+    var last = from.lastElementChild;
+    if (!last || !into) return;
+    if (sticksWithNext(last)) {
+      take(into, last);
+      removeIfEmpty(from);
+      return;
+    }
+    if (isAtom(last)) return;
+    var nested = into.firstElementChild;
+    if (!nested || nested.className !== last.className) return;
+    if (last.querySelector('.pair-row, .shot-row, .film-row, .trade-shot, .shot, .prose, .bullets, .checks, .facts, .price-table, .sign-pad')) return;
+    bubbleStick(last, nested);
+  }
+  function spill(page, from, into){
+    var guard = 0;
+    var moved = false;
+    while (overflows(page) && from.lastElementChild && guard++ < 80) {
+      var child = from.lastElementChild;
+      if (isAtom(child)) {
+        if (from.children.length < 2 && from === page) break;
+        take(into, child);
+        removeIfEmpty(from);
+        moved = true;
+        continue;
+      }
+      var shell = child.cloneNode(false);
+      take(into, shell);
+      var inner = spill(page, child, shell);
+      if (!shell.children.length && shell.parentNode) shell.parentNode.removeChild(shell);
+      removeIfEmpty(child);
+      if (inner) {
+        moved = true;
+        continue;
+      }
+      if (shell.parentNode) shell.parentNode.removeChild(shell);
+      if ((from.children.length < 2 && from === page) || !child.parentNode) break;
+      take(into, child);
+      moved = true;
+    }
+    if (moved) bubbleStick(from, into);
+    return moved;
+  }
+  function disposable(page){
+    return !page.querySelector('.pair-row, .shot-row, .film-row, .trade-shot, .shot, .prose, .bullets, .checks, .facts, .price-table, .sign-pad, .signoff, .ink-sign, .info-card, .stat, .meta-card, .hero, .top, .title-row, .split, .dark-head, .trio, .rail, .card-row, .detail, .person, .addr');
   }
   function paginate(page){
     var guard = 0;
-    while (overflows(page) && guard++ < 40) {
-      if (page.children.length < 2) {
-        var nested = splitOversizedChild(page);
-        if (!nested) break;
-        page = nested;
-        continue;
-      }
-      var cont = page.cloneNode(false);
-      page.parentNode.insertBefore(cont, page.nextSibling);
-      while (overflows(page) && page.children.length > 1) {
-        cont.insertBefore(page.lastElementChild, cont.firstChild);
-      }
-      if (!cont.children.length) {
-        cont.parentNode.removeChild(cont);
+    while (page && page.parentNode && overflows(page) && guard++ < 40) {
+      var cont = continuation(page);
+      if (!spill(page, page, cont) || !cont.children.length) {
+        if (cont.parentNode && !cont.children.length) cont.parentNode.removeChild(cont);
         break;
+      }
+      if (disposable(page)) {
+        var anchor = cont.firstChild;
+        while (page.firstChild) cont.insertBefore(page.firstChild, anchor);
+        page.parentNode.removeChild(page);
+        page = cont;
+        continue;
       }
       page = cont;
     }
@@ -1779,5 +2374,5 @@ export function buildReportPreviewHtml(input: ReportHtmlInput): string {
       '</head>',
       `<meta name="viewport" content="width=device-width, initial-scale=1" /><style id="preview-screen">${PREVIEW_SCREEN_CSS}</style></head>`
     )
-    .replace('</body>', `<script>${PREVIEW_SCREEN_SCRIPT}</script></body>`);
+    .replace('</body>', `<script>${PREVIEW_EDIT_SCRIPT}</script><script>${PREVIEW_SCREEN_SCRIPT}</script></body>`);
 }

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { jobsRepository, photosRepository, reportsRepository } from '@/database';
+import { ReportsFilter, selectReports } from '@/features/reports/filterReports';
 import { Job, Report } from '@/models';
 import { getReportFreshness } from '@/services/pdfService';
 import { logger } from '@/utils/logger';
@@ -8,43 +9,42 @@ import { logger } from '@/utils/logger';
 export type ReportWithJob = { report: Report; job: Job | null; isStale: boolean; coverUri: string | null };
 
 export function useReports() {
-  const [items, setItems] = useState<ReportWithJob[]>([]);
+  const [allItems, setAllItems] = useState<ReportWithJob[]>([]);
+  const [filter, setFilter] = useState<ReportsFilter>('all');
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const refresh = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const reports = await reportsRepository.listAllReports();
-      const latestPerJob = new Map<string, Report>();
+      const latestIdByJob = new Map<string, string>();
       for (const report of reports) {
-        if (!latestPerJob.has(report.jobId)) {
-          latestPerJob.set(report.jobId, report);
-        }
+        if (!latestIdByJob.has(report.jobId)) latestIdByJob.set(report.jobId, report.id);
       }
 
-      const jobIds = Array.from(latestPerJob.keys());
-      const [covers, results] = await Promise.all([
+      const jobIds = Array.from(latestIdByJob.keys());
+      const [covers, jobs, freshness] = await Promise.all([
         photosRepository.getJobCoverUris(jobIds),
-        Promise.all(
-          Array.from(latestPerJob.values()).map(async (report) => {
-            const [job, freshness] = await Promise.all([
-              jobsRepository.getJob(report.jobId),
-              getReportFreshness(report.jobId),
-            ]);
-            return { report, job, isStale: freshness === 'stale' };
-          })
-        ),
+        Promise.all(jobIds.map((jobId) => jobsRepository.getJob(jobId))),
+        Promise.all(jobIds.map((jobId) => getReportFreshness(jobId))),
       ]);
+      const jobById = new Map(jobIds.map((jobId, index) => [jobId, jobs[index] ?? null]));
+      const staleByJob = new Map(jobIds.map((jobId, index) => [jobId, freshness[index] === 'stale']));
 
-      const withCovers = results.map((item) => ({
-        ...item,
-        coverUri: covers[item.report.jobId] ?? null,
-      }));
-
-      withCovers.sort((a, b) => (a.report.generatedAt < b.report.generatedAt ? 1 : -1));
-      setItems(withCovers);
+      setAllItems(
+        reports.map((report) => ({
+          report,
+          job: jobById.get(report.jobId) ?? null,
+          isStale: latestIdByJob.get(report.jobId) === report.id && (staleByJob.get(report.jobId) ?? false),
+          coverUri: covers[report.jobId] ?? null,
+        }))
+      );
+      setError(null);
     } catch (err) {
       logger.error('Failed to load reports', err);
       setError("We couldn't load your reports. Try again.");
@@ -59,7 +59,23 @@ export function useReports() {
     refresh();
   }, [refresh]);
 
-  return { items, loading, error, refresh };
+  const reload = useCallback(() => refresh(false), [refresh]);
+  const refreshSilently = useCallback(() => refresh(true), [refresh]);
+
+  const items = useMemo(() => selectReports(allItems, filter, search), [allItems, filter, search]);
+
+  return {
+    items,
+    hasReports: allItems.length > 0,
+    filter,
+    setFilter,
+    search,
+    setSearch,
+    loading,
+    error,
+    refresh: reload,
+    refreshSilently,
+  };
 }
 
 export function useJobReports(jobId: string) {

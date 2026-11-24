@@ -40,15 +40,15 @@
       "ios": {
         "ascAppId": "6827091783",
         "appleTeamId": "HG7F63WLGK",
-        "ascApiKeyPath": "/Users/ferreira/Downloads/AuthKey_3TXXMB78D6.p8",
-        "ascApiKeyId": "3TXXMB78D6",
+        "ascApiKeyPath": "./credentials/AuthKey_W3NNQDP6U2.p8",
+        "ascApiKeyId": "W3NNQDP6U2",
         "ascApiKeyIssuerId": "72bacd98-8d17-486f-884f-cbfa001a4295"
       },
       "android": {
         "serviceAccountKeyPath": "./store/play-service-account.json",
-        "track": "internal",
-        "releaseStatus": "draft",
-        "changesNotSentForReview": true
+        "track": "beta",
+        "releaseStatus": "completed",
+        "changesNotSentForReview": false
       }
     }
   }

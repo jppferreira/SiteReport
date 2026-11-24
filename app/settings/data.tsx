@@ -7,7 +7,8 @@ import { DeleteAllDataDialog } from '@/features/settings/DeleteAllDataDialog';
 import { SettingsGroup } from '@/features/settings/SettingsGroup';
 import { useIcloudAutoBackupSetting } from '@/hooks/useIcloudAutoBackupSetting';
 import { useI18n } from '@/i18n/useI18n';
-import { BackupDestination, restoreBackupFromPicker, saveBackup } from '@/services/backup/backupService';
+import { BackupDestination, restoreBackupFromPicker, saveBackup, userFacingBackupError } from '@/services/backup/backupService';
+import { googleDriveAvailable } from '@/services/backup/googleDrive';
 import { deleteAllAppData, exportAppDataToJson } from '@/services/dataManagementService';
 import { getStorageUsage, StorageUsage } from '@/services/fileService';
 import { shareFile } from '@/services/shareService';
@@ -56,9 +57,16 @@ export default function DataPrivacyScreen() {
     setBackupBusy(true);
     try {
       const result = await saveBackup(destination);
-      if (result === 'saved') showToast({ message: t('data.toastBackupSaved'), tone: 'success' });
-    } catch {
-      showToast({ message: t('data.toastBackupError'), tone: 'destructive' });
+      if (result !== 'saved') return;
+      const message =
+        destination === 'icloud'
+          ? t('data.toastIcloudSaved')
+          : destination === 'google-drive' && Platform.OS === 'android'
+            ? t('data.toastGoogleDriveSaved')
+            : t('data.toastBackupSaved');
+      showToast({ message, tone: 'success' });
+    } catch (error) {
+      showToast({ message: userFacingBackupError(error, t('data.toastBackupError')), tone: 'destructive' });
     } finally {
       setBackupBusy(false);
     }
@@ -132,7 +140,11 @@ export default function DataPrivacyScreen() {
         </SettingsGroup>
 
         <Text variant="body" color={colors.textSecondary} style={{ marginBottom: spacing.sm }}>
-          {IS_IOS ? t('data.backupIntroIos') : t('data.backupIntroOther')}
+          {IS_IOS
+            ? t('data.backupIntroIos')
+            : Platform.OS === 'android'
+              ? t('data.backupIntroAndroid')
+              : t('data.backupIntroOther')}
         </Text>
         <SettingsGroup title={t('data.groupBackup')}>
           {IS_IOS ? (
@@ -150,11 +162,13 @@ export default function DataPrivacyScreen() {
               onPress={backupBusy ? undefined : () => setPendingBackup('icloud')}
             />
           ) : null}
-          <SettingRow
-            label={backupBusy ? t('data.working') : t('data.saveToGoogleDrive')}
-            icon="logo-google"
-            onPress={backupBusy ? undefined : () => setPendingBackup('google-drive')}
-          />
+          {Platform.OS === 'android' ? (
+            <SettingRow
+              label={backupBusy ? t('data.working') : t('data.saveToGoogleDrive')}
+              icon="logo-google"
+              onPress={backupBusy ? undefined : () => setPendingBackup('google-drive')}
+            />
+          ) : null}
           <SettingRow
             label={backupBusy ? t('data.working') : t('data.saveACopy')}
             icon="folder-outline"
@@ -189,7 +203,15 @@ export default function DataPrivacyScreen() {
         visible={pendingBackup !== null}
         title={pendingBackup ? backupPrompt[pendingBackup].title : ''}
         description={pendingBackup ? backupPrompt[pendingBackup].description : undefined}
-        confirmLabel={t('data.chooseFolder')}
+        confirmLabel={
+          pendingBackup === 'icloud'
+            ? t('common.save')
+            : pendingBackup === 'google-drive'
+              ? googleDriveAvailable() === 'share'
+                ? t('data.shareToGoogleDrive')
+                : t('data.chooseInGoogleDrive')
+              : t('data.chooseFolder')
+        }
         confirmVariant="primary"
         onConfirm={() => {
           const destination = pendingBackup;

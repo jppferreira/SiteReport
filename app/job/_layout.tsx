@@ -10,10 +10,14 @@ export default function JobLayout() {
       <Stack.Screen name="[id]/photos/index" />
       <Stack.Screen name="[id]/photos/[areaId]" />
       <Stack.Screen name="[id]/photo/[photoId]" options={{ presentation: 'fullScreenModal' }} />
+      <Stack.Screen name="[id]/annotate/[photoId]" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
+      <Stack.Screen name="[id]/measure" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
+      <Stack.Screen name="[id]/checklist" />
       <Stack.Screen name="[id]/summary" />
       <Stack.Screen name="[id]/signature" options={{ gestureEnabled: false }} />
       <Stack.Screen name="[id]/preview" />
       <Stack.Screen name="[id]/generate" options={{ gestureEnabled: false }} />
+      <Stack.Screen name="[id]/send" options={{ presentation: 'modal' }} />
     </Stack>
   );
 }

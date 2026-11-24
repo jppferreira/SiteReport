@@ -1,12 +1,14 @@
 import * as Crypto from 'expo-crypto';
 
 import {
+  hasAnnotations,
   Job,
   linesForReport,
   normalizeCoverDesignId,
   normalizeReportImageMask,
   Photo,
   PhotoArea,
+  serializePhotoAnnotations,
   Signature,
   WorkSummary,
 } from '@/models';
@@ -17,6 +19,14 @@ export type ReportBrandStamp = {
   thanksUri?: string | null;
   imageMask?: string | null;
   coverDesign?: string | null;
+  reviewUrl?: string | null;
+  reviewProvider?: string | null;
+  includeReviewLink?: boolean;
+  bankName?: string | null;
+  sortCode?: string | null;
+  accountNumber?: string | null;
+  paymentTerms?: string | null;
+  defaultDueDays?: number | null;
 };
 
 /**
@@ -24,7 +34,7 @@ export type ReportBrandStamp = {
  * outdated until they are regenerated, instead of looking current while the
  * file still has the previous layout.
  */
-export const REPORT_RENDER_VERSION = 2;
+export const REPORT_RENDER_VERSION = 3;
 
 /**
  * Stable hash of everything that would change the rendered PDF. Compared
@@ -57,6 +67,14 @@ export async function computeJobContentHash(
     ...(stamp.thanksUri ? { brandThanksUri: stamp.thanksUri } : {}),
     ...(imageMask !== 'straight' ? { imageMask } : {}),
     ...(coverDesign !== 'editorial' ? { coverDesign } : {}),
+    ...(stamp.includeReviewLink && stamp.reviewUrl
+      ? { reviewUrl: stamp.reviewUrl, reviewProvider: stamp.reviewProvider ?? 'google' }
+      : {}),
+    ...(stamp.bankName ? { bankName: stamp.bankName } : {}),
+    ...(stamp.sortCode ? { sortCode: stamp.sortCode } : {}),
+    ...(stamp.accountNumber ? { accountNumber: stamp.accountNumber } : {}),
+    ...(stamp.paymentTerms ? { paymentTerms: stamp.paymentTerms } : {}),
+    ...(stamp.defaultDueDays && stamp.defaultDueDays !== 14 ? { defaultDueDays: stamp.defaultDueDays } : {}),
     photos: photos
       .map((p) => ({
         id: p.id,
@@ -65,6 +83,7 @@ export async function computeJobContentHash(
         sortOrder: p.sortOrder,
         ...(p.areaId ? { areaId: p.areaId } : {}),
         ...(p.takenAt ? { takenAt: p.takenAt } : {}),
+        ...(hasAnnotations(p.annotations) ? { annotations: serializePhotoAnnotations(p.annotations) } : {}),
       }))
       .sort((a, b) => a.id.localeCompare(b.id)),
     ...(areas.length > 0
@@ -96,6 +115,8 @@ function summaryForHash(summary: WorkSummary) {
     workCompleted: summary.workCompleted,
     materials: summary.materials,
     recommendations: summary.recommendations,
+    ...(summary.documentType !== 'reference' ? { documentType: summary.documentType } : {}),
+    ...(summary.invoiceNumber ? { invoiceNumber: summary.invoiceNumber } : {}),
     ...(pricing.length > 0 ? { pricing } : {}),
   };
 }

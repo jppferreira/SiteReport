@@ -1,6 +1,4 @@
 import { COVER_DESIGN_IDS, imageMaskClipPath, normalizeReportTemplateId, ReportTemplateId } from '@/models';
-import { formatTakenAt } from '@/services/photoTakenAt';
-
 import { DEFAULT_COVER_SCENE, DEFAULT_THANKS_SCENE } from './defaultScenes';
 import { buildReportHtml, buildReportPreviewHtml, prepareAndroidPrintHtml } from './reportHtml';
 import { ReportHtmlInput } from './types';
@@ -39,6 +37,7 @@ function sample(template: ReportHtmlInput['template'], extras?: Partial<ReportHt
       status: 'complete',
     },
     before: [photo('before-1', 'Old boiler')],
+    during: [],
     after: [photo('after-1', 'New boiler')],
     workCompleted: 'Replaced the valve',
     materials: '15mm valve',
@@ -136,8 +135,8 @@ describe('buildReportHtml', () => {
 
   it('prints each section above that section’s before and after photos', () => {
     const areas = [
-      { name: 'Kitchen', before: [photo('kitchen-before', 'Old units')], after: [photo('kitchen-after', 'New units')] },
-      { name: 'Bath & shower', before: [photo('bath-before', 'Old suite')], after: [photo('bath-after', 'New suite')] },
+      { name: 'Kitchen', before: [photo('kitchen-before', 'Old units')], during: [], after: [photo('kitchen-after', 'New units')] },
+      { name: 'Bath & shower', before: [photo('bath-before', 'Old suite')], during: [], after: [photo('bath-after', 'New suite')] },
     ];
     for (const template of ['trade', 'modern', 'minimal', 'dark'] as const) {
       const html = buildReportHtml(sample(template, { areas }));
@@ -150,7 +149,18 @@ describe('buildReportHtml', () => {
   it('leaves a job without sections as one before and after set', () => {
     const html = buildReportHtml(sample('modern'));
     expect(html).not.toContain('class="area-title"');
-    expect(html).toContain('class="compare"');
+    expect(html).toContain('class="shot-grid one stack"');
+  });
+
+  it('defaults before/after cards to full width with notes underneath, and supports compact pairs', () => {
+    const full = buildReportHtml(sample('modern'));
+    expect(full).toContain('class="shot-grid one stack"');
+    expect(full).not.toContain('class="compare"');
+
+    const compact = buildReportHtml(sample('modern', { photoAnnotationLayout: 'sideBySide' }));
+    expect(compact).toContain('class="compare"');
+    expect(compact).toContain('class="pair-row"');
+    expect(compact).not.toContain('class="shot-grid one stack"');
   });
 
   it('turns a materials list into bullets', () => {
@@ -364,7 +374,7 @@ describe('buildReportHtml', () => {
   });
 
   it('uses the built-in interior when the job has no photos and no cover', () => {
-    const html = buildReportHtml(sample('trade', { before: [], after: [] }));
+    const html = buildReportHtml(sample('trade', { before: [], during: [], after: [] }));
     const cover = html.slice(html.indexOf('class="sheet-cover"'), html.indexOf('sheet-body">'));
     expect(cover).toContain(DEFAULT_COVER_SCENE);
     expect(html).not.toContain('class="cover-fallback"');
@@ -389,7 +399,28 @@ describe('buildReportHtml', () => {
     expect(company).toContain('class="sign-pad company-sign"');
     expect(company).toContain('Supervisor');
     expect(company).toContain('<svg');
-    expect(html).toContain('trade-page trade-next');
+    expect(html).toContain('class="trade-page"');
+    expect(html).not.toContain('trade-next');
+  });
+
+  it('flows photo sections together so a short section does not take a blank page', () => {
+    const areas = [
+      { name: 'Kitchen', before: [photo('kitchen-before', 'Old units')], during: [], after: [photo('kitchen-after', 'New units')] },
+      { name: 'Bath & shower', before: [photo('bath-before', 'Old suite')], during: [], after: [photo('bath-after', 'New suite')] },
+    ];
+    const trade = buildReportHtml(sample('trade', { areas }));
+    const pack = trade.slice(trade.indexOf('class="trade-pack"'), trade.indexOf('class="sheet-close"'));
+    expect(pack.match(/class="trade-page"/g)).toHaveLength(1);
+    expect(pack).not.toContain('trade-next');
+    expect(pack.indexOf('Kitchen')).toBeLessThan(pack.indexOf('Bath &amp; shower'));
+
+    const modern = buildReportHtml(withManyPhotos('modern'));
+    expect(modern.match(/class="shot-row"/g)).toHaveLength(5);
+    expect(modern).toContain('class="shot-grid one stack"');
+
+    const compactHtml = buildReportHtml({ ...withManyPhotos('modern'), photoAnnotationLayout: 'sideBySide' });
+    expect(compactHtml.match(/class="pair-row"/g)).toHaveLength(3);
+    expect(compactHtml).toContain('class="pair-gap"');
   });
 
   it('locks in-app preview pages to A4 frames without changing the print template', () => {
@@ -401,7 +432,117 @@ describe('buildReportHtml', () => {
     expect(html).toContain('height: 297mm');
     expect(html).toContain('if (!w || !view) return');
     expect(html).toContain('paginateAll');
+    expect(html).toContain('pair-row');
+    expect(html).toContain('data-page-cont');
     expect(buildReportHtml(sample('image'))).not.toContain('id="preview-screen"');
+  });
+
+  it('keeps baked photo markup and note cards when photos are under a named section', () => {
+    const annotated = {
+      ...photo('before-1', 'Old boiler'),
+      annotations: {
+        version: 1 as const,
+        shapes: [
+          {
+            kind: 'callout' as const,
+            color: '#FF5A36' as const,
+            at: { x: 0.4, y: 0.3 },
+            note: 'Leak by sill',
+          },
+        ],
+      },
+    };
+    const html = buildReportHtml(
+      sample('modern', {
+        before: [annotated],
+        after: [],
+        areas: [{ name: 'Kitchen', before: [annotated], during: [], after: [] }],
+      })
+    );
+    expect(html).toContain('area-title');
+    expect(html).toContain('Kitchen');
+    expect(html).toContain('class="photo-with-marks"');
+    expect(html).toContain('aspect-ratio:800/600');
+    expect(html).toContain('max-height:120mm');
+    expect(html).toContain('Leak by sill');
+    expect(html).toContain('annotation-cards');
+    // 800×600 is shorter than the max frame aspect, so it letterboxes → blur fill.
+    expect(html).toContain('class="marked-photo-blur"');
+    expect(html).toContain('class="marked-photo-stage"');
+
+    const wide = {
+      ...annotated,
+      width: 1600,
+      height: 900,
+    };
+    const wideHtml = buildReportHtml(
+      sample('modern', {
+        before: [wide],
+        after: [],
+        areas: [{ name: 'Kitchen', before: [wide], during: [], after: [] }],
+      })
+    );
+    // Wider than the frame aspect → full width, no blur backdrop image.
+    expect(wideHtml).toContain('class="photo-with-marks"');
+    expect(wideHtml).not.toContain('class="marked-photo-blur"');
+    expect(wideHtml).not.toContain('class="marked-photo-stage"');
+  });
+
+  it('marks cover, photos and annotation notes so the preview can open editors', () => {
+    const annotated = {
+      ...photo('before-1', 'Old boiler'),
+      annotations: {
+        version: 1 as const,
+        shapes: [
+          {
+            kind: 'callout' as const,
+            color: '#FF5A36' as const,
+            at: { x: 0.4, y: 0.3 },
+            note: 'Leak',
+          },
+        ],
+      },
+    };
+    const html = buildReportPreviewHtml(
+      sample('image', {
+        before: [annotated],
+        coverDataUri: 'data:image/jpeg;base64,cover',
+      })
+    );
+    expect(html).toContain('data-preview-edit="cover"');
+    expect(html).toContain('data-preview-edit="photo"');
+    expect(html).toContain('data-photo-id="before-1"');
+    expect(html).toContain('data-preview-edit="annotate"');
+    expect(html).toContain("type: 'preview-edit'");
+    expect(html).toContain('ReactNativeWebView');
+    // Print HTML keeps the same hooks so preview can target them, but no tap script.
+    const printed = buildReportHtml(sample('image', { before: [annotated], coverDataUri: 'data:image/jpeg;base64,cover' }));
+    expect(printed).toContain('data-preview-edit="photo"');
+    expect(printed).not.toContain("type: 'preview-edit'");
+    // Annotated photos are one SVG (image + marks) so Android print cannot drop an overlay.
+    expect(printed).toContain('class="photo-with-marks"');
+    expect(printed).toContain('<image href="data:image/jpeg;base64,before-1"');
+    expect(printed).toContain('rgb(255, 90, 54)');
+    expect(printed).toContain('annotation-cards');
+    expect(printed).toContain('Leak');
+  });
+
+  it('keeps top padding on overflow inner pages and not on the cover or thank-you page', () => {
+    const printed = buildReportHtml(sample('modern'));
+    const sheet = printed.slice(printed.indexOf('.sheet-body {'), printed.indexOf('img { max-width'));
+    expect(sheet).toContain('box-decoration-break: clone');
+    expect(sheet).toContain('padding: 14mm 15mm 0');
+    const cover = printed.slice(printed.indexOf('.sheet-cover, .sheet-close {'), printed.indexOf('.sheet-cover {'));
+    expect(cover).not.toContain('box-decoration-break');
+
+    const preview = buildReportPreviewHtml(sample('trade'));
+    expect(preview).toContain('.sheet-body[data-page-cont="1"]');
+    expect(preview).toContain('cont.style.paddingTop = innerPadTop(page)');
+    expect(preview).toContain("if (!cont.classList.contains('sheet-cover') && !cont.classList.contains('sheet-close'))");
+
+    const dark = buildReportHtml(sample('dark'));
+    expect(dark).toContain('.sheet-body.template-dark { padding: 14mm 0 14mm; }');
+    expect(dark).toContain('margin-top: -14mm');
   });
 
   it('treats trade pack articles as the A4 preview pages', () => {
@@ -417,25 +558,93 @@ describe('buildReportHtml', () => {
         generatedAt: '2026-06-01T12:00:00.000Z',
       })
     );
-    const formatted = new Intl.DateTimeFormat('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    }).format(new Date(2026, 0, 15));
+    // Match whatever locale the app is currently using (en-US → "Jan 15, 2026").
+    const { formatDate } = require('@/utils/format') as typeof import('@/utils/format');
+    const formatted = formatDate('2026-01-15');
+    expect(formatted.length).toBeGreaterThan(0);
     expect(html).toContain(formatted);
     expect(html).not.toContain('14 Jan 2026');
+    expect(html).not.toContain('Jan 14, 2026');
     expect(prepareAndroidPrintHtml(html)).toContain(formatted);
   });
 
-  it('prints the capture time under the photo', () => {
-    const takenAt = '2026-10-04T14:30:00';
+  it('prints the evidence stamp baked into the photo caption', () => {
+    const stamp = '4 Oct 2026 · 14:30 GMT · 14 Oak Street';
     const html = buildReportHtml(
       sample('modern', {
-        before: [{ ...photo('before-1', 'Old boiler'), takenAt }],
+        before: [{ ...photo('before-1', `Old boiler — ${stamp}`), takenAt: '2026-10-04T14:30:00' }],
       })
     );
-    expect(html).toContain(`Taken ${formatTakenAt(takenAt)}`);
-    const trade = buildReportHtml(sample('trade', { before: [{ ...photo('before-1', 'Old boiler'), takenAt }] }));
-    expect(trade).toContain(`Taken ${formatTakenAt(takenAt)}`);
+    expect(html).toContain(stamp);
+    const withChecklist = buildReportHtml(
+      sample('modern', {
+        checklist: [
+          { label: 'Visual inspection of boiler & flue', checked: true },
+          { label: 'Customer sign-off & handover', checked: false },
+        ],
+      })
+    );
+    expect(withChecklist).toContain('Job checklist');
+    expect(withChecklist).toContain('Visual inspection of boiler &amp; flue');
+    expect(withChecklist).toContain('Customer sign-off &amp; handover');
+  });
+
+  it('adds a review card with a QR when a review URL is set', () => {
+    const html = buildReportHtml(
+      sample('modern', {
+        review: { url: 'https://g.page/r/hart-plumbing', provider: 'google' },
+      })
+    );
+    expect(html).toContain('class="review-card section-review"');
+    expect(html).toContain('Happy with our work?');
+    expect(html).toContain('g.page/r/hart-plumbing');
+    expect(html).toContain('data:image/svg+xml');
+    expect(html).toContain('Scan to review');
+  });
+
+  it('titles pricing as a quote or invoice and adds VAT when a VAT number is present', () => {
+    const pricing = {
+      enabled: true,
+      lines: [
+        { id: 'pipe', description: 'Copper pipe', category: 'materials' as const, amount: '100' },
+      ],
+    };
+    const quote = buildReportHtml(
+      sample('modern', {
+        pricing,
+        documentType: 'quote',
+        business: {
+          ...sample('modern').business,
+          vatNumber: 'GB123',
+        },
+      })
+    );
+    expect(quote).toContain('>Quote<');
+    expect(quote).toContain('VAT 20%');
+    expect(quote).toContain('£120.00');
+
+    const invoice = buildReportHtml(
+      sample('modern', {
+        pricing,
+        documentType: 'invoice',
+        business: {
+          ...sample('modern').business,
+          vatNumber: 'GB123',
+        },
+        invoice: {
+          invoiceNumber: 'INV-0142',
+          dueDate: '2026-12-07',
+          dueDays: 14,
+          bankName: 'Hart & Co. Ltd',
+          sortCode: '20-45-77',
+          accountNumber: '41293391',
+          paymentTerms: null,
+        },
+      })
+    );
+    expect(invoice).toContain('>Invoice<');
+    expect(invoice).toContain('INV-0142');
+    expect(invoice).toContain('Invoice details');
+    expect(invoice).toContain('20-45-77');
   });
 });

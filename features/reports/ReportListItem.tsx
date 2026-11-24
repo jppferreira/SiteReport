@@ -8,46 +8,36 @@ import { Report } from '@/models';
 import { useTheme } from '@/theme';
 import { formatFileSize, formatRelativeDate } from '@/utils/format';
 
-const COVER_HEIGHT = 200;
-
 type ReportListItemProps = {
   report: Report;
   jobTitle: string;
   isStale: boolean;
-  /** When set, the card leads with a photo of the finished job. */
+  /** When set, a thumbnail of the finished job sits on the left. */
   coverUri?: string | null;
-  featured?: boolean;
   onPress: () => void;
 };
 
-export function ReportListItem({ report, jobTitle, isStale, coverUri, featured = false, onPress }: ReportListItemProps) {
+export function ReportListItem({ report, jobTitle, isStale, coverUri, onPress }: ReportListItemProps) {
   const { colors, radius, spacing } = useTheme();
   const { t } = useI18n();
 
   return (
-    <Card onPress={onPress} padded={!featured} style={styles.card}>
-      {featured ? (
-        <View style={[styles.cover, { padding: spacing.xs }]}>
-          <View
-            style={[
-              styles.coverFrame,
-              { backgroundColor: colors.surfaceSunken, borderRadius: radius.xl },
-            ]}
-          >
-            {coverUri ? (
-              <LocalImage
-                uri={coverUri}
-                style={[StyleSheet.absoluteFill, { borderRadius: radius.xl }]}
-                contentFit="cover"
-              />
-            ) : (
-              <Ionicons name="image-outline" size={28} color={colors.textTertiary} />
-            )}
-          </View>
+    <Card onPress={onPress} style={styles.card}>
+      <View style={styles.row}>
+        <View
+          style={[
+            styles.thumb,
+            { backgroundColor: colors.surfaceSunken, borderRadius: radius.md, marginRight: spacing.md },
+          ]}
+        >
+          {coverUri ? (
+            <LocalImage uri={coverUri} style={StyleSheet.absoluteFill} contentFit="cover" />
+          ) : (
+            <Ionicons name="image-outline" size={22} color={colors.textTertiary} />
+          )}
         </View>
-      ) : null}
-      <View style={[styles.row, featured && { padding: spacing.md }]}>
-        <View style={{ flex: 1 }}>
+
+        <View style={styles.content}>
           <Text variant="bodyMedium" numberOfLines={1}>
             {report.fileName}
           </Text>
@@ -64,7 +54,14 @@ export function ReportListItem({ report, jobTitle, isStale, coverUri, featured =
             </Text>
           </View>
         </View>
-        {isStale ? <StatusBadge label={t('reports.listItemOutdated')} tone="warning" /> : null}
+
+        {report.status !== 'active' || isStale ? (
+          <View style={styles.badges}>
+            {report.status === 'draft' ? <StatusBadge label={t('reports.statusDraft')} tone="warning" /> : null}
+            {report.status === 'archived' ? <StatusBadge label={t('reports.statusArchived')} /> : null}
+            {isStale ? <StatusBadge label={t('reports.listItemOutdated')} tone="warning" /> : null}
+          </View>
+        ) : null}
       </View>
     </Card>
   );
@@ -72,17 +69,16 @@ export function ReportListItem({ report, jobTitle, isStale, coverUri, featured =
 
 const styles = StyleSheet.create({
   card: { marginBottom: 12 },
-  cover: {
-    width: '100%',
-    height: COVER_HEIGHT,
-  },
-  coverFrame: {
-    flex: 1,
+  row: { flexDirection: 'row', alignItems: 'center' },
+  thumb: {
+    width: 72,
+    height: 72,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  content: { flex: 1, minWidth: 0 },
+  badges: { alignItems: 'flex-end', gap: 6, marginLeft: 8 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dot: { width: 3, height: 3, borderRadius: 1.5 },
 });

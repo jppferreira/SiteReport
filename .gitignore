@@ -31,7 +31,12 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+
+# Whisper model binary (~75MB) — download via `npm run voice:model`
+assets/whisper/*.bin
+assets/whisper/*.partial
 
 # typescript
 *.tsbuildinfo

@@ -16,6 +16,12 @@ type BottomSheetProps = {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  /** Drag-to-dismiss stays on the handle so a form inside can scroll and type. */
+  dragHandleOnly?: boolean;
+  /** Caps the sheet so long content can scroll inside it. */
+  maxHeight?: number;
+  /** Lifts the sheet by this many pixels, used when the keyboard is open. */
+  bottomOffset?: number;
 };
 
 const OPEN_MS = 240;
@@ -26,7 +32,7 @@ const DISMISS_Y = 80;
  * Bottom sheet with RN Animated only — no Reanimated / Worklets.
  * Avoids "Tried to synchronously call a remote function" on Expo Go.
  */
-export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
+export function BottomSheet({ visible, onClose, children, dragHandleOnly = false, maxHeight, bottomOffset = 0 }: BottomSheetProps) {
   const { colors, radius, spacing, shadows } = useTheme();
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
@@ -121,13 +127,22 @@ export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
               paddingBottom: insets.bottom + spacing.lg,
               paddingTop: spacing.sm,
               paddingHorizontal: spacing.lg,
+              maxHeight,
+              marginBottom: bottomOffset,
               transform: [{ translateY }],
             },
             shadows.overlay,
           ]}
-          {...panResponder.panHandlers}
+          {...(dragHandleOnly ? {} : panResponder.panHandlers)}
         >
-          <View style={[styles.handle, { backgroundColor: colors.border }]} />
+          <View
+            {...(dragHandleOnly ? panResponder.panHandlers : {})}
+            accessibilityRole="adjustable"
+            accessibilityLabel={t('common.close')}
+            style={styles.handleHit}
+          >
+            <View style={[styles.handle, { backgroundColor: colors.border }]} />
+          </View>
           {children}
         </Animated.View>
       </View>
@@ -143,11 +158,15 @@ const styles = StyleSheet.create({
   sheet: {
     width: '100%',
   },
+  handleHit: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    paddingTop: 6,
+    paddingBottom: 10,
+  },
   handle: {
     width: 36,
     height: 4,
     borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 16,
   },
 });

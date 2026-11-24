@@ -3,14 +3,23 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import {
   BusinessProfile,
   Job,
+  JobChecklist,
   Photo,
   PhotoArea,
   Report,
+  ReportEvent,
   Signature,
   WorkSummary,
+  coerceBusinessProfileFields,
+  coercePhotoAnnotations,
   isReportTemplateId,
+  normalizeChecklistTemplateId,
+  normalizeDocumentType,
+  normalizeReportEventKind,
   normalizeReportImageMask,
+  normalizeReportStatus,
   normalizeReportTemplateId,
+  parseChecklistItems,
   parsePricing,
 } from '@/models';
 
@@ -38,6 +47,8 @@ export type BackupManifest = {
   summaries: WorkSummary[];
   signatures: Signature[];
   reports: Report[];
+  checklists: JobChecklist[];
+  events: ReportEvent[];
   businessProfile: BusinessProfile | null;
 };
 
@@ -185,8 +196,22 @@ function parseManifest(value: unknown): BackupManifest | null {
   const summaries = parseSummaries(record.summaries, jobIds);
   const signatures = parseSignatures(record.signatures, jobIds);
   const reports = parseReports(record.reports, jobIds);
+  const checklists = parseChecklists(record.checklists, jobIds);
+  const reportIds = new Set((reports ?? []).map((report) => report.id));
+  const events = parseEvents(record.events, jobIds, reportIds);
   const businessProfile = parseProfile(record.businessProfile);
-  if (!photos || !areas || !summaries || !signatures || !reports || businessProfile === undefined) return null;
+  if (
+    !photos ||
+    !areas ||
+    !summaries ||
+    !signatures ||
+    !reports ||
+    !checklists ||
+    !events ||
+    businessProfile === undefined
+  ) {
+    return null;
+  }
 
   return {
     format: BACKUP_FORMAT,
@@ -199,6 +224,8 @@ function parseManifest(value: unknown): BackupManifest | null {
     summaries,
     signatures,
     reports,
+    checklists,
+    events,
     businessProfile,
   };
 }
@@ -235,7 +262,7 @@ function parsePhotos(value: unknown, jobIds: Set<string>): Photo[] | null {
     if (!item || typeof item !== 'object') return null;
     const row = item as Record<string, unknown>;
     if (typeof row.id !== 'string' || typeof row.jobId !== 'string' || !jobIds.has(row.jobId)) return null;
-    if (row.type !== 'before' && row.type !== 'after') return null;
+    if (row.type !== 'before' && row.type !== 'during' && row.type !== 'after') return null;
     if (typeof row.localUri !== 'string' || !isSafeRelativePath(row.localUri)) return null;
     if (typeof row.thumbnailUri !== 'string' || !isSafeRelativePath(row.thumbnailUri)) return null;
     photos.push({
@@ -250,6 +277,7 @@ function parsePhotos(value: unknown, jobIds: Set<string>): Photo[] | null {
       width: typeof row.width === 'number' ? row.width : 0,
       height: typeof row.height === 'number' ? row.height : 0,
       takenAt: textOrNull(row.takenAt),
+      annotations: coercePhotoAnnotations(row.annotations),
       createdAt: typeof row.createdAt === 'string' ? row.createdAt : '',
     });
   }
@@ -289,6 +317,8 @@ function parseSummaries(value: unknown, jobIds: Set<string>): WorkSummary[] | nu
       recommendations: textOrNull(row.recommendations),
       notes: textOrNull(row.notes),
       pricing: parsePricing(row.pricing),
+      documentType: normalizeDocumentType(row.documentType),
+      invoiceNumber: textOrNull(row.invoiceNumber),
       updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : '',
     });
   }
@@ -335,9 +365,60 @@ function parseReports(value: unknown, jobIds: Set<string>): Report[] | null {
       version: typeof row.version === 'number' ? row.version : 1,
       sourceHash: row.sourceHash,
       templateId,
+      status: normalizeReportStatus(row.status),
     });
   }
   return reports;
+}
+
+/** Older backups omit checklists; treat missing as empty. */
+function parseChecklists(value: unknown, jobIds: Set<string>): JobChecklist[] | null {
+  if (value == null) return [];
+  if (!Array.isArray(value)) return null;
+  const checklists: JobChecklist[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== 'object') return null;
+    const row = item as Record<string, unknown>;
+    if (typeof row.jobId !== 'string' || !jobIds.has(row.jobId)) return null;
+    if (typeof row.itemsJson !== 'string' && !Array.isArray(row.items)) return null;
+    const items =
+      typeof row.itemsJson === 'string'
+        ? parseChecklistItems(row.itemsJson)
+        : parseChecklistItems(JSON.stringify(row.items));
+    checklists.push({
+      jobId: row.jobId,
+      templateId: normalizeChecklistTemplateId(row.templateId),
+      includeInPdf: Boolean(row.includeInPdf),
+      items,
+      updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : '',
+    });
+  }
+  return checklists;
+}
+
+/** Older backups omit events; treat missing as empty. */
+function parseEvents(value: unknown, jobIds: Set<string>, reportIds: Set<string>): ReportEvent[] | null {
+  if (value == null) return [];
+  if (!Array.isArray(value)) return null;
+  const events: ReportEvent[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== 'object') return null;
+    const row = item as Record<string, unknown>;
+    if (typeof row.id !== 'string' || typeof row.reportId !== 'string' || typeof row.jobId !== 'string') return null;
+    if (!jobIds.has(row.jobId)) return null;
+    if (reportIds.size > 0 && !reportIds.has(row.reportId)) return null;
+    if (typeof row.label !== 'string') return null;
+    events.push({
+      id: row.id,
+      reportId: row.reportId,
+      jobId: row.jobId,
+      kind: normalizeReportEventKind(row.kind),
+      label: row.label,
+      recipient: textOrNull(row.recipient),
+      createdAt: typeof row.createdAt === 'string' ? row.createdAt : '',
+    });
+  }
+  return events;
 }
 
 function parseProfile(value: unknown): BusinessProfile | null | undefined {
@@ -363,6 +444,7 @@ function parseProfile(value: unknown): BusinessProfile | null | undefined {
     vatNumber: textOrNull(row.vatNumber),
     accentColor: textOrNull(row.accentColor),
     footerMessage: textOrNull(row.footerMessage),
+    ...coerceBusinessProfileFields(row),
     updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : '',
   };
 }

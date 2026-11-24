@@ -4,9 +4,11 @@ import { Platform } from 'react-native';
 
 import {
   businessProfileRepository,
+  jobChecklistsRepository,
   jobsRepository,
   photoAreasRepository,
   photosRepository,
+  reportEventsRepository,
   reportsRepository,
   signatureRepository,
   workSummaryRepository,
@@ -19,8 +21,13 @@ import { shareFile } from '@/services/shareService';
 import { logger } from '@/utils/logger';
 
 import { BackupManifest, packArchive, restoreIfValid, sha256Hex } from './archive';
-import { toBackupPath } from './paths';
+import { assertGoogleDriveReady, saveZipToGoogleDrive } from './googleDrive';
+import { assertIcloudReady, saveZipToIcloudDrive } from './icloudDrive';
+import { orphanBackupPath, toBackupPath } from './paths';
+import { backupTransport, fileNameFromPath, userFacingBackupError } from './saveTarget';
 import { t } from '@/i18n';
+
+export { userFacingBackupError };
 
 export type BackupDestination = 'icloud' | 'google-drive' | 'manual';
 
@@ -51,19 +58,35 @@ export async function createBackupFile(): Promise<string> {
 }
 
 /**
- * Saves the zip through the system file picker. iCloud Drive and Google Drive
- * are locations in that picker. This app does not sign in to either.
+ * iPhone "Save to iCloud Drive" copies the zip into this app's iCloud Drive folder.
+ * Android "Save to Google Drive" opens Google Drive's save screen.
+ * "Save a copy" still uses the system folder picker. This app does not sign in to either.
  */
 export async function saveBackup(destination: BackupDestination): Promise<'saved' | 'cancelled'> {
+  const transport = backupTransport(Platform.OS, destination);
+  if (transport === 'icloud') assertIcloudReady();
+  if (transport === 'google-drive') assertGoogleDriveReady();
+
   const path = await createBackupFile();
+  const fileName = fileNameFromPath(path, backupFileName());
   try {
-    if (Platform.OS === 'web') {
-      const shared = await shareFile(path, backupFileName());
+    if (transport === 'web') {
+      const shared = await shareFile(path, fileName);
       if (!shared) throw new Error(t('backup.sharingUnavailable'));
       return 'saved';
     }
+    if (transport === 'icloud') {
+      await saveZipToIcloudDrive(path, fileName);
+      logger.debug('Backup saved', { destination });
+      return 'saved';
+    }
+    if (transport === 'google-drive') {
+      const saved = await saveZipToGoogleDrive(path, fileName);
+      if (saved === 'saved') logger.debug('Backup saved', { destination });
+      return saved;
+    }
     const directory = await Directory.pickDirectoryAsync();
-    const destinationFile = directory.createFile(backupFileName(), 'application/zip');
+    const destinationFile = directory.createFile(fileName, 'application/zip');
     const bytes = await readBytes(path);
     if (!bytes) throw new Error(t('backup.couldNotReadFile'));
     destinationFile.write(bytes);
@@ -79,7 +102,9 @@ export async function saveBackup(destination: BackupDestination): Promise<'saved
 
 export async function restoreBackupFromPicker(): Promise<RestoreOutcome> {
   try {
-    const picked = await File.pickFileAsync({ mimeTypes: ['application/zip', 'application/octet-stream'] });
+    const picked = await File.pickFileAsync({
+      mimeTypes: ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'],
+    });
     if (picked.canceled || !picked.result) return { ok: false, cancelled: true };
     const bytes = await picked.result.bytes();
     return restoreBackupBytes(bytes);
@@ -135,23 +160,35 @@ async function buildBackup(): Promise<Uint8Array> {
   const summaries = [];
   const signatures = [];
   const reports = [];
+  const checklists = [];
+  const events = await reportEventsRepository.listAllEvents();
   const uriByPath = new Map<string, string>();
 
   const claim = (uri: string | null | undefined): string | null => {
     if (!uri) return null;
-    const relative = toBackupPath(uri);
+    // Expo Go often percent-encodes sitereport/. Older print files can sit in
+    // the host cache. Prefer the real sitereport path; otherwise recover.
+    const relative = toBackupPath(uri) ?? orphanBackupPath(uri);
     if (!relative) throw new Error(t('backup.jobFileOutsideAppFolder'));
+    const existing = uriByPath.get(relative);
+    if (existing && existing !== uri) {
+      const unique = orphanBackupPath(`${uri}#${uriByPath.size}`);
+      if (!unique) throw new Error(t('backup.jobFileOutsideAppFolder'));
+      uriByPath.set(unique, uri);
+      return unique;
+    }
     uriByPath.set(relative, uri);
     return relative;
   };
 
   for (const job of jobs) {
-    const [jobPhotos, jobAreas, summary, signature, jobReports] = await Promise.all([
+    const [jobPhotos, jobAreas, summary, signature, jobReports, checklist] = await Promise.all([
       photosRepository.listPhotos(job.id),
       photoAreasRepository.listAreas(job.id),
       workSummaryRepository.getWorkSummary(job.id),
       signatureRepository.getSignature(job.id),
       reportsRepository.listReportsForJob(job.id),
+      jobChecklistsRepository.getChecklist(job.id),
     ]);
     for (const photo of jobPhotos) {
       const localUri = claim(photo.localUri);
@@ -171,6 +208,7 @@ async function buildBackup(): Promise<Uint8Array> {
       if (!localPdfUri) throw new Error(t('backup.reportCouldNotBeAdded'));
       reports.push({ ...report, localPdfUri });
     }
+    if (checklist) checklists.push(checklist);
   }
 
   const business = relativizeProfile(await businessProfileRepository.getBusinessProfile(), claim);
@@ -196,6 +234,8 @@ async function buildBackup(): Promise<Uint8Array> {
     summaries,
     signatures,
     reports,
+    checklists,
+    events,
     businessProfile: business,
   };
   return packArchive(manifest, files);

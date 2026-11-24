@@ -5,7 +5,11 @@ import {
   DEFAULT_COVER_DESIGN,
   DEFAULT_REPORT_TEMPLATE,
   normalizeCoverDesignId,
+  normalizePhotoAnnotationLayout,
+  normalizePhotoBrowseLayout,
   normalizeReportTemplateId,
+  PhotoAnnotationLayout,
+  PhotoBrowseLayout,
   ReportTemplateId,
 } from '@/models';
 
@@ -14,16 +18,40 @@ const PREFERENCES_KEY = 'sitereport.preferences';
 
 export type PhotoQuality = 'standard' | 'high';
 
+/** AR tape-measure display unit. */
+export type MeasureUnit = 'm' | 'cm' | 'mm' | 'ftIn';
+
+/** Accepts the old 'metric' / 'imperial' values too. */
+export function normalizeMeasureUnit(value: unknown): MeasureUnit {
+  if (value === 'm' || value === 'cm' || value === 'mm' || value === 'ftIn') return value;
+  if (value === 'imperial') return 'ftIn';
+  return 'm';
+}
+
 export type AppPreferences = {
   defaultPhotoQuality: PhotoQuality;
   includeSignatureByDefault: boolean;
   reportTemplate: ReportTemplateId;
   coverDesign: CoverDesignId;
+  /** Annotated photo cards: stacked full width, or image beside the note cards. */
+  photoAnnotationLayout: PhotoAnnotationLayout;
+  /** Section photo list: full-width cards with notes, or compact thumbnails. */
+  photoBrowseLayout: PhotoBrowseLayout;
+  /** When on and a review URL is set, the PDF ends with a review card. */
+  includeReviewLink: boolean;
   /** Copies the backup zip into iCloud Drive on iPhone. On until the user turns it off. */
   icloudAutoBackup: boolean;
   /** The one-time note about where that zip lives in the Files app. */
   icloudBackupTipSeen: boolean;
   lastIcloudBackupAt: string | null;
+  /** Overlay date & time on photos (Figma Field Proof · 06). */
+  stampDateTime: boolean;
+  /** Overlay job postcode / address on photos. */
+  stampAddress: boolean;
+  /** Print the evidence stamp under each photo on the PDF. */
+  stampShowOnPdf: boolean;
+  /** Unit for AR Measure lengths (areas follow: m² or ft²). */
+  measureUnit: MeasureUnit;
 };
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -31,9 +59,16 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   includeSignatureByDefault: true,
   reportTemplate: DEFAULT_REPORT_TEMPLATE,
   coverDesign: DEFAULT_COVER_DESIGN,
+  photoAnnotationLayout: 'fullWidth',
+  photoBrowseLayout: 'fullWidth',
+  includeReviewLink: true,
   icloudAutoBackup: true,
   icloudBackupTipSeen: false,
   lastIcloudBackupAt: null,
+  stampDateTime: true,
+  stampAddress: true,
+  stampShowOnPdf: true,
+  measureUnit: 'm',
 };
 
 export async function hasCompletedOnboarding(): Promise<boolean> {
@@ -56,9 +91,16 @@ export async function getPreferences(): Promise<AppPreferences> {
     const parsed = { ...DEFAULT_PREFERENCES, ...JSON.parse(raw) } as AppPreferences;
     parsed.reportTemplate = normalizeReportTemplateId(parsed.reportTemplate);
     parsed.coverDesign = normalizeCoverDesignId(parsed.coverDesign);
+    parsed.photoAnnotationLayout = normalizePhotoAnnotationLayout(parsed.photoAnnotationLayout);
+    parsed.photoBrowseLayout = normalizePhotoBrowseLayout(parsed.photoBrowseLayout);
+    if (typeof parsed.includeReviewLink !== 'boolean') parsed.includeReviewLink = true;
     if (typeof parsed.icloudAutoBackup !== 'boolean') parsed.icloudAutoBackup = true;
     if (typeof parsed.icloudBackupTipSeen !== 'boolean') parsed.icloudBackupTipSeen = false;
     if (typeof parsed.lastIcloudBackupAt !== 'string') parsed.lastIcloudBackupAt = null;
+    if (typeof parsed.stampDateTime !== 'boolean') parsed.stampDateTime = true;
+    if (typeof parsed.stampAddress !== 'boolean') parsed.stampAddress = true;
+    if (typeof parsed.stampShowOnPdf !== 'boolean') parsed.stampShowOnPdf = true;
+    parsed.measureUnit = normalizeMeasureUnit(parsed.measureUnit);
     return parsed;
   } catch {
     return DEFAULT_PREFERENCES;

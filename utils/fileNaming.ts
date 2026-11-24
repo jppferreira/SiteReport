@@ -1,6 +1,12 @@
 /** Produces a filesystem-safe, PDF-friendly file name from job metadata. */
-export function buildReportFileName(jobTitle: string, customerName: string | null, isoDate: string): string {
-  const parts = [jobTitle, customerName ?? ''].filter(Boolean).join('-');
+export function buildReportFileName(
+  jobTitle: string,
+  customerName: string | null,
+  isoDate: string,
+  documentType: 'reference' | 'quote' | 'invoice' = 'reference'
+): string {
+  const typePrefix = documentType === 'quote' ? 'Quote-' : documentType === 'invoice' ? 'Invoice-' : '';
+  const parts = [typePrefix + jobTitle, customerName ?? ''].filter(Boolean).join('-');
   const safe = sanitizeForFileName(parts);
   const datePart = isoDate.slice(0, 10);
   return `${safe}-${datePart}.pdf`;

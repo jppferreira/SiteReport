@@ -77,6 +77,7 @@ export function buildLayoutExampleHtml(template: ReportTemplateId, branding: Lay
         height: 600,
       },
     ],
+    during: [],
     after: [
       {
         id: 'example-after-1',
