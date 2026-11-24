@@ -8,6 +8,7 @@ import { jobsRepository } from '@/database';
 import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
 import { todayIsoDate } from '@/utils/format';
+import { goBack } from '@/utils/goBack';
 import { validateJobTitle } from '@/utils/validation';
 
 export default function NewJobScreen() {
@@ -49,7 +50,7 @@ export default function NewJobScreen() {
     <Screen>
       <NavigationHeader
         title={t('newJob.title')}
-        left={<TextButton label={t('newJob.cancel')} align="left" onPress={() => router.back()} />}
+        left={<TextButton label={t('newJob.cancel')} align="left" onPress={() => goBack('/(tabs)/jobs')} />}
         right={<TextButton label={t('newJob.save')} tone="accent" onPress={handleCreate} />}
       />
       <KeyboardAvoidingView

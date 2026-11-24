@@ -167,6 +167,13 @@ export default function JobOverviewScreen() {
             onPress={() => router.push(`/job/${job.id}/photos`)}
           />
           <JobSectionRow
+            title={t('jobDetail.sectionMeasure')}
+            subtitle={t('jobDetail.sectionMeasureSubtitle')}
+            status="not_started"
+            showDivider
+            onPress={() => router.push(`/job/${job.id}/measure`)}
+          />
+          <JobSectionRow
             title={t('jobDetail.sectionChecklist')}
             subtitle={t('jobDetail.sectionChecklistSubtitle')}
             status={checklistStatus}

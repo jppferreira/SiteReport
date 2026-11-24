@@ -51,6 +51,23 @@ export default function PreferencesScreen() {
           </Text>
         </View>
 
+        <View>
+          <Text variant="label" color={colors.textSecondary} style={{ marginBottom: spacing.sm }}>
+            {t('preferences.measureUnits')}
+          </Text>
+          <SegmentedControl
+            segments={[
+              { key: 'metric', label: t('preferences.measureMetric') },
+              { key: 'imperial', label: t('preferences.measureImperial') },
+            ]}
+            value={preferences.measureUnit === 'ftIn' ? 'imperial' : 'metric'}
+            onChange={(key) => update({ measureUnit: key === 'imperial' ? 'ftIn' : 'm' })}
+          />
+          <Text variant="caption" color={colors.textSecondary} style={{ marginTop: spacing.sm }}>
+            {t('preferences.measureUnitsHint')}
+          </Text>
+        </View>
+
         <ToggleRow
           label={t('preferences.includeSignature')}
           description={t('preferences.includeSignatureDescription')}

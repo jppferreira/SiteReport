@@ -1,4 +1,10 @@
-import { COVER_DESIGN_IDS, imageMaskClipPath, normalizeReportTemplateId, ReportTemplateId } from '@/models';
+import {
+  COVER_DESIGN_IDS,
+  imageMaskClipPath,
+  normalizeReportTemplateId,
+  PREMIUM_TRADE_TEMPLATE_IDS,
+  ReportTemplateId,
+} from '@/models';
 import { DEFAULT_COVER_SCENE, DEFAULT_THANKS_SCENE } from './defaultScenes';
 import { buildReportHtml, buildReportPreviewHtml, prepareAndroidPrintHtml } from './reportHtml';
 import { ReportHtmlInput } from './types';
@@ -120,7 +126,16 @@ describe('buildReportHtml', () => {
   });
 
   it('includes every before and after photo on each layout', () => {
-    const templates: ReportTemplateId[] = ['trade', 'modern', 'image', 'side', 'cards', 'minimal', 'dark'];
+    const templates: ReportTemplateId[] = [
+      'trade',
+      'modern',
+      'image',
+      'side',
+      'cards',
+      'minimal',
+      'dark',
+      ...PREMIUM_TRADE_TEMPLATE_IDS,
+    ];
     for (const template of templates) {
       const html = buildReportHtml(withManyPhotos(template));
       expect(html).toContain(`data-template="${template}"`);
@@ -219,7 +234,16 @@ describe('buildReportHtml', () => {
       customerName: 'Ada',
       signedAt: '2026-10-04T09:00:00.000Z',
     };
-    const templates: ReportTemplateId[] = ['trade', 'modern', 'image', 'side', 'cards', 'minimal', 'dark'];
+    const templates: ReportTemplateId[] = [
+      'trade',
+      'modern',
+      'image',
+      'side',
+      'cards',
+      'minimal',
+      'dark',
+      ...PREMIUM_TRADE_TEMPLATE_IDS,
+    ];
     for (const template of templates) {
       const html = buildReportHtml(sample(template, { pricing, signature }));
       const body = html.split('</style>').pop() ?? html;
@@ -235,6 +259,20 @@ describe('buildReportHtml', () => {
     expect(hidden).not.toContain('class="block section-pricing"');
     expect(hidden).not.toContain('Wall tiles');
     expect(hidden).not.toContain('£600.50');
+  });
+
+  it('renders premium trade layouts with their own cover and interior pages', () => {
+    for (const template of PREMIUM_TRADE_TEMPLATE_IDS) {
+      const html = buildReportHtml(sample(template));
+      expect(html).toContain(`data-template="${template}"`);
+      expect(html).toContain('data-tier="pro"');
+      expect(html).toContain('sheet-cover premium-cover');
+      expect(html).toContain('sheet-body premium-page');
+      expect(html).toContain('fonts.googleapis.com');
+      expect(html).not.toContain('class="sheet-close"');
+      expect(html).not.toContain('Trade report');
+      expect(html.indexOf('sheet-cover')).toBeLessThan(html.indexOf('premium-page'));
+    }
   });
 
   it('maps older layout ids onto the current set', () => {
@@ -646,5 +684,46 @@ describe('buildReportHtml', () => {
     expect(invoice).toContain('INV-0142');
     expect(invoice).toContain('Invoice details');
     expect(invoice).toContain('20-45-77');
+  });
+
+  it('omits the cover page when the cover section is off', () => {
+    const withCover = buildReportHtml(sample('trade'));
+    const withoutCover = buildReportHtml(
+      sample('trade', {
+        reportSections: {
+          cover: false,
+          photos: true,
+          checklist: true,
+          costs: true,
+          signature: true,
+          review: true,
+        },
+      })
+    );
+    expect(withCover).toContain('class="sheet-cover"');
+    expect(withoutCover).not.toContain('class="sheet-cover"');
+    expect(withoutCover).toContain('data-template="trade"');
+  });
+
+  it('orders modular modern blocks from reportSectionOrder', () => {
+    const html = buildReportHtml(
+      sample('modern', {
+        checklist: [{ label: 'Valve checked', checked: true }],
+        signature: {
+          svgMarkup: '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+          customerName: 'Alex',
+          signedAt: '2026-10-04T12:00:00.000Z',
+        },
+        reportSectionOrder: ['signature', 'photos', 'checklist', 'costs', 'review', 'cover'],
+      })
+    );
+    const signatureAt = html.indexOf('section-signature');
+    const photosAt = html.indexOf('section-before');
+    const checklistAt = html.indexOf('section-checklist');
+    expect(signatureAt).toBeGreaterThan(-1);
+    expect(photosAt).toBeGreaterThan(-1);
+    expect(checklistAt).toBeGreaterThan(-1);
+    expect(signatureAt).toBeLessThan(photosAt);
+    expect(photosAt).toBeLessThan(checklistAt);
   });
 });

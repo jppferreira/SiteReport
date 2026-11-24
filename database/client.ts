@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-import * as SQLite from 'expo-sqlite';
+import type { SQLiteBindParams, SQLiteDatabase } from 'expo-sqlite';
 
 import { logger } from '@/utils/logger';
 
@@ -14,18 +14,40 @@ import { readDatabaseSnapshot, writeDatabaseSnapshot } from './webSnapshot';
 const DATABASE_NAME = Platform.OS === 'web' ? ':memory:' : 'sitereport.db';
 const CURRENT_SCHEMA_VERSION = 13;
 
-let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
+type SQLiteModule = typeof import('expo-sqlite');
+
+let sqliteModule: SQLiteModule | null = null;
+let dbPromise: Promise<SQLiteDatabase> | null = null;
 let snapshotTimer: ReturnType<typeof setTimeout> | null = null;
-let snapshotDb: SQLite.SQLiteDatabase | null = null;
+let snapshotDb: SQLiteDatabase | null = null;
 let lifecycleInstalled = false;
 
-async function enableForeignKeys(db: SQLite.SQLiteDatabase) {
+/**
+ * Load expo-sqlite at call time, not import time. A top-level import throws
+ * "Cannot find native module 'ExpoSQLite'" in Expo Go when the client SDK
+ * doesn't match (SDK 58 Expo Go is still rolling out) and then every route
+ * looks like a missing default export.
+ */
+async function loadSQLite(): Promise<SQLiteModule> {
+  if (sqliteModule) return sqliteModule;
+  try {
+    sqliteModule = await import('expo-sqlite');
+    return sqliteModule;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `ExpoSQLite is unavailable (${detail}). Open the Trade Report development build (npx expo run:ios / run:android), not Expo Go.`
+    );
+  }
+}
+
+async function enableForeignKeys(db: SQLiteDatabase) {
   // SQLite leaves foreign keys off unless each connection turns them on.
   // The pragma is ignored inside a transaction, so it runs on its own.
   await db.execAsync('PRAGMA foreign_keys = ON');
 }
 
-async function migrate(db: SQLite.SQLiteDatabase) {
+async function migrate(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   let version = row?.user_version ?? 0;
 
@@ -277,7 +299,7 @@ async function migrate(db: SQLite.SQLiteDatabase) {
   logger.debug('Database schema ready', { version: CURRENT_SCHEMA_VERSION });
 }
 
-function queueWebSnapshot(db: SQLite.SQLiteDatabase) {
+function queueWebSnapshot(db: SQLiteDatabase) {
   if (Platform.OS !== 'web') return;
   snapshotDb = db;
   if (snapshotTimer) clearTimeout(snapshotTimer);
@@ -286,14 +308,14 @@ function queueWebSnapshot(db: SQLite.SQLiteDatabase) {
   }, 200);
 }
 
-function trackWrites(db: SQLite.SQLiteDatabase): SQLite.SQLiteDatabase {
+function trackWrites(db: SQLiteDatabase): SQLiteDatabase {
   if (Platform.OS !== 'web') return db;
 
   const run = db.runAsync.bind(db);
   const exec = db.execAsync.bind(db);
   const transaction = db.withTransactionAsync.bind(db);
 
-  db.runAsync = (async (source: string, params?: SQLite.SQLiteBindParams) => {
+  db.runAsync = (async (source: string, params?: SQLiteBindParams) => {
     const result = params === undefined ? await run(source) : await run(source, params);
     queueWebSnapshot(db);
     return result;
@@ -339,7 +361,9 @@ export async function flushWebDatabase(): Promise<void> {
   }
 }
 
-async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
+async function openDatabase(): Promise<SQLiteDatabase> {
+  const SQLite = await loadSQLite();
+
   if (Platform.OS !== 'web') {
     const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
     await enableForeignKeys(db);
@@ -348,7 +372,7 @@ async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
   }
 
   installSnapshotLifecycle();
-  let db: SQLite.SQLiteDatabase;
+  let db: SQLiteDatabase;
   try {
     const snapshot = await readDatabaseSnapshot();
     db = snapshot && snapshot.byteLength > 0
@@ -365,7 +389,7 @@ async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
   return tracked;
 }
 
-export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
+export async function getDatabase(): Promise<SQLiteDatabase> {
   if (!dbPromise) {
     dbPromise = openDatabase().catch((error) => {
       dbPromise = null;

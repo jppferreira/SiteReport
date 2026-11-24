@@ -12,5 +12,6 @@ export * from './businessProfile';
 export * from './coverDesign';
 export * from './reportImageMask';
 export * from './report';
+export * from './reportSections';
 export * from './reportEvent';
 export * from './entitlement';

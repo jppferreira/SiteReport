@@ -1,98 +1,268 @@
-import React from 'react';
-import Svg, { Defs, Ellipse, G, Line, LinearGradient, Path, RadialGradient, Rect, Stop, Text as SvgText } from 'react-native-svg';
+import React, { useId } from 'react';
+import { Image, StyleSheet, Text, View } from 'react-native';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
-/** Aluminium box level for either long edge and for the short-edge plumb modes. */
-export function BoxLevelVial({ width, angleDeg, isLevel }: { width: number; angleDeg: number; isLevel: boolean }) {
-  const height = width * 0.185;
-  const h = height;
-  const w = width;
-  const cx = w * 0.49;
-  const cy = h * 0.48;
-  const vialW = w * 0.31;
-  const vialH = h * 0.4;
-  const bubbleW = vialW * 0.23;
-  const bubbleX = cx + Math.max(-1, Math.min(1, angleDeg / 15)) * (vialW - bubbleW - 12) / 2;
-  const marks = Array.from({ length: 100 }, (_, i) => i);
+import { boxAssets } from '@/assets/levelTool';
+
+/** Aluminium box level built from Figma AR Level Redesign assets + gradients. */
+export function BoxLevelVial({
+  width,
+  angleDeg,
+  isLevel,
+}: {
+  width: number;
+  angleDeg: number;
+  isLevel: boolean;
+}) {
+  const uid = useId().replace(/:/g, '');
+  const DESIGN_W = 700;
+  const DESIGN_H = 128;
+  const scale = width / DESIGN_W;
+  const height = DESIGN_H * scale;
+  const clamped = Math.max(-1, Math.min(1, angleDeg / 15));
+  const bubbleX = -clamped * 62 * scale;
+  const vialLeft = 230 * scale;
+  const vialTop = 41 * scale;
+  const vialW = 240 * scale;
+  const vialH = 46 * scale;
+  const bubbleW = 54 * scale;
+  const bubbleH = 28 * scale;
+  const bodyId = `boxBody_${uid}`;
+  const vialId = `boxVial_${uid}`;
 
   return (
-    <Svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <Defs>
-        <LinearGradient id="box-metal" x1="0%" y1="0%" x2="0%" y2="100%">
-          <Stop offset="0%" stopColor="#F5F7F6" />
-          <Stop offset="10%" stopColor="#8B9290" />
-          <Stop offset="25%" stopColor="#D6DAD8" />
-          <Stop offset="50%" stopColor="#B4BAB7" />
-          <Stop offset="74%" stopColor="#ECEEED" />
-          <Stop offset="90%" stopColor="#818885" />
-          <Stop offset="100%" stopColor="#D7DBD9" />
-        </LinearGradient>
-        <LinearGradient id="box-cap" x1="0%" y1="0%" x2="100%" y2="0%">
-          <Stop offset="0%" stopColor="#111512" />
-          <Stop offset="45%" stopColor="#333934" />
-          <Stop offset="100%" stopColor="#0B0E0B" />
-        </LinearGradient>
-        <LinearGradient id="box-recess" x1="0%" y1="0%" x2="0%" y2="100%">
-          <Stop offset="0%" stopColor="#3F4741" />
-          <Stop offset="18%" stopColor="#959D8D" />
-          <Stop offset="100%" stopColor="#DCE0C6" />
-        </LinearGradient>
-        <LinearGradient id="box-fluid" x1="0%" y1="0%" x2="0%" y2="100%">
-          <Stop offset="0%" stopColor="#F0F7B2" />
-          <Stop offset="30%" stopColor="#D5E83D" />
-          <Stop offset="70%" stopColor="#BAD026" />
-          <Stop offset="100%" stopColor="#839A20" />
-        </LinearGradient>
-        <RadialGradient id="box-bubble" cx="35%" cy="28%" r="70%">
-          <Stop offset="0%" stopColor="#FFFFFF" />
-          <Stop offset="50%" stopColor="#F6F9DC" />
-          <Stop offset="100%" stopColor="#A3B368" />
-        </RadialGradient>
-        <LinearGradient id="box-hole" x1="0%" y1="0%" x2="0%" y2="100%">
-          <Stop offset="0%" stopColor="#0B0F0C" />
-          <Stop offset="100%" stopColor="#6A716B" />
-        </LinearGradient>
-      </Defs>
-      <Rect x={4} y={3} width={w - 8} height={h - 6} rx={h * 0.08} fill="url(#box-metal)" stroke="#707972" strokeWidth={1.3} />
-      {/* Fine horizontal brush strokes */}
-      {Array.from({ length: 40 }, (_, i) => (
-        <Line key={i} x1={8} x2={w - 8} y1={4 + i * (h - 8) / 40} y2={4 + i * (h - 8) / 40} stroke={i % 2 ? '#FFFFFF' : '#434B45'} strokeOpacity={i % 2 ? 0.18 : 0.1} strokeWidth={0.5} />
-      ))}
-      <Line x1={5} x2={w - 5} y1={h * 0.13} y2={h * 0.13} stroke="#FFFFFF" strokeOpacity={0.6} />
-      <Line x1={5} x2={w - 5} y1={h * 0.85} y2={h * 0.85} stroke="#535D55" strokeOpacity={0.4} />
-      <SvgText x={w * 0.12} y={h * 0.4} fontSize={h * 0.09} fontFamily="Lexend_600SemiBold" letterSpacing={2} fill="#5D6961">TRADE REPORT</SvgText>
-      <SvgText x={w * 0.12} y={h * 0.55} fontSize={h * 0.065} fill="#738076">LEVEL</SvgText>
-
-      {/* Recessed vial window */}
-      <Rect x={cx - vialW * 0.65} y={cy - vialH * 0.9} width={vialW * 1.3} height={vialH * 1.8} rx={vialH * 0.34} fill="url(#box-recess)" stroke="#6A7368" strokeWidth={3} />
-      <Rect x={cx - vialW / 2} y={cy - vialH / 2} width={vialW} height={vialH} rx={vialH / 2} fill="url(#box-fluid)" stroke="#A0AD54" strokeWidth={1.5} />
-      <Ellipse cx={cx} cy={cy - vialH * 0.22} rx={vialW * 0.46} ry={vialH * 0.2} fill="#FFFFFF" opacity={0.18} />
-      {[-0.14, 0.14].map((k) => (
-        <Line key={k} x1={cx + vialW * k} y1={cy - vialH * 0.49} x2={cx + vialW * k} y2={cy + vialH * 0.49} stroke={isLevel ? '#178A3C' : '#30390F'} strokeWidth={2} />
-      ))}
-      {[-0.28, 0.28].map((k) => (
-        <Line key={k} x1={cx + vialW * k} y1={cy - vialH * 0.43} x2={cx + vialW * k} y2={cy + vialH * 0.43} stroke="#30390F" strokeWidth={0.6} strokeOpacity={0.6} />
-      ))}
-      <Ellipse cx={bubbleX + 1.5} cy={cy + 2} rx={bubbleW / 2} ry={vialH * 0.32} fill="#45521C" opacity={0.3} />
-      <Ellipse cx={bubbleX} cy={cy} rx={bubbleW / 2} ry={vialH * 0.32} fill="url(#box-bubble)" stroke="#61752E" strokeWidth={0.8} />
-      <Ellipse cx={bubbleX - bubbleW * 0.13} cy={cy - vialH * 0.12} rx={bubbleW * 0.27} ry={vialH * 0.09} fill="#FFFFFF" opacity={0.95} />
-
-      {/* Carry handle, milled into the aluminium */}
-      <Rect x={w * 0.76} y={h * 0.27} width={w * 0.145} height={h * 0.4} rx={h * 0.2} fill="url(#box-hole)" />
-      {/* Engraved mm scale */}
-      {marks.map((n) => {
-        const x = w * 0.1 + n * w * 0.008;
-        const y = h * (n % 10 === 0 ? 0.79 : n % 5 === 0 ? 0.82 : 0.85);
-        return <Line key={n} x1={x} y1={y} x2={x} y2={h * 0.91} stroke="#515C53" strokeWidth={0.55} />;
-      })}
-      {/* Rubber end caps */}
-      {[0, w - w * 0.06].map((x) => (
-        <G key={x}>
-          <Rect x={x} y={0} width={w * 0.06} height={h} rx={h * 0.1} fill="url(#box-cap)" />
-          {[0.018, 0.032, 0.046].map((dx) => <Line key={dx} x1={x + w * dx} x2={x + w * dx} y1={h * 0.2} y2={h * 0.84} stroke="#080B08" strokeWidth={2} opacity={0.7} />)}
-        </G>
-      ))}
-      <Path d={`M ${w * 0.06} 3 H ${w * 0.94}`} stroke="#FFFFFF" strokeWidth={1} opacity={0.6} />
-      {isLevel ? <Line x1={w * 0.09} x2={w * 0.91} y1={h - 1} y2={h - 1} stroke="#1FA84A" strokeWidth={3} /> : null}
-    </Svg>
+    <View
+      style={{ width, height }}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
+        <Defs>
+          <LinearGradient id={bodyId} x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor="#8F9491" />
+            <Stop offset="0.05" stopColor="#E9ECEA" />
+            <Stop offset="0.13" stopColor="#B7BCB9" />
+            <Stop offset="0.33" stopColor="#D5D9D6" />
+            <Stop offset="0.5" stopColor="#C1C5C2" />
+            <Stop offset="0.64" stopColor="#DCDFD9" />
+            <Stop offset="0.84" stopColor="#ABB0AD" />
+            <Stop offset="0.93" stopColor="#E0E3E1" />
+            <Stop offset="1" stopColor="#767B78" />
+          </LinearGradient>
+        </Defs>
+        <Rect x={0} y={0} width={width} height={height} rx={8 * scale} fill={`url(#${bodyId})`} />
+        <Rect x={0} y={0} width={width} height={5 * scale} rx={8 * scale} fill="#F2F4F3" />
+        <Rect x={0} y={height - 9 * scale} width={width} height={9 * scale} rx={8 * scale} fill="#3A3E3B" />
+      </Svg>
+      <Image
+        source={boxAssets.brushedGrain}
+        style={[styles.abs, { width, height, opacity: 0.45 }]}
+        resizeMode="stretch"
+      />
+      <Text
+        style={[
+          styles.brand,
+          { left: 62 * scale, top: 30 * scale, fontSize: 12 * scale, letterSpacing: 3 * scale },
+        ]}
+      >
+        TRADE REPORT
+      </Text>
+      <Text
+        style={[
+          styles.spec,
+          { left: 62 * scale, top: 50 * scale, fontSize: 9 * scale, letterSpacing: 1 * scale },
+        ]}
+      >
+        ±0.5 mm/m
+      </Text>
+      <Image
+        source={boxAssets.mmScale}
+        style={[
+          styles.abs,
+          { left: 56 * scale, top: 103 * scale, width: 588 * scale, height: 14 * scale },
+        ]}
+        resizeMode="stretch"
+      />
+      <View
+        style={[
+          styles.abs,
+          {
+            left: 528 * scale,
+            top: 34 * scale,
+            width: 118 * scale,
+            height: 52 * scale,
+            borderRadius: 26 * scale,
+            backgroundColor: '#4A4E4B',
+          },
+        ]}
+      />
+      <View
+        style={[
+          styles.abs,
+          {
+            left: 206 * scale,
+            top: 19 * scale,
+            width: 288 * scale,
+            height: 90 * scale,
+            borderRadius: 16 * scale,
+            backgroundColor: '#A8ACA8',
+          },
+        ]}
+      />
+      <View
+        style={[
+          styles.abs,
+          {
+            left: 210 * scale,
+            top: 23 * scale,
+            width: 280 * scale,
+            height: 82 * scale,
+            borderRadius: 13 * scale,
+            backgroundColor: '#D5D8C4',
+          },
+        ]}
+      />
+      <View
+        style={[
+          styles.abs,
+          {
+            left: vialLeft,
+            top: vialTop,
+            width: vialW,
+            height: vialH,
+            borderRadius: 23 * scale,
+            overflow: 'hidden',
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: 'rgba(255,255,255,0.4)',
+          },
+        ]}
+      >
+        <Svg width={vialW} height={vialH} style={StyleSheet.absoluteFill}>
+          <Defs>
+            <LinearGradient id={vialId} x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor={isLevel ? '#B8F0A0' : '#F5FAB0'} />
+              <Stop offset="0.32" stopColor={isLevel ? '#5BC96A' : '#DBEA5C'} />
+              <Stop offset="0.7" stopColor={isLevel ? '#1FA84A' : '#B4C834'} />
+              <Stop offset="1" stopColor={isLevel ? '#0E7A32' : '#7C8F15'} />
+            </LinearGradient>
+          </Defs>
+          <Rect width={vialW} height={vialH} fill={`url(#${vialId})`} />
+        </Svg>
+        <View
+          style={[
+            styles.graduation,
+            { left: 87.7 * scale, top: 2 * scale, width: 2.6 * scale, height: 42 * scale, opacity: 0.9 },
+          ]}
+        />
+        <View
+          style={[
+            styles.graduation,
+            { left: 149.7 * scale, top: 2 * scale, width: 2.6 * scale, height: 42 * scale, opacity: 0.9 },
+          ]}
+        />
+        <View
+          style={[
+            styles.graduation,
+            { left: 63.3 * scale, top: 2 * scale, width: 1.4 * scale, height: 42 * scale, opacity: 0.55 },
+          ]}
+        />
+        <View
+          style={[
+            styles.graduation,
+            { left: 175.3 * scale, top: 2 * scale, width: 1.4 * scale, height: 42 * scale, opacity: 0.55 },
+          ]}
+        />
+        <View
+          style={[
+            styles.bubble,
+            {
+              left: vialW / 2 - bubbleW / 2 + bubbleX,
+              top: (vialH - bubbleH) / 2,
+              width: bubbleW,
+              height: bubbleH,
+              borderRadius: bubbleH / 2,
+            },
+          ]}
+        >
+          <Image
+            source={boxAssets.bubbleHighlight}
+            style={{
+              position: 'absolute',
+              left: 9 * scale,
+              top: 4 * scale,
+              width: 22 * scale,
+              height: 7 * scale,
+            }}
+            resizeMode="contain"
+          />
+        </View>
+      </View>
+      <EndCap scale={scale} left={-26 * scale} height={height} />
+      <EndCap scale={scale} left={682 * scale} height={height} />
+    </View>
   );
 }
+
+function EndCap({ scale, left, height }: { scale: number; left: number; height: number }) {
+  return (
+    <View
+      style={[
+        styles.abs,
+        {
+          left,
+          top: -5 * scale,
+          width: 44 * scale,
+          height: height + 10 * scale,
+          borderRadius: 10 * scale,
+          backgroundColor: '#1A1C1A',
+          overflow: 'hidden',
+        },
+      ]}
+    >
+      {[0, 1, 2].map((i) => (
+        <View
+          key={i}
+          style={[
+            styles.abs,
+            {
+              left: 12 * scale + i * 8 * scale,
+              top: 27 * scale,
+              width: 3 * scale,
+              height: 94 * scale,
+              borderRadius: 1.5 * scale,
+              backgroundColor: 'rgba(0,0,0,0.45)',
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  abs: { position: 'absolute' },
+  brand: {
+    position: 'absolute',
+    color: 'rgba(26,28,26,0.4)',
+    fontFamily: 'Lexend_600SemiBold',
+    fontWeight: '600',
+  },
+  spec: {
+    position: 'absolute',
+    color: 'rgba(26,28,26,0.3)',
+    fontFamily: 'Lexend_500Medium',
+    fontWeight: '500',
+  },
+  graduation: {
+    position: 'absolute',
+    backgroundColor: '#111311',
+    borderRadius: 1,
+  },
+  bubble: {
+    position: 'absolute',
+    backgroundColor: 'rgba(250,255,227,0.92)',
+    borderWidth: 1,
+    borderColor: '#5A6914',
+    overflow: 'hidden',
+  },
+});

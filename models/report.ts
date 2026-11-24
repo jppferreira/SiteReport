@@ -1,4 +1,24 @@
-export const REPORT_TEMPLATE_IDS = ['trade', 'modern', 'image', 'side', 'cards', 'minimal', 'dark'] as const;
+/** Same display order as REPORT_TEMPLATES — nicest layouts first. */
+export const REPORT_TEMPLATE_IDS = [
+  'studio',
+  'stone',
+  'clearline',
+  'atelier',
+  'botanical',
+  'field',
+  'thermal',
+  'blueprint',
+  'circuit',
+  'solaris',
+  'sentinel',
+  'image',
+  'dark',
+  'trade',
+  'side',
+  'modern',
+  'minimal',
+  'cards',
+] as const;
 
 export type ReportTemplateId = (typeof REPORT_TEMPLATE_IDS)[number];
 
@@ -6,6 +26,25 @@ export const DEFAULT_REPORT_TEMPLATE: ReportTemplateId = 'modern';
 
 /** Plain layouts included on the free tier. The other layouts are Pro. */
 export const FREE_REPORT_TEMPLATE_IDS = ['modern', 'minimal', 'cards'] as const;
+
+/** Trade-specific Pro layouts from the Feature Concepts board. Each owns cover + interior. */
+export const PREMIUM_TRADE_TEMPLATE_IDS = [
+  'thermal',
+  'circuit',
+  'studio',
+  'field',
+  'atelier',
+  'botanical',
+  'stone',
+  'solaris',
+  'blueprint',
+  'clearline',
+  'sentinel',
+] as const;
+
+export function isPremiumTradeTemplate(id: ReportTemplateId): boolean {
+  return (PREMIUM_TRADE_TEMPLATE_IDS as readonly string[]).includes(id);
+}
 
 export function isFreeReportTemplate(id: ReportTemplateId): boolean {
   return (FREE_REPORT_TEMPLATE_IDS as readonly string[]).includes(id);

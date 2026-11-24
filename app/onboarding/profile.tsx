@@ -45,7 +45,12 @@ export default function OnboardingProfile() {
     try {
       if (saveDetails) await persistDetails();
       await setOnboardingComplete();
-      router.replace(destination);
+      // Always land on tabs first so /job/new is a real modal with a back stack
+      // (avoids GO_BACK / "modal as first screen" warnings on a fresh install).
+      router.replace('/(tabs)/jobs');
+      if (destination === '/job/new') {
+        router.push('/job/new');
+      }
     } catch {
       busyRef.current = false;
       setBusy(false);

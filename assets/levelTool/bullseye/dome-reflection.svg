@@ -1,0 +1,9 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="150" height="74" viewBox="0 0 150 74" fill="none" xmlns="http://www.w3.org/2000/svg">
+<ellipse id="Dome reflection" cx="75" cy="37" rx="75" ry="37" fill="url(#paint0_linear_0_68)"/>
+<defs>
+<linearGradient id="paint0_linear_0_68" x1="75" y1="0" x2="75" y2="74" gradientUnits="userSpaceOnUse">
+<stop stop-color="white" stop-opacity="0.45098"/>
+<stop offset="1" stop-color="white" stop-opacity="0"/>
+</linearGradient>
+</defs>
+</svg>

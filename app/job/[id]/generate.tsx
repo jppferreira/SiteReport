@@ -3,16 +3,6 @@ import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { AccessibilityInfo, Platform, Pressable, StyleSheet, View } from 'react-native';
-import Animated, {
-  Easing,
-  Extrapolation,
-  interpolate,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-  type SharedValue,
-} from 'react-native-reanimated';
 
 import { Button, ErrorState, NavigationHeader, Screen, Text, useToast } from '@/components';
 import { reportEventsRepository, reportsRepository } from '@/database';
@@ -29,6 +19,9 @@ import { formatFileSize } from '@/utils/format';
 import { logger } from '@/utils/logger';
 
 const REPORT_READY = require('../../../assets/images/report-ready.png');
+/** Transparent looping build animation (GIF plays reliably in expo-image). */
+const CREATING_REPORT_BUILD = require('../../../assets/animations/creating-report-build.gif');
+const CREATING_REPORT_STILL = require('../../../assets/animations/creating-report-build-still.png');
 
 type GenerationState = 'working' | 'success' | 'error';
 
@@ -307,95 +300,34 @@ function ReportPageThumb() {
   );
 }
 
-const WRITE_LINES = [
-  { width: 72, start: 0.08 },
-  { width: 52, start: 0.28 },
-  { width: 64, start: 0.48 },
-];
-
-/** Document mark that fills in while the PDF is built. Stays still when Reduce Motion is on. */
+/** 3D report-build loop while the PDF is created. Falls back to a still when Reduce Motion is on. */
 function CreatingReportMark() {
-  const { colors, radius, shadows } = useTheme();
-  const progress = useSharedValue(1);
+  const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    const hold = () => {
-      progress.value = 1;
-    };
-    const loop = () => {
-      if (cancelled) return;
-      progress.value = 0;
-      progress.value = withRepeat(
-        withTiming(1, { duration: 1700, easing: Easing.inOut(Easing.cubic) }),
-        -1,
-        false
-      );
-    };
-
     AccessibilityInfo.isReduceMotionEnabled?.()
       .then((enabled) => {
-        if (enabled) hold();
-        else loop();
+        if (!cancelled) setReduceMotion(Boolean(enabled));
       })
-      .catch(loop);
-
+      .catch(() => {
+        if (!cancelled) setReduceMotion(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [progress]);
-
-  const coverStyle = useAnimatedStyle(() => ({
-    width: interpolate(progress.value, [0, 0.4], [28, 104], Extrapolation.CLAMP),
-  }));
+  }, []);
 
   return (
     <View style={styles.markSlot} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <View style={[styles.pageShadow, shadows.card, { borderRadius: radius.md }]}>
-        <View
-          style={[
-            styles.page,
-            { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.md },
-          ]}
-        >
-          <View style={styles.pageCover}>
-            <Animated.View style={[styles.coverFill, { backgroundColor: colors.accent }, coverStyle]} />
-          </View>
-          <View style={styles.pageLines}>
-            {WRITE_LINES.map((line) => (
-              <WrittenLine key={line.start} progress={progress} width={line.width} start={line.start} color={colors.skeleton} />
-            ))}
-            <WrittenBlock progress={progress} color={colors.surfaceSunken} />
-          </View>
-        </View>
-      </View>
+      <Image
+        source={reduceMotion ? CREATING_REPORT_STILL : CREATING_REPORT_BUILD}
+        contentFit="contain"
+        style={styles.buildMedia}
+        autoplay={!reduceMotion}
+      />
     </View>
   );
-}
-
-function WrittenLine({
-  progress,
-  width,
-  start,
-  color,
-}: {
-  progress: SharedValue<number>;
-  width: number;
-  start: number;
-  color: string;
-}) {
-  const style = useAnimatedStyle(() => {
-    const amount = interpolate(progress.value, [start, start + 0.22], [0, 1], Extrapolation.CLAMP);
-    return { width: width * amount, opacity: 0.35 + amount * 0.65 };
-  });
-  return <Animated.View style={[styles.writtenLine, { backgroundColor: color }, style]} />;
-}
-
-function WrittenBlock({ progress, color }: { progress: SharedValue<number>; color: string }) {
-  const style = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0.68, 0.9], [0, 1], Extrapolation.CLAMP),
-  }));
-  return <Animated.View style={[styles.writtenBlock, { backgroundColor: color }, style]} />;
 }
 
 const styles = StyleSheet.create({
@@ -468,41 +400,13 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   markSlot: {
-    width: 132,
+    width: 176,
     height: 176,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pageShadow: {
-    width: 104,
-    height: 140,
-  },
-  page: {
-    flex: 1,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  pageCover: {
-    height: 32,
-    width: '100%',
-    overflow: 'hidden',
-  },
-  coverFill: {
-    height: 32,
-  },
-  pageLines: {
-    paddingTop: 16,
-    paddingHorizontal: 14,
-    gap: 8,
-  },
-  writtenLine: {
-    height: 6,
-    borderRadius: 3,
-  },
-  writtenBlock: {
-    width: 40,
-    height: 22,
-    borderRadius: 3,
-    marginTop: 4,
+  buildMedia: {
+    width: 176,
+    height: 176,
   },
 });

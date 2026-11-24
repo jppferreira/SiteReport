@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 
@@ -14,17 +15,23 @@ type ArMeasureScreenProps = {
   areaId: string | null;
   onClose: () => void;
   onSaved: () => void;
-  initialMode?: ArToolMode;
+  initialMode?: Exclude<ArToolMode, 'photo'>;
 };
 
 type SessionComponent = React.ComponentType<ArMeasureSessionProps>;
 
 /**
- * Job measure tools — AR tape measure and spirit level behind one Measure | Level
- * switcher. The AR session stays mounted (paused) while Level shows, so points
- * survive a quick level check.
+ * Job measure tools — AR tape measure and spirit level behind Measure | Level | Photo.
+ * The AR session stays mounted (paused) while Level shows, so points survive a quick
+ * level check. Photo routes into the job photo capture flow.
  */
-export function ArMeasureScreen({ jobId, areaId, onClose, onSaved, initialMode = 'measure' }: ArMeasureScreenProps) {
+export function ArMeasureScreen({
+  jobId,
+  areaId,
+  onClose,
+  onSaved,
+  initialMode = 'measure',
+}: ArMeasureScreenProps) {
   const { t } = useI18n();
   const caps = useMemo(() => getArCapabilities(), []);
   const [mode, setMode] = useState<ArToolMode>(initialMode);
@@ -53,6 +60,22 @@ export function ArMeasureScreen({ jobId, areaId, onClose, onSaved, initialMode =
     };
   }, [caps.arSupported]);
 
+  const openPhotos = useCallback(() => {
+    const href = areaId ? `/job/${jobId}/photos/${areaId}` : `/job/${jobId}/photos`;
+    router.replace(href as `/job/${string}/photos`);
+  }, [areaId, jobId]);
+
+  const handleChangeMode = useCallback(
+    (next: ArToolMode) => {
+      if (next === 'photo') {
+        openPhotos();
+        return;
+      }
+      setMode(next);
+    },
+    [openPhotos]
+  );
+
   const handleUnsaved = useCallback((value: boolean) => {
     unsavedRef.current = value;
   }, []);
@@ -65,7 +88,14 @@ export function ArMeasureScreen({ jobId, areaId, onClose, onSaved, initialMode =
     Alert.alert(t('arTools.measure.unsavedTitle'), t('arTools.measure.unsavedBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('arTools.measure.discard'), style: 'destructive', onPress: onClose },
-      { text: t('arTools.measure.saveToReport'), onPress: () => { setMode('measure'); setManual(false); setSaveRequest((n) => n + 1); } },
+      {
+        text: t('arTools.measure.saveToReport'),
+        onPress: () => {
+          setMode('measure');
+          setManual(false);
+          setSaveRequest((n) => n + 1);
+        },
+      },
     ]);
   }, [onClose, t]);
 
@@ -79,14 +109,17 @@ export function ArMeasureScreen({ jobId, areaId, onClose, onSaved, initialMode =
   return (
     <View style={styles.fill}>
       {arAvailable && Session ? (
-        <View style={[StyleSheet.absoluteFill, (mode !== 'measure' || manual) && styles.hidden]} pointerEvents={mode === 'measure' && !manual ? 'auto' : 'none'}>
+        <View
+          style={[StyleSheet.absoluteFill, (mode !== 'measure' || manual) && styles.hidden]}
+          pointerEvents={mode === 'measure' && !manual ? 'auto' : 'none'}
+        >
           <Session
             jobId={jobId}
             areaId={areaId}
             capabilities={caps}
             active={mode === 'measure' && !manual}
             onClose={handleClose}
-            onChangeMode={setMode}
+            onChangeMode={handleChangeMode}
             onSaved={handleSaved}
             onUnsavedChange={handleUnsaved}
             saveRequest={saveRequest}
@@ -102,7 +135,7 @@ export function ArMeasureScreen({ jobId, areaId, onClose, onSaved, initialMode =
             areaId={areaId}
             reason={arAvailable ? 'chosen' : 'unsupported'}
             onClose={handleClose}
-            onChangeMode={setMode}
+            onChangeMode={handleChangeMode}
             onSaved={handleSaved}
             onBackToCamera={arAvailable ? () => setManual(false) : undefined}
           />
@@ -111,13 +144,18 @@ export function ArMeasureScreen({ jobId, areaId, onClose, onSaved, initialMode =
 
       {mode === 'measure' && !manual && !Session ? (
         <View style={[StyleSheet.absoluteFill, styles.loading]}>
-          <ArTopBar mode="measure" onChangeMode={setMode} onClose={handleClose} style={styles.loadingBar} />
+          <ArTopBar
+            mode="measure"
+            onChangeMode={handleChangeMode}
+            onClose={handleClose}
+            style={styles.loadingBar}
+          />
         </View>
       ) : null}
 
       {mode === 'level' ? (
         <View style={StyleSheet.absoluteFill}>
-          <LevelToolView active onClose={handleClose} onChangeMode={setMode} />
+          <LevelToolView active onClose={handleClose} onChangeMode={handleChangeMode} />
         </View>
       ) : null}
     </View>

@@ -5,6 +5,7 @@ import {
   Lexend_700Bold,
   useFonts,
 } from '@expo-google-fonts/lexend';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -24,8 +25,21 @@ import { refreshEntitlement } from '@/services/entitlementService';
 import { ThemeProvider } from '@/theme';
 import { logger } from '@/utils/logger';
 
+/** Expo Go for SDK 58 is still rolling out — Trade Report needs its own native binary. */
+const isExpoGo =
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient ||
+  Constants.appOwnership === 'expo';
+
 /** Keep the branded splash on screen long enough to read. */
 const MIN_SPLASH_MS = 4000;
+
+/**
+ * When onboarding (or a deep link) opens /job/new as a modal, keep the tabs
+ * stack underneath so Cancel / dismiss has somewhere to land.
+ */
+export const unstable_settings = {
+  anchor: '(tabs)',
+};
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -37,7 +51,9 @@ export default function RootLayout() {
     Lexend_600SemiBold,
     Lexend_700Bold,
   });
-  const [dbState, setDbState] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const [dbState, setDbState] = useState<'loading' | 'ready' | 'failed' | 'expo-go'>(
+    isExpoGo ? 'expo-go' : 'loading'
+  );
   const [dbAttempt, setDbAttempt] = useState(0);
   const [localeReady, setLocaleReady] = useState(false);
   const [fontWaitExpired, setFontWaitExpired] = useState(false);
@@ -73,6 +89,7 @@ export default function RootLayout() {
   }, [fontError]);
 
   useEffect(() => {
+    if (isExpoGo) return;
     let cancelled = false;
     getDatabase()
       .then(() => {
@@ -80,7 +97,10 @@ export default function RootLayout() {
       })
       .catch((error) => {
         logger.error('Failed to initialize database', error);
-        if (!cancelled) setDbState('failed');
+        const message = error instanceof Error ? error.message : String(error);
+        if (!cancelled) {
+          setDbState(/ExpoSQLite|Expo Go|development build/i.test(message) ? 'expo-go' : 'failed');
+        }
       });
     return () => {
       cancelled = true;
@@ -130,6 +150,9 @@ export default function RootLayout() {
         <ThemeProvider>
           <ToastProvider>
             <StatusBar style="dark" />
+            {appReady && dbState === 'expo-go' ? (
+              <ErrorState title={t('root.expoGoTitle')} description={t('root.expoGoDescription')} />
+            ) : null}
             {appReady && dbState === 'failed' ? (
               <ErrorState
                 title={t('root.dbErrorTitle')}

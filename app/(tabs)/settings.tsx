@@ -1,4 +1,3 @@
-import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 import { router, useFocusEffect } from 'expo-router';
@@ -49,11 +48,16 @@ export default function SettingsScreen() {
   );
 
   const version = Constants.expoConfig?.version ?? '1.0.0';
-  const build = Platform.select({
-    ios: Application.nativeBuildVersion,
-    android: Application.nativeBuildVersion,
-    default: '1',
-  });
+  // Prefer Constants so Settings still mounts when ExpoApplication isn't linked
+  // (Expo Go / SDK mismatch). Fall back to app.json build fields.
+  const build =
+    Constants.nativeBuildVersion ??
+    Platform.select({
+      ios: Constants.expoConfig?.ios?.buildNumber,
+      android: Constants.expoConfig?.android?.versionCode?.toString(),
+      default: '1',
+    }) ??
+    '1';
 
   return (
     <Screen edges={['top', 'left', 'right']}>

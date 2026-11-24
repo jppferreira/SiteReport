@@ -1,0 +1,156 @@
+diff --git a/node_modules/expo-sqlite/web/worker.ts b/node_modules/expo-sqlite/web/worker.ts
+index 0922a2c..0b7a9f3 100644
+--- a/node_modules/expo-sqlite/web/worker.ts
++++ b/node_modules/expo-sqlite/web/worker.ts
+@@ -62,11 +62,11 @@ let _vfs: AccessHandlePoolVFS | null = null;
+ let _vfsMemory: MemoryVFS | null = null;
+ let _webOptions: SQLiteWebOptions = {};
+ let wasmPromise: Promise<SQLiteAPI> | null = null;
+-let vfsPromise: Promise<{
++let memoryVfsPromise: Promise<{
+   sqlite3: SQLiteAPI;
+-  vfs: AccessHandlePoolVFS;
+   vfsMemory: MemoryVFS;
+ }> | null = null;
++let persistentVfsPromise: Promise<AccessHandlePoolVFS> | null = null;
+ 
+ const databaseIdMap = new Map<number, DatabaseEntity>();
+ const statementIdMap = new Map<number, StatementEntity>();
+@@ -86,7 +86,8 @@ self.onmessage = async (
+   if (event.data.type === 'shutdown') {
+     try {
+       await wasmPromise?.catch(() => undefined);
+-      await vfsPromise?.catch(() => undefined);
++      await memoryVfsPromise?.catch(() => undefined);
++      await persistentVfsPromise?.catch(() => undefined);
+       await _vfs?.close();
+       _vfsMemory?.close();
+     } finally {
+@@ -95,7 +96,8 @@ self.onmessage = async (
+       _vfs = null;
+       _vfsMemory = null;
+       wasmPromise = null;
+-      vfsPromise = null;
++      memoryVfsPromise = null;
++      persistentVfsPromise = null;
+       self.postMessage({ type: 'workerShutdown' });
+     }
+     return;
+@@ -320,8 +322,9 @@ async function closeDatabase(nativeDatabaseId: number) {
+ }
+ 
+ async function deleteDatabase(databasePath: string): Promise<void> {
+-  const { vfs } = await maybeInitAsync();
++  await maybeInitAsync();
+   if (databasePath !== ':memory:') {
++    const vfs = await ensurePersistentVfs();
+     vfs.jDelete(databasePath, 0 /* unused arg for AccessHandlePoolVFS */);
+   }
+ }
+@@ -399,7 +402,8 @@ async function importAssetDatabase(
+   assetDatabasePath: string,
+   forceOverwrite: boolean
+ ): Promise<void> {
+-  const { sqlite3, vfs } = await maybeInitAsync();
++  const { sqlite3 } = await maybeInitAsync();
++  const vfs = await ensurePersistentVfs();
+   if (!forceOverwrite) {
+     const buffer = new DataView(new ArrayBuffer(4));
+     await vfs.jAccess(databasePath, 0 /* unused arg for AccessHandlePoolVFS */, buffer);
+@@ -458,7 +462,11 @@ async function openDatabase(
+     }
+ 
+     const flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
+-    const vfsName = databasePath === ':memory:' ? VFS_NAME_MEMORY : VFS_NAME_PERSISTENT;
++    const isMemory = databasePath === ':memory:';
++    if (!isMemory) {
++      await ensurePersistentVfs();
++    }
++    const vfsName = isMemory ? VFS_NAME_MEMORY : VFS_NAME_PERSISTENT;
+     pointer = await sqlite3.open_v2(databasePath, flags, vfsName);
+   }
+ 
+@@ -840,42 +848,56 @@ async function loadWasmAsync(): Promise<SQLiteAPI> {
+   return wasmPromise;
+ }
+ 
++// The AccessHandlePoolVFS reserves a fixed pool of OPFS sync access handles
++// for the origin and holds them exclusively for the lifetime of the worker.
++// Only one worker per origin can hold that pool at a time, so creating it
++// eagerly breaks any app that opens ':memory:' databases on web. Defer it
++// until a caller opens, deletes, or imports a persistent database.
++async function ensurePersistentVfs(): Promise<AccessHandlePoolVFS> {
++  if (_vfs != null) return _vfs;
++  if (persistentVfsPromise == null) {
++    persistentVfsPromise = (async () => {
++      const sqlite3 = await loadWasmAsync();
++      if (_vfs != null) return _vfs;
++      const module = _wasmModule;
++      const vfs = await AccessHandlePoolVFS.create(VFS_NAME_PERSISTENT, module);
++      if (vfs == null) {
++        throw new Error('Failed to initialize AccessHandlePoolVFS');
++      }
++      _vfs = vfs;
++      sqlite3.vfs_register(_vfs, true);
++      return _vfs;
++    })().catch((error: unknown) => {
++      persistentVfsPromise = null;
++      throw error;
++    });
++  }
++  return persistentVfsPromise;
++}
++
+ async function maybeInitAsync(): Promise<{
+   sqlite3: SQLiteAPI;
+-  vfs: AccessHandlePoolVFS;
+   vfsMemory: MemoryVFS;
+ }> {
+-  if (vfsPromise == null) {
+-    vfsPromise = createVfsAsync().catch(async (error: unknown) => {
++  if (memoryVfsPromise == null) {
++    memoryVfsPromise = createMemoryVfsAsync().catch(async (error: unknown) => {
+       // Drop the failed VFS so the next attempt can open the database files again.
+-      const vfs = _vfs;
+       const vfsMemory = _vfsMemory;
+-      vfsPromise = null;
+-      _vfs = null;
++      memoryVfsPromise = null;
+       _vfsMemory = null;
+-      await vfs?.close().catch(() => undefined);
+       vfsMemory?.close();
+       throw error;
+     });
+   }
+-  return vfsPromise;
++  return memoryVfsPromise;
+ }
+ 
+-async function createVfsAsync(): Promise<{
++async function createMemoryVfsAsync(): Promise<{
+   sqlite3: SQLiteAPI;
+-  vfs: AccessHandlePoolVFS;
+   vfsMemory: MemoryVFS;
+ }> {
+   const sqlite3 = await loadWasmAsync();
+   const module = _wasmModule;
+-  if (_vfs == null) {
+-    const vfs = await AccessHandlePoolVFS.create(VFS_NAME_PERSISTENT, module);
+-    if (vfs == null) {
+-      throw new Error('Failed to initialize AccessHandlePoolVFS');
+-    }
+-    _vfs = vfs;
+-    sqlite3.vfs_register(_vfs, true);
+-  }
+   if (_vfsMemory == null) {
+     const vfsMemory = await MemoryVFS.create(VFS_NAME_MEMORY, module);
+     if (vfsMemory == null) {
+@@ -884,7 +906,7 @@ async function createVfsAsync(): Promise<{
+     _vfsMemory = vfsMemory;
+     sqlite3.vfs_register(_vfsMemory, false);
+   }
+-  return { sqlite3, vfs: _vfs, vfsMemory: _vfsMemory };
++  return { sqlite3, vfsMemory: _vfsMemory };
+ }
+ 
+ async function loadWaSQLiteModuleAsync(): Promise<any> {

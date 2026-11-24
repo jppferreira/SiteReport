@@ -1,0 +1,12 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="222.832" height="197.324" viewBox="0 0 222.832 197.324" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Glass crescent" opacity="0.42" filter="url(#filter0_f_0_166)">
+<path d="M120 2C162.71 2 200.119 24.691 220.832 58.6748C199.187 32.6034 166.533 16 130 16C64.8304 16 12 68.8304 12 134C12 156.459 18.275 177.453 29.167 195.324C12.2015 174.888 2 148.636 2 120C2 54.8304 54.8304 2 120 2Z" fill="white"/>
+</g>
+<defs>
+<filter id="filter0_f_0_166" x="0" y="0" width="222.832" height="197.324" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="1" result="effect1_foregroundBlur_0_166"/>
+</filter>
+</defs>
+</svg>

@@ -1,15 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { getLocale } from '@/i18n';
 import {
   CoverDesignId,
   DEFAULT_COVER_DESIGN,
+  DEFAULT_REPORT_SECTION_ORDER,
+  DEFAULT_REPORT_SECTIONS,
   DEFAULT_REPORT_TEMPLATE,
   normalizeCoverDesignId,
   normalizePhotoAnnotationLayout,
   normalizePhotoBrowseLayout,
+  normalizeReportSectionOrder,
+  normalizeReportSections,
   normalizeReportTemplateId,
   PhotoAnnotationLayout,
   PhotoBrowseLayout,
+  ReportSectionId,
+  ReportSections,
   ReportTemplateId,
 } from '@/models';
 
@@ -20,13 +27,6 @@ export type PhotoQuality = 'standard' | 'high';
 
 /** AR tape-measure display unit. */
 export type MeasureUnit = 'm' | 'cm' | 'mm' | 'ftIn';
-
-/** Accepts the old 'metric' / 'imperial' values too. */
-export function normalizeMeasureUnit(value: unknown): MeasureUnit {
-  if (value === 'm' || value === 'cm' || value === 'mm' || value === 'ftIn') return value;
-  if (value === 'imperial') return 'ftIn';
-  return 'm';
-}
 
 export type AppPreferences = {
   defaultPhotoQuality: PhotoQuality;
@@ -39,6 +39,10 @@ export type AppPreferences = {
   photoBrowseLayout: PhotoBrowseLayout;
   /** When on and a review URL is set, the PDF ends with a review card. */
   includeReviewLink: boolean;
+  /** Which modular PDF blocks print. */
+  reportSections: ReportSections;
+  /** Print order for modular PDF blocks. */
+  reportSectionOrder: ReportSectionId[];
   /** Copies the backup zip into iCloud Drive on iPhone. On until the user turns it off. */
   icloudAutoBackup: boolean;
   /** The one-time note about where that zip lives in the Files app. */
@@ -50,9 +54,21 @@ export type AppPreferences = {
   stampAddress: boolean;
   /** Print the evidence stamp under each photo on the PDF. */
   stampShowOnPdf: boolean;
-  /** Unit for AR Measure lengths (areas follow: m² or ft²). */
+  /** Units used when saving AR measurements. */
   measureUnit: MeasureUnit;
 };
+
+export function defaultMeasureUnit(): MeasureUnit {
+  return getLocale() === 'en-US' ? 'ftIn' : 'm';
+}
+
+/** Accepts legacy 'metric' / 'imperial' values too. */
+export function normalizeMeasureUnit(value: unknown): MeasureUnit {
+  if (value === 'm' || value === 'cm' || value === 'mm' || value === 'ftIn') return value;
+  if (value === 'imperial') return 'ftIn';
+  if (value === 'metric') return 'm';
+  return defaultMeasureUnit();
+}
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
   defaultPhotoQuality: 'standard',
@@ -62,6 +78,8 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   photoAnnotationLayout: 'fullWidth',
   photoBrowseLayout: 'fullWidth',
   includeReviewLink: true,
+  reportSections: { ...DEFAULT_REPORT_SECTIONS },
+  reportSectionOrder: [...DEFAULT_REPORT_SECTION_ORDER],
   icloudAutoBackup: true,
   icloudBackupTipSeen: false,
   lastIcloudBackupAt: null,
@@ -86,14 +104,24 @@ export async function resetOnboarding(): Promise<void> {
 
 export async function getPreferences(): Promise<AppPreferences> {
   const raw = await AsyncStorage.getItem(PREFERENCES_KEY);
-  if (!raw) return DEFAULT_PREFERENCES;
+  if (!raw) {
+    return { ...DEFAULT_PREFERENCES, measureUnit: defaultMeasureUnit() };
+  }
   try {
-    const parsed = { ...DEFAULT_PREFERENCES, ...JSON.parse(raw) } as AppPreferences;
+    const stored = JSON.parse(raw) as Partial<AppPreferences>;
+    const parsed = { ...DEFAULT_PREFERENCES, ...stored } as AppPreferences;
     parsed.reportTemplate = normalizeReportTemplateId(parsed.reportTemplate);
     parsed.coverDesign = normalizeCoverDesignId(parsed.coverDesign);
     parsed.photoAnnotationLayout = normalizePhotoAnnotationLayout(parsed.photoAnnotationLayout);
     parsed.photoBrowseLayout = normalizePhotoBrowseLayout(parsed.photoBrowseLayout);
-    if (typeof parsed.includeReviewLink !== 'boolean') parsed.includeReviewLink = true;
+    parsed.reportSections = normalizeReportSections(parsed.reportSections);
+    parsed.reportSectionOrder = normalizeReportSectionOrder(parsed.reportSectionOrder);
+    // Keep the legacy review toggle in sync with the Sections tray until removed.
+    if (typeof parsed.includeReviewLink !== 'boolean') {
+      parsed.includeReviewLink = parsed.reportSections.review;
+    } else if (stored.reportSections == null) {
+      parsed.reportSections = { ...parsed.reportSections, review: parsed.includeReviewLink };
+    }
     if (typeof parsed.icloudAutoBackup !== 'boolean') parsed.icloudAutoBackup = true;
     if (typeof parsed.icloudBackupTipSeen !== 'boolean') parsed.icloudBackupTipSeen = false;
     if (typeof parsed.lastIcloudBackupAt !== 'string') parsed.lastIcloudBackupAt = null;
@@ -103,7 +131,7 @@ export async function getPreferences(): Promise<AppPreferences> {
     parsed.measureUnit = normalizeMeasureUnit(parsed.measureUnit);
     return parsed;
   } catch {
-    return DEFAULT_PREFERENCES;
+    return { ...DEFAULT_PREFERENCES, measureUnit: defaultMeasureUnit() };
   }
 }
 

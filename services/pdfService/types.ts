@@ -6,6 +6,8 @@ import {
   PhotoAnnotations,
   ReportImageMask,
   ReportPricing,
+  ReportSectionId,
+  ReportSections,
   ReportTemplateId,
   ReviewProvider,
 } from '@/models';
@@ -109,4 +111,8 @@ export type ReportHtmlInput = {
   template: ReportTemplateId;
   /** Annotated photo cards: full-width stack, or before/after side by side. */
   photoAnnotationLayout?: PhotoAnnotationLayout;
+  /** Which modular blocks print. Applied before HTML assembly. */
+  reportSections?: ReportSections;
+  /** Print order for modular blocks when the template supports reordering. */
+  reportSectionOrder?: ReportSectionId[];
 };

@@ -12,17 +12,20 @@ import {
   imageMaskClipPath,
   ImageMaskEdge,
   isFreeReportTemplate,
+  isPremiumTradeTemplate,
   JobStatus,
   linesForReport,
   normalizeCoverDesignId,
   normalizeDocumentType,
   normalizeReportImageMask,
+  normalizeReportSectionOrder,
   normalizeReportTemplateId,
   parseAmountToPence,
   PRICING_CATEGORIES,
   PRICING_CATEGORY_LABELS,
   pricingVatBreakdown,
   ReportImageMask,
+  ReportSectionId,
   ReportTemplateId,
   REVIEW_PROVIDER_LABELS,
   VAT_RATE_PERCENT,
@@ -30,6 +33,8 @@ import {
 import { formatDate, formatDateTime } from '@/utils/format';
 
 import { DEFAULT_COVER_SCENE, DEFAULT_THANKS_SCENE } from './defaultScenes';
+import { premiumFontLinks, premiumStylesheet, renderPremiumTemplate } from './premium';
+import { premiumTheme } from './premium/shared';
 import { reviewQrDataUri } from './qrSvg';
 import { ReportHtmlInput, ReportPhotoData } from './types';
 
@@ -615,14 +620,35 @@ function signatureBlock(input: ReportHtmlInput, variant: 'block' | 'inline'): st
   </section>`;
 }
 
-function footerBlock(input: ReportHtmlInput): string {
+function docFooterOnly(input: ReportHtmlInput): string {
   const message = isNonEmpty(input.business.footerMessage) ? `<p class="footer-message">${escapeHtml(input.business.footerMessage)}</p>` : '';
   const registration = [input.business.registrationNumber, input.business.vatNumber].filter(isNonEmpty).map(escapeHtml).join(' · ');
-  return `${reviewCardBlock(input)}<footer class="doc-footer">
+  return `<footer class="doc-footer">
     ${message}
     ${registration ? `<p>${registration}</p>` : ''}
     <p class="footer-meta">Generated ${formatDateTime(input.generatedAt)} · Created with Trade Report</p>
   </footer>`;
+}
+
+function footerBlock(input: ReportHtmlInput): string {
+  return `${reviewCardBlock(input)}${docFooterOnly(input)}`;
+}
+
+/** Interior blocks that the Sections tray can reorder (cover is page-level). */
+function joinOrderedSections(
+  input: ReportHtmlInput,
+  blocks: Partial<Record<Exclude<ReportSectionId, 'cover'>, string>>
+): string {
+  const order = normalizeReportSectionOrder(input.reportSectionOrder);
+  return order
+    .filter((id): id is Exclude<ReportSectionId, 'cover'> => id !== 'cover')
+    .map((id) => blocks[id] ?? '')
+    .filter((html) => html.length > 0)
+    .join('');
+}
+
+function coverEnabled(input: ReportHtmlInput): boolean {
+  return input.reportSections?.cover !== false;
 }
 
 function refLine(input: ReportHtmlInput): string {
@@ -981,6 +1007,13 @@ function renderModern(input: ReportHtmlInput, theme: Theme): string {
     listSection('Materials used', input.materials, 'section-materials'),
     proseSection('Labour details', input.recommendations, 'section-labour'),
   ]);
+  const ordered = joinOrderedSections(input, {
+    photos,
+    checklist,
+    costs: `${notes}${pricingSection(input)}`,
+    signature: signatureBlock(input, 'block'),
+    review: reviewCardBlock(input),
+  });
 
   return `
     <header class="top">
@@ -1014,12 +1047,8 @@ function renderModern(input: ReportHtmlInput, theme: Theme): string {
     </div>
     ${overview}
     ${work}
-    ${checklist}
-    ${photos}
-    ${notes}
-    ${pricingSection(input)}
-    ${signatureBlock(input, 'block')}
-    ${footerBlock(input)}
+    ${ordered}
+    ${docFooterOnly(input)}
   `;
 }
 
@@ -1177,15 +1206,17 @@ function renderCards(input: ReportHtmlInput, theme: Theme): string {
     </div>
     <div class="info-cards">${cards.join('')}</div>
     ${extraOverview(input)}
-    ${photosMarkup(input, (pair) => compareBlock(pair, { tags: true, layout: input.photoAnnotationLayout }))}
-    ${cardRow([
-      proseSection('Work completed', input.workCompleted || input.job.description, 'section-work'),
-      listSection('Materials used', input.materials, 'section-materials'),
-    ])}
-    ${cardRow([proseSection('Labour details', input.recommendations, 'section-labour')])}
-    ${pricingSection(input)}
-    ${signatureBlock(input, 'block')}
-    ${footerBlock(input)}
+    ${joinOrderedSections(input, {
+      photos: photosMarkup(input, (pair) => compareBlock(pair, { tags: true, layout: input.photoAnnotationLayout })),
+      checklist: jobChecklistSection(input),
+      costs: `${cardRow([
+        proseSection('Work completed', input.workCompleted || input.job.description, 'section-work'),
+        listSection('Materials used', input.materials, 'section-materials'),
+      ])}${cardRow([proseSection('Labour details', input.recommendations, 'section-labour')])}${pricingSection(input)}`,
+      signature: signatureBlock(input, 'block'),
+      review: reviewCardBlock(input),
+    })}
+    ${docFooterOnly(input)}
   `;
 }
 
@@ -1193,6 +1224,16 @@ function renderMinimal(input: ReportHtmlInput, theme: Theme): string {
   const ref = refLine(input);
   const stamp = [ref, formatDate(input.job.jobDate)].filter(Boolean).join(' · ');
   const contacts = contactLines(input).map(escapeHtml).join(' · ');
+  const ordered = joinOrderedSections(input, {
+    photos: `${photosMarkup(input, labeledCompare)}${extraOverview(input)}${proseSection('Work summary', input.workCompleted || input.job.description, 'section-work')}`,
+    checklist: jobChecklistSection(input),
+    costs: `${cardRow([
+      listSection('Materials used', input.materials, 'section-materials'),
+      proseSection('Labour details', input.recommendations, 'section-labour'),
+    ])}${pricingSection(input)}`,
+    signature: signatureBlock(input, 'inline'),
+    review: reviewCardBlock(input),
+  });
 
   return `
     <header class="top">
@@ -1215,15 +1256,7 @@ function renderMinimal(input: ReportHtmlInput, theme: Theme): string {
         <p class="detail"><span>Status</span> ${statusLabel(input.job.status)}</p>
       </div>
     </div>
-    ${photosMarkup(input, labeledCompare)}
-    ${extraOverview(input)}
-    ${proseSection('Work summary', input.workCompleted || input.job.description, 'section-work')}
-    ${cardRow([
-      listSection('Materials used', input.materials, 'section-materials'),
-      proseSection('Labour details', input.recommendations, 'section-labour'),
-    ])}
-    ${pricingSection(input)}
-    ${reviewCardBlock(input)}
+    ${ordered}
     <footer class="min-foot">
       <div>
         <div class="brand-name">${escapeHtml(input.business.name)}</div>
@@ -1231,7 +1264,6 @@ function renderMinimal(input: ReportHtmlInput, theme: Theme): string {
         ${isNonEmpty(input.business.footerMessage) ? `<p class="footer-message">${escapeHtml(input.business.footerMessage)}</p>` : ''}
         <p class="footer-meta">Generated ${formatDateTime(input.generatedAt)} · Created with Trade Report</p>
       </div>
-      ${signatureBlock(input, 'inline')}
     </footer>
   `;
 }
@@ -2099,21 +2131,29 @@ function renderInterior(template: ReportTemplateId, input: ReportHtmlInput, them
 }
 
 function renderTemplate(template: ReportTemplateId, input: ReportHtmlInput, theme: Theme): string {
+  if (isPremiumTradeTemplate(template)) {
+    return renderPremiumTemplate(template, input, premiumTheme(input.business.accentColor));
+  }
   const basic = isFreeReportTemplate(template);
   const interior = `<section class="template-${template} sheet-body${basic ? ' sheet-basic' : ''}">${renderInterior(template, input, theme)}</section>`;
   if (basic) return interior;
+  if (!coverEnabled(input)) return interior;
   return `${renderCover(input, theme)}${interior}${renderClose(input, theme)}`;
 }
 
 export function buildReportHtml(input: ReportHtmlInput): string {
   const template = normalizeReportTemplateId(input.template);
   const theme = buildTheme(input.business.accentColor || FALLBACK_ACCENT);
+  const premium = isPremiumTradeTemplate(template);
+  const fonts = premium ? premiumFontLinks(template) : '';
+  const styles = premium ? premiumStylesheet(template, theme.accent) : stylesheet(theme);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+${fonts}
 <style>
-${stylesheet(theme)}
+${styles}
 </style>
 </head>
 <body data-template="${template}" data-tier="${isFreeReportTemplate(template) ? 'basic' : 'pro'}">
@@ -2139,6 +2179,7 @@ body {
 .sheet-cover,
 .sheet-close,
 body:not([data-template="trade"]) .sheet-body,
+body:not([data-template="trade"]) .sheet-body.premium-page,
 body[data-template="trade"] .trade-page {
   width: 210mm;
   height: 297mm;
@@ -2165,7 +2206,8 @@ body[data-template="trade"] .trade-page {
 }
 /* Overflow pages are new frames. Keep the same top inset as the first inner
    page. Cover and thank-you frames are not continuation pages. */
-body:not([data-template="trade"]) .sheet-body[data-page-cont="1"] { padding-top: 14mm; }
+body:not([data-template="trade"]) .sheet-body[data-page-cont="1"],
+body:not([data-template="trade"]) .sheet-body.premium-page[data-page-cont="1"] { padding-top: 14mm; }
 body:not([data-template="trade"]) .sheet-body.template-image[data-page-cont="1"] { padding-top: 12mm; }
 body:not([data-template="trade"]) .sheet-body.sheet-basic[data-page-cont="1"] { padding-top: 16mm; }
 body[data-template="trade"] .trade-page[data-page-cont="1"] { padding-top: 14mm; }

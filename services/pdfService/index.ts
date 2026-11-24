@@ -55,7 +55,15 @@ function brandStamp(
   },
   coverDesign: string,
   includeReviewLink: boolean,
-  isPro: boolean
+  isPro: boolean,
+  reportSections?: ReportBrandStamp['reportSections'],
+  reportSectionOrder?: ReportBrandStamp['reportSectionOrder'],
+  stampPrefs?: {
+    stampDateTime: boolean;
+    stampAddress: boolean;
+    stampShowOnPdf: boolean;
+  },
+  checklist?: ReportBrandStamp['checklist']
 ): ReportBrandStamp {
   return {
     coverUri: coverPhotoId ? null : business.coverImageUri,
@@ -65,11 +73,17 @@ function brandStamp(
     includeReviewLink: isPro && includeReviewLink,
     reviewUrl: business.reviewUrl,
     reviewProvider: business.reviewProvider,
+    reportSections: reportSections ?? null,
+    reportSectionOrder: reportSectionOrder ?? null,
     bankName: business.bankName,
     sortCode: business.sortCode,
     accountNumber: business.accountNumber,
     paymentTerms: business.paymentTerms,
     defaultDueDays: business.defaultDueDays,
+    stampDateTime: stampPrefs?.stampDateTime ?? true,
+    stampAddress: stampPrefs?.stampAddress ?? true,
+    stampShowOnPdf: stampPrefs?.stampShowOnPdf ?? true,
+    checklist: checklist ?? null,
   };
 }
 
@@ -125,8 +139,19 @@ export type ReportDocument = {
   sourceHash: string;
 };
 
+export type LoadReportDocumentOptions = {
+  /**
+   * Preview should not wait on a live GPS fix — use the job address for the
+   * evidence stamp so the screen can open immediately.
+   */
+  useJobAddressOnly?: boolean;
+};
+
 /** Loads everything the report is built from, without writing a file. */
-export async function loadReportDocument(jobId: string): Promise<ReportDocument> {
+export async function loadReportDocument(
+  jobId: string,
+  options?: LoadReportDocumentOptions
+): Promise<ReportDocument> {
   const job = await jobsRepository.getJob(jobId);
   if (!job) {
     throw new ReportGenerationError('This job no longer exists.');
@@ -146,8 +171,15 @@ export async function loadReportDocument(jobId: string): Promise<ReportDocument>
   const allPhotos = [...beforePhotos, ...duringPhotos, ...afterPhotos];
   const preferences = await getPreferences();
   const isPro = await hasProAccess();
+  const sections = preferences.reportSections;
+  const sectionOrder = preferences.reportSectionOrder;
+  const includeReviewPref = sections.review && preferences.includeReviewLink;
   const stampAddressEnabled = isPro && preferences.stampAddress;
-  const stampAddressLabel = stampAddressEnabled ? await resolveStampAddress(job.address) : null;
+  const stampAddressLabel = stampAddressEnabled
+    ? options?.useJobAddressOnly
+      ? job.address?.trim() || null
+      : await resolveStampAddress(job.address)
+    : null;
   const stampOptions = {
     address: stampAddressLabel,
     stampDateTime: preferences.stampDateTime,
@@ -160,7 +192,26 @@ export async function loadReportDocument(jobId: string): Promise<ReportDocument>
     summary,
     signature,
     areas,
-    brandStamp(job.coverPhotoId, business, preferences.coverDesign, preferences.includeReviewLink, isPro)
+    brandStamp(
+      job.coverPhotoId,
+      business,
+      preferences.coverDesign,
+      includeReviewPref,
+      isPro,
+      sections,
+      sectionOrder,
+      {
+        stampDateTime: preferences.stampDateTime,
+        stampAddress: stampAddressEnabled,
+        stampShowOnPdf: preferences.stampShowOnPdf,
+      },
+      checklist
+        ? {
+            includeInPdf: checklist.includeInPdf,
+            items: checklist.items.map((item) => ({ label: item.label, checked: item.checked })),
+          }
+        : null
+    )
   );
 
   const [taggedPhotos, logoDataUri, signatureSvg, brandCoverDataUri, brandThanksDataUri] = await Promise.all([
@@ -186,7 +237,17 @@ export async function loadReportDocument(jobId: string): Promise<ReportDocument>
     (effectiveType === 'invoice' ? formatProvisionalInvoice(business.nextInvoiceSequence) : null);
 
   const reviewUrl = business.reviewUrl?.trim() || null;
-  const includeReview = isPro && preferences.includeReviewLink && Boolean(reviewUrl);
+  const includeReview = isPro && includeReviewPref && Boolean(reviewUrl);
+  const includeCover = sections.cover;
+  const includePhotos = sections.photos;
+  const includeChecklist =
+    sections.checklist && Boolean(checklist?.includeInPdf && checklist.items.length > 0);
+  const includeCosts = sections.costs;
+  const includeSignature = sections.signature && Boolean(signature && signatureSvg);
+
+  const before = includePhotos ? readyPhotos.filter((photo) => photo.type === 'before') : [];
+  const during = includePhotos ? readyPhotos.filter((photo) => photo.type === 'during') : [];
+  const after = includePhotos ? readyPhotos.filter((photo) => photo.type === 'after') : [];
 
   return {
     sourceHash,
@@ -213,25 +274,28 @@ export async function loadReportDocument(jobId: string): Promise<ReportDocument>
         description: job.description,
         status: job.status,
       },
-      before: readyPhotos.filter((photo) => photo.type === 'before'),
-      during: readyPhotos.filter((photo) => photo.type === 'during'),
-      after: readyPhotos.filter((photo) => photo.type === 'after'),
-      coverDataUri: job.coverPhotoId ? readyPhotos.find((photo) => photo.id === job.coverPhotoId)?.dataUri ?? null : null,
-      ...(!job.coverPhotoId && brandCoverDataUri ? { brandCoverDataUri } : {}),
-      ...(brandThanksDataUri ? { brandThanksDataUri } : {}),
+      before,
+      during,
+      after,
+      coverDataUri: includeCover
+        ? job.coverPhotoId
+          ? readyPhotos.find((photo) => photo.id === job.coverPhotoId)?.dataUri ?? null
+          : null
+        : null,
+      ...(!job.coverPhotoId && brandCoverDataUri && includeCover ? { brandCoverDataUri } : {}),
+      ...(brandThanksDataUri && includeCover ? { brandThanksDataUri } : {}),
       imageMask: normalizeReportImageMask(business.imageMask),
       coverDesign: preferences.coverDesign,
       photoAnnotationLayout: preferences.photoAnnotationLayout,
-      ...(photoGroups ? { areas: photoGroups } : {}),
+      ...(includePhotos && photoGroups ? { areas: photoGroups } : {}),
       workCompleted: summary?.workCompleted ?? null,
-      materials: summary?.materials ?? null,
+      materials: includeCosts ? summary?.materials ?? null : null,
       recommendations: summary?.recommendations ?? null,
-      checklist:
-        checklist?.includeInPdf && checklist.items.length > 0
-          ? checklist.items.map((item) => ({ label: item.label, checked: item.checked }))
-          : null,
+      checklist: includeChecklist
+        ? checklist!.items.map((item) => ({ label: item.label, checked: item.checked }))
+        : null,
       // summary.notes stays on the device. It is not part of the customer PDF.
-      pricing: summary?.pricing ?? null,
+      pricing: includeCosts ? summary?.pricing ?? null : null,
       documentType: effectiveType,
       invoice:
         effectiveType === 'invoice' && invoiceNumber
@@ -246,10 +310,11 @@ export async function loadReportDocument(jobId: string): Promise<ReportDocument>
             }
           : null,
       review: includeReview && reviewUrl ? { url: reviewUrl, provider: business.reviewProvider } : null,
-      signature:
-        signature && signatureSvg
-          ? { svgMarkup: signatureSvg, customerName: signature.customerName, signedAt: signature.signedAt }
-          : null,
+      signature: includeSignature
+        ? { svgMarkup: signatureSvg!, customerName: signature!.customerName, signedAt: signature!.signedAt }
+        : null,
+      reportSections: sections,
+      reportSectionOrder: sectionOrder,
       generatedAt: new Date().toISOString(),
     },
   };
@@ -343,7 +408,7 @@ export async function generateReportPdf(jobId: string, template: ReportTemplateI
 }
 
 export async function getReportFreshness(jobId: string): Promise<'none' | 'stale' | 'fresh'> {
-  const [job, latest, photos, summary, signature, areas, business, preferences] = await Promise.all([
+  const [job, latest, photos, summary, signature, areas, business, preferences, checklist] = await Promise.all([
     jobsRepository.getJob(jobId),
     reportsRepository.getLatestReportForJob(jobId),
     photosRepository.listPhotos(jobId),
@@ -352,17 +417,39 @@ export async function getReportFreshness(jobId: string): Promise<'none' | 'stale
     photoAreasRepository.listAreas(jobId),
     businessProfileRepository.getBusinessProfile(),
     getPreferences(),
+    jobChecklistsRepository.getChecklist(jobId),
   ]);
 
   if (!latest || !job) return 'none';
   const isPro = await hasProAccess();
+  const includeReviewPref = preferences.reportSections.review && preferences.includeReviewLink;
+  const stampAddressEnabled = isPro && preferences.stampAddress;
   const currentHash = await computeJobContentHash(
     job,
     photos,
     summary,
     signature,
     areas,
-    brandStamp(job.coverPhotoId, business, preferences.coverDesign, preferences.includeReviewLink, isPro)
+    brandStamp(
+      job.coverPhotoId,
+      business,
+      preferences.coverDesign,
+      includeReviewPref,
+      isPro,
+      preferences.reportSections,
+      preferences.reportSectionOrder,
+      {
+        stampDateTime: preferences.stampDateTime,
+        stampAddress: stampAddressEnabled,
+        stampShowOnPdf: preferences.stampShowOnPdf,
+      },
+      checklist
+        ? {
+            includeInPdf: checklist.includeInPdf,
+            items: checklist.items.map((item) => ({ label: item.label, checked: item.checked })),
+          }
+        : null
+    )
   );
   return currentHash === latest.sourceHash ? 'fresh' : 'stale';
 }

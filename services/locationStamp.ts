@@ -3,6 +3,8 @@ import * as Location from 'expo-location';
 import { logger } from '@/utils/logger';
 
 const CACHE_MS = 5 * 60 * 1000;
+/** GPS must not block report preview / PDF forever when the fix is slow. */
+const GPS_TIMEOUT_MS = 4000;
 
 let cache: { at: number; label: string | null } | null = null;
 
@@ -12,6 +14,22 @@ function formatPlace(place: Location.LocationGeocodedAddress): string | null {
   const parts = [line1 || place.name, line2].filter((part) => part && part.length > 0);
   if (parts.length === 0) return null;
   return parts.join(', ');
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('location timeout')), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
 }
 
 /**
@@ -26,19 +44,28 @@ export async function resolveStampAddress(fallback: string | null | undefined): 
   }
 
   try {
-    const permission = await Location.requestForegroundPermissionsAsync();
+    const permission = await withTimeout(Location.requestForegroundPermissionsAsync(), GPS_TIMEOUT_MS);
     if (permission.status !== 'granted') {
       cache = { at: now, label: null };
       return fallbackLabel;
     }
 
-    const position = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-    });
-    const places = await Location.reverseGeocodeAsync({
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
-    });
+    // Prefer a cached fix so report preview does not wait on a fresh GPS lock.
+    const lastKnown = await Location.getLastKnownPositionAsync();
+    const position =
+      lastKnown ??
+      (await withTimeout(
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        GPS_TIMEOUT_MS
+      ));
+
+    const places = await withTimeout(
+      Location.reverseGeocodeAsync({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      }),
+      GPS_TIMEOUT_MS
+    );
     const label = places[0] ? formatPlace(places[0]) : null;
     cache = { at: now, label };
     return label || fallbackLabel;

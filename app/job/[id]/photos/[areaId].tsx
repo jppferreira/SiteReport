@@ -330,23 +330,37 @@ export default function SectionPhotosScreen() {
       ) : null}
 
       {!reorderMode ? (
-        <View style={{ flexDirection: 'row', gap: spacing.sm, padding: spacing.lg, paddingTop: 0 }}>
-          <View style={{ flex: 1 }}>
-            <Button
-              label={t('photos.camera')}
-              icon={<Ionicons name="camera" size={18} color={colors.accentOnAccent} />}
-              onPress={openCamera}
-              loading={processing || savingCapture}
-            />
+        <View style={{ gap: spacing.sm, padding: spacing.lg, paddingTop: 0 }}>
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <View style={{ flex: 1 }}>
+              <Button
+                label={t('photos.camera')}
+                icon={<Ionicons name="camera" size={18} color={colors.accentOnAccent} />}
+                onPress={openCamera}
+                loading={processing || savingCapture}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button
+                label={t('photos.gallery')}
+                variant="secondary"
+                icon={<Ionicons name="images-outline" size={18} color={colors.textPrimary} />}
+                onPress={() => capture('library')}
+              />
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Button
-              label={t('photos.gallery')}
-              variant="secondary"
-              icon={<Ionicons name="images-outline" size={18} color={colors.textPrimary} />}
-              onPress={() => capture('library')}
-            />
-          </View>
+          <Button
+            label={t('photos.measure')}
+            variant="secondary"
+            icon={<Ionicons name="resize-outline" size={18} color={colors.textPrimary} />}
+            onPress={() =>
+              router.push({
+                pathname: '/job/[id]/measure',
+                params: { id, areaId: areaId ?? undefined },
+              })
+            }
+            accessibilityHint={t('photos.measureA11y')}
+          />
         </View>
       ) : null}
 

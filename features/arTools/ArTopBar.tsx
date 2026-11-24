@@ -12,13 +12,18 @@ type ArTopBarProps = {
   onChangeMode: (mode: ArToolMode) => void;
   onClose: () => void;
   /** Right-hand glass button: help on Measure, sound on Level. */
-  right?: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; onPress: () => void; active?: boolean };
+  right?: {
+    icon: React.ComponentProps<typeof Ionicons>['name'];
+    label: string;
+    onPress: () => void;
+    active?: boolean;
+  };
   style?: StyleProp<ViewStyle>;
   /** `light` glass reads best over a camera feed; `dark` over the level's metal. */
   tone?: 'light' | 'dark';
 };
 
-/** Close · Measure | Level · help/sound — the one top row shared by every AR tool. */
+/** Close · Measure | Level | Photo · help/sound — shared top row for AR tools. */
 export function ArTopBar({ mode, onChangeMode, onClose, right, style, tone = 'dark' }: ArTopBarProps) {
   const { t } = useI18n();
   const light = tone === 'light';
@@ -40,9 +45,22 @@ export function ArTopBar({ mode, onChangeMode, onClose, right, style, tone = 'da
           light={light}
           onPress={() => onChangeMode('level')}
         />
+        <ModeTab
+          label={t('arTools.modePhoto')}
+          icon="camera-outline"
+          selected={mode === 'photo'}
+          light={light}
+          onPress={() => onChangeMode('photo')}
+        />
       </View>
       {right ? (
-        <GlassIconButton icon={right.icon} label={right.label} onPress={right.onPress} active={right.active} light={light} />
+        <GlassIconButton
+          icon={right.icon}
+          label={right.label}
+          onPress={right.onPress}
+          active={right.active}
+          light={light}
+        />
       ) : (
         <View style={styles.iconSpacer} />
       )}
@@ -137,7 +155,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     height: 32,
     borderRadius: 999,
   },

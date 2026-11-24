@@ -41,8 +41,12 @@ describe('resolveTakenAt', () => {
   });
 
   it('formats a naive capture time without shifting the clock', () => {
-    expect(formatTakenAt('2026-10-04T14:30:00')).toContain('14:30');
-    expect(formatTakenAt('2026-10-04T14:30:00')).toContain('4 Oct 2026');
+    // Locale-aware (jest setup uses en-US → "Oct 4, 2026, 02:30 PM").
+    const formatted = formatTakenAt('2026-10-04T14:30:00');
+    expect(formatted).toMatch(/14:30|02:30/);
+    expect(formatted).toMatch(/Oct/);
+    expect(formatted).toMatch(/2026/);
+    expect(formatted).toMatch(/\b4\b/);
     expect(formatTakenAt(null)).toBe('');
   });
 });

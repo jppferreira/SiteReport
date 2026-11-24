@@ -191,8 +191,13 @@ export default function PhotoSectionsScreen() {
       )}
 
       {!loading && !empty && !areasState.error && !photosState.error ? (
-        <View style={{ padding: spacing.lg, paddingTop: 0 }}>
+        <View style={{ padding: spacing.lg, paddingTop: 0, gap: spacing.sm }}>
           <Button label={t('photos.addSection')} onPress={openCreate} />
+          <Button
+            label={t('photos.measure')}
+            variant="secondary"
+            onPress={() => router.push(`/job/${id}/measure`)}
+          />
         </View>
       ) : null}
 

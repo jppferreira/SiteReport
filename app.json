@@ -17,7 +17,7 @@
       "buildNumber": "10",
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "Trade Report uses your camera to take before and after job photos for your reports.",
+        "NSCameraUsageDescription": "Trade Report uses your camera to take before and after job photos and to measure distances with AR for your reports.",
         "NSPhotoLibraryUsageDescription": "Trade Report needs access to your photo library so you can add existing photos to a job report.",
         "NSMicrophoneUsageDescription": "Trade Report uses the microphone so you can dictate job notes. Audio is transcribed on this device and is not uploaded.",
         "NSLocationWhenInUseUsageDescription": "Trade Report uses your location to stamp the job address on photos when you turn on the evidence location stamp.",
@@ -26,7 +26,7 @@
     },
     "android": {
       "package": "com.tradesreport.app",
-      "versionCode": 12,
+      "versionCode": 13,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundColor": "#045C42"
@@ -66,14 +66,14 @@
         "expo-image-picker",
         {
           "photosPermission": "Trade Report needs access to your photo library so you can add existing photos to a job report.",
-          "cameraPermission": "Trade Report uses your camera to take before and after job photos for your reports.",
+          "cameraPermission": "Trade Report uses your camera to take before and after job photos and to measure distances with AR for your reports.",
           "microphonePermission": "Trade Report uses the microphone so you can dictate job notes. Audio is transcribed on this device and is not uploaded."
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Trade Report uses your camera to take before and after job photos for your reports.",
+          "cameraPermission": "Trade Report uses your camera to take before and after job photos and to measure distances with AR for your reports.",
           "microphonePermission": "Trade Report uses the microphone so you can dictate job notes. Audio is transcribed on this device and is not uploaded.",
           "recordAudioAndroid": true
         }
@@ -88,6 +88,7 @@
       ],
       "expo-sqlite",
       "expo-secure-store",
+      "expo-video",
       [
         "expo-sharing",
         {
@@ -120,7 +121,14 @@
       ],
       "./plugins/withStoreKitConfig.js",
       "./plugins/withIcloudDocuments.js",
-      "./plugins/withRecordAudioPermission.js"
+      "./plugins/withRecordAudioPermission.js",
+      [
+        "@stewmore/expo-ar",
+        {
+          "cameraPermission": "Trade Report uses your camera to take before and after job photos and to measure distances with AR for your reports.",
+          "arRequired": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

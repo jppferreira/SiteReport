@@ -38,13 +38,19 @@ export function TemplatePicker({
   const { colors, radius, spacing } = useTheme();
   const { t } = useI18n();
   const selected = REPORT_TEMPLATES.find((option) => option.id === value) ?? REPORT_TEMPLATES[0]!;
+  const cardWidth = compact ? 168 : 196;
+  const gap = compact ? spacing.sm : spacing.md;
 
   return (
     <View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: compact ? spacing.xs : spacing.sm, paddingVertical: 2 }}
+        decelerationRate="fast"
+        snapToInterval={cardWidth + gap}
+        snapToAlignment="start"
+        disableIntervalMomentum
+        contentContainerStyle={{ gap, paddingVertical: 4, paddingRight: spacing.md }}
       >
         {REPORT_TEMPLATES.map((option) => {
           const active = option.id === value;
@@ -76,9 +82,11 @@ export function TemplatePicker({
                 styles.card,
                 compact ? styles.cardCompact : null,
                 {
+                  width: cardWidth,
                   borderRadius: radius.md,
                   borderColor: active ? colors.accent : colors.border,
                   backgroundColor: colors.surface,
+                  borderWidth: active ? 2 : 1.5,
                 },
               ]}
             >
@@ -89,18 +97,16 @@ export function TemplatePicker({
               ) : null}
               <LayoutThumb template={option.id} accent={accentColor} />
               <Text
-                variant={compact ? 'caption' : 'bodyMedium'}
+                variant="bodyMedium"
                 color={colors.textPrimary}
                 numberOfLines={1}
-                style={{ marginTop: compact ? 4 : spacing.xs }}
+                style={{ marginTop: spacing.xs }}
               >
                 {option.label}
               </Text>
-              {compact ? null : (
-                <Text variant="caption" color={colors.textTertiary} style={{ marginTop: 2 }}>
-                  {option.hint}
-                </Text>
-              )}
+              <Text variant="caption" color={colors.textTertiary} style={{ marginTop: 2 }} numberOfLines={1}>
+                {option.hint}
+              </Text>
               {savedId ? (
                 <Text
                   variant="caption"
@@ -119,8 +125,8 @@ export function TemplatePicker({
         <Text
           variant="caption"
           color={colors.textSecondary}
-          numberOfLines={compact ? 1 : undefined}
-          style={{ marginTop: compact ? spacing.xs : spacing.sm }}
+          numberOfLines={2}
+          style={{ marginTop: spacing.sm }}
         >
           {selected.description}
         </Text>
@@ -131,19 +137,17 @@ export function TemplatePicker({
 
 const styles = StyleSheet.create({
   card: {
-    width: 148,
     borderWidth: 1.5,
-    padding: 8,
+    padding: 10,
     position: 'relative',
   },
   badge: {
     position: 'absolute',
-    top: 6,
-    right: 6,
+    top: 10,
+    right: 10,
     zIndex: 1,
   },
   cardCompact: {
-    width: 108,
-    padding: 6,
+    padding: 8,
   },
 });

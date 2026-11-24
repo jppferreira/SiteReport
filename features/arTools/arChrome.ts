@@ -25,4 +25,4 @@ export const AR_COLORS = {
   muted: '#6B706B',
 } as const;
 
-export type ArToolMode = 'measure' | 'level';
+export type ArToolMode = 'measure' | 'level' | 'photo';

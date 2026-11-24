@@ -14,6 +14,7 @@ Store or Play Store, and a bug report you choose to send from Settings.
 
 - **Create a job** in seconds — only a title is required.
 - **Before/after photos** with captions, reordering, and full-screen review.
+- **AR Measure** (iOS ARKit + Android ARCore) — tap two points in the room, save a stamped snapshot into the job’s photos for the PDF.
 - **Work summary** notes (work completed, materials, recommendations) with autosave, plus optional **offline voice dictation** (on-device Whisper; no cloud AI upload).
 - **Optional customer signature**, captured with a hand-drawn signature pad.
 - **One-tap PDF report** generation, previewed in-app, then shared or saved via the native share
@@ -65,6 +66,14 @@ Trade Report's primary targets are iOS and Android; the web build exists mainly 
 previewed without native tooling. A few native-only behaviours (haptics, the native date picker,
 camera capture, native share sheet, in-app purchases) gracefully degrade or no-op on web rather
 than crashing — exercise those flows on a real device or simulator for full fidelity.
+
+### AR Measure (development builds)
+
+AR measuring uses `@stewmore/expo-ar` (ARKit on iOS, ARCore on Android). It **does not run in Expo Go**
+or in simulators/emulators. After installing or updating the AR module, create a new native
+development or EAS build (`npx expo prebuild` then `eas build` / local `npx expo run:ios` /
+`npx expo run:android`) and test on a physical AR-capable device. On unsupported devices or web,
+the Measure screen shows a clear fallback instead of crashing.
 
 ## Project structure
 

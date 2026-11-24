@@ -52,6 +52,50 @@ describe('computeJobContentHash', () => {
     expect(hash).toContain(`"renderVersion":${REPORT_RENDER_VERSION}`);
   });
 
+  it('changes the hash when report section visibility or order changes', async () => {
+    const plain = await computeJobContentHash(job(), [], null, null);
+    const hiddenPhotos = await computeJobContentHash(job(), [], null, null, [], {
+      reportSections: {
+        cover: true,
+        photos: false,
+        checklist: true,
+        costs: true,
+        signature: true,
+        review: true,
+      },
+    });
+    const reordered = await computeJobContentHash(job(), [], null, null, [], {
+      reportSectionOrder: ['review', 'cover', 'photos', 'checklist', 'costs', 'signature'],
+    });
+    expect(hiddenPhotos).not.toBe(plain);
+    expect(reordered).not.toBe(plain);
+  });
+
+  it('changes the hash when checklist items or stamp prefs would change the PDF', async () => {
+    const sections = {
+      cover: true,
+      photos: true,
+      checklist: true,
+      costs: true,
+      signature: true,
+      review: true,
+    };
+    const plain = await computeJobContentHash(job(), [], null, null, [], { reportSections: sections });
+    const withChecklist = await computeJobContentHash(job(), [], null, null, [], {
+      reportSections: sections,
+      checklist: {
+        includeInPdf: true,
+        items: [{ label: 'Flue clear', checked: true }],
+      },
+    });
+    const stampOff = await computeJobContentHash(job(), [], null, null, [], {
+      reportSections: sections,
+      stampShowOnPdf: false,
+    });
+    expect(withChecklist).not.toBe(plain);
+    expect(stampOff).not.toBe(plain);
+  });
+
   it('keeps private notes out of the hash and includes the capture time', async () => {
     const summary: WorkSummary = {
       jobId: 'job-1',

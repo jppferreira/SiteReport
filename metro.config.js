@@ -6,6 +6,8 @@ const config = getDefaultConfig(__dirname);
 config.resolver.assetExts.push('wasm');
 // whisper.rn: bundled GGML model (+ optional Core ML assets later)
 config.resolver.assetExts.push('bin', 'mil');
+// Transparent report-build loop for web / tooling
+config.resolver.assetExts.push('webm');
 
 config.server.enhanceMiddleware = (middleware) => {
   return (req, res, next) => {
