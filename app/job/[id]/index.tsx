@@ -11,7 +11,22 @@ import {
   Screen,
   useToast,
 } from '@/components';
-import { jobChecklistsRepository, jobsRepository, photoAreasRepository, photosRepository } from '@/database';
+import {
+  businessProfileRepository,
+  documentsRepository,
+  jobChecklistsRepository,
+  jobsRepository,
+  photoAreasRepository,
+  photosRepository,
+} from '@/database';
+import {
+  ConvertQuoteSheet,
+  JobDocumentsCard,
+  JobWorkGrid,
+  MarkPaidSheet,
+  NewDocumentSheet,
+  type JobWorkTileId,
+} from '@/features/documents';
 import { BottomSheetMenu } from '@/features/jobs/BottomSheetMenu';
 import {
   addressForMeta,
@@ -19,23 +34,36 @@ import {
   ctaForGuidedState,
   GuidedFooter,
   GuidedJobHeader,
-  GuidedStepList,
   JobDetailsSheet,
   ReportReadyView,
   type GuidedStepId,
   type ReportReadyStat,
 } from '@/features/jobs/guidedChecklist';
 import { useEntitlement } from '@/hooks/useEntitlement';
+import { useJobDocuments } from '@/hooks/useJobDocuments';
 import { useJob } from '@/hooks/useJob';
 import { useSignature } from '@/hooks/useSignature';
 import { useWorkSummary } from '@/hooks/useWorkSummary';
 import { useI18n } from '@/i18n/useI18n';
-import { formatPence, JobChecklist, linesForReport, pricingTotalPence } from '@/models';
+import {
+  DocumentKind,
+  formatInvoiceNumber,
+  formatPence,
+  pricingTotalsFromSnapshot,
+  JobChecklist,
+  linesForReport,
+  pricingTotalPence,
+  pricingVatBreakdown,
+  serializePricing,
+  VAT_RATE_PERCENT,
+} from '@/models';
+import { sharePaymentReminder } from '@/services/documentReminders';
 import { deleteJobFiles } from '@/services/fileService';
 import { reportTemplateLabel } from '@/services/pdfService';
 import { useTheme } from '@/theme';
 import { formatDate, formatDateShort } from '@/utils/format';
 import { goBack } from '@/utils/goBack';
+import { logger } from '@/utils/logger';
 
 export default function JobOverviewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -55,6 +83,14 @@ export default function JobOverviewScreen() {
   const [photoCaptions, setPhotoCaptions] = useState<string[]>([]);
   const [areaName, setAreaName] = useState<string | null>(null);
   const [checklist, setChecklist] = useState<JobChecklist | null>(null);
+  const { documents, refreshOnFocus: refreshDocuments } = useJobDocuments(id);
+  const [newDocOpen, setNewDocOpen] = useState(false);
+  const [convertQuoteId, setConvertQuoteId] = useState<string | null>(null);
+  const [markPaidId, setMarkPaidId] = useState<string | null>(null);
+  const [docBusy, setDocBusy] = useState(false);
+  const [defaultDueDays, setDefaultDueDays] = useState(14);
+  const [nextInvoicePreview, setNextInvoicePreview] = useState('INV-0001');
+  const [profileHasVat, setProfileHasVat] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -75,7 +111,13 @@ export default function JobOverviewScreen() {
         setAreaName(areas[0]?.name ?? null);
       });
       jobChecklistsRepository.getChecklist(id).then(setChecklist);
-    }, [refresh, refreshSummary, refreshSignature, id])
+      refreshDocuments();
+      businessProfileRepository.getBusinessProfile().then((p) => {
+        setDefaultDueDays(p.defaultDueDays);
+        setNextInvoicePreview(formatInvoiceNumber(p.nextInvoiceSequence));
+        setProfileHasVat(Boolean(p.vatNumber?.trim()));
+      });
+    }, [refresh, refreshSummary, refreshSignature, refreshDocuments, id])
   );
 
   const guided = useMemo(() => {
@@ -188,12 +230,142 @@ export default function JobOverviewScreen() {
     void openStep(cta.stepId);
   };
 
+  const createDocumentOfKind = async (kind: DocumentKind) => {
+    // Report PDF — work tiles are optional; open preview whenever the user wants.
+    if (kind === 'report') {
+      router.push(`/job/${job.id}/preview`);
+      return;
+    }
+    if (!isPro) {
+      router.push({ pathname: '/paywall', params: { trigger: 'quote_invoice' } });
+      return;
+    }
+    setDocBusy(true);
+    try {
+      let pricingSnapshotJson: string | null = null;
+      let netPence: number | null = null;
+      let vatPence: number | null = null;
+      let totalPence: number | null = null;
+      if (summary?.pricing.enabled) {
+        pricingSnapshotJson = serializePricing(summary.pricing);
+        const breakdown = pricingVatBreakdown(linesForReport(summary.pricing), VAT_RATE_PERCENT);
+        if (breakdown) {
+          netPence = breakdown.subtotalPence;
+          vatPence = breakdown.vatPence;
+          totalPence = breakdown.totalPence;
+        }
+      }
+      const created = await documentsRepository.createDocument({
+        jobId: job.id,
+        kind,
+        title: job.title,
+        pricingSnapshotJson,
+        netPence,
+        vatPence,
+        totalPence,
+      });
+      showToast({ message: t('documents.toastCreated'), tone: 'neutral' });
+      await refreshDocuments();
+      router.push(`/document/${created.id}`);
+    } catch (error) {
+      logger.warn('Failed to create job document', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      showToast({ message: t('documents.toastCreateError'), tone: 'destructive' });
+    } finally {
+      setDocBusy(false);
+    }
+  };
+
+  const handleConvertQuote = async (opts: { copyPricing: boolean; attachReport: boolean; dueDays: number }) => {
+    if (!convertQuoteId) return;
+    setDocBusy(true);
+    try {
+      const reportDoc = documents.find((d) => d.kind === 'report');
+      await documentsRepository.convertQuoteToInvoice(convertQuoteId, {
+        copyPricing: opts.copyPricing,
+        dueDays: opts.dueDays,
+        attachReportId: opts.attachReport ? reportDoc?.reportId ?? reportDoc?.id ?? null : null,
+      });
+      setConvertQuoteId(null);
+      showToast({ message: t('documents.toastConverted'), tone: 'neutral' });
+      await refreshDocuments();
+    } catch {
+      showToast({ message: t('documents.toastConvertError'), tone: 'destructive' });
+    } finally {
+      setDocBusy(false);
+    }
+  };
+
+  const handleRemind = async (invoiceId: string) => {
+    const doc = documents.find((d) => d.id === invoiceId);
+    if (!doc || !job) return;
+    try {
+      const profile = await businessProfileRepository.getBusinessProfile();
+      const result = await sharePaymentReminder({
+        document: doc,
+        customerName: job.customerName,
+        jobTitle: job.title,
+        profile,
+      });
+      if (result === 'shared') {
+        showToast({ message: t('reminders.toastShared'), tone: 'success' });
+      } else if (result === 'unavailable') {
+        showToast({ message: t('reminders.toastShareUnavailable'), tone: 'warning' });
+      }
+    } catch {
+      showToast({ message: t('reminders.toastShareUnavailable'), tone: 'destructive' });
+    }
+  };
+
+  const handleMarkPaid = async (opts: {
+    amountPence: number;
+    paidAt: string;
+    method: string;
+    thankYou: boolean;
+  }) => {
+    if (!markPaidId) return;
+    setDocBusy(true);
+    try {
+      await documentsRepository.markPaid(markPaidId, {
+        paidMethod: opts.method,
+        paidAmountPence: opts.amountPence,
+      });
+      setMarkPaidId(null);
+      showToast({ message: t('documents.toastPaid'), tone: 'neutral' });
+      await refreshDocuments();
+    } catch {
+      showToast({ message: t('documents.toastPaidError'), tone: 'destructive' });
+    } finally {
+      setDocBusy(false);
+    }
+  };
+
+  const openWorkTile = (tileId: JobWorkTileId) => {
+    const map: Record<JobWorkTileId, GuidedStepId | 'details'> = {
+      photos: 'photos',
+      measure: 'measure',
+      checklist: 'checklist',
+      notes: 'notes',
+      signature: 'signature',
+      details: 'details',
+    };
+    void openStep(map[tileId]);
+  };
+
+  const markPaidDoc = markPaidId ? documents.find((d) => d.id === markPaidId) : null;
+  const convertQuote = convertQuoteId ? documents.find((d) => d.id === convertQuoteId) ?? null : null;
+  const convertLineCount = countPricingLines(convertQuote?.pricingSnapshotJson);
+  const convertInvoiceTotal =
+    convertQuote?.totalPence ??
+    pricingTotalsFromSnapshot(convertQuote?.pricingSnapshotJson ?? null).totalPence;
+
   const readyStats = buildReadyStats(t, guided, photoCounts, summary, checklist, signature);
 
   return (
     <Screen>
       <NavigationHeader
-        title=""
+        title={t('jobDetail.title')}
         onBack={() => goBack('/(tabs)/jobs')}
         right={
           showReady ? (
@@ -216,11 +388,45 @@ export default function JobOverviewScreen() {
         }
       />
 
-      {showReady ? (
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, flexGrow: 1 }}
-        >
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: 4,
+          paddingBottom: spacing.xl,
+          gap: 14,
+        }}
+      >
+        <GuidedJobHeader
+          title={job.title}
+          address={metaAddress}
+          customerName={job.customerName}
+          dateLabel={dateLabel}
+          completed={guided.completedCount}
+          total={guided.totalCount}
+          intro={null}
+          documentsLayout
+          statusLabel={
+            guided.allComplete
+              ? t('jobs.statusComplete')
+              : guided.completedCount > 0
+                ? t('jobs.statusInProgress')
+                : t('jobs.statusDraft')
+          }
+        />
+            <JobDocumentsCard
+              documents={documents}
+              isPro={isPro}
+              onNew={() => setNewDocOpen(true)}
+              onOpenDocument={(docId) => router.push(`/document/${docId}`)}
+              onCreateKind={(kind) => void createDocumentOfKind(kind)}
+              onCreateReport={() => router.push(`/job/${job.id}/preview`)}
+              onPreviewReport={() => router.push(`/job/${job.id}/preview`)}
+              onConvertQuote={(quoteId) => setConvertQuoteId(quoteId)}
+              onMarkPaid={(invoiceId) => setMarkPaidId(invoiceId)}
+              onRemind={handleRemind}
+            />
+        {showReady ? (
           <ReportReadyView
             jobTitle={job.title}
             customerName={job.customerName}
@@ -232,58 +438,55 @@ export default function JobOverviewScreen() {
             onCreatePdf={() => router.push(`/job/${job.id}/preview`)}
             onSend={() => router.push(`/job/${job.id}/send`)}
           />
-        </ScrollView>
-      ) : (
-        <>
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{
-              paddingHorizontal: 20,
-              paddingTop: 4,
-              paddingBottom: spacing.xl,
-              gap: 14,
+        ) : (
+          <JobWorkGrid
+            onPress={openWorkTile}
+            summaries={{
+              photos: t('jobDetail.guided.stats.photos', {
+                count: photoCounts.before + photoCounts.during + photoCounts.after,
+              }),
+              notes: (() => {
+                const lines = summary ? linesForReport(summary.pricing) : [];
+                const total = summary ? pricingTotalPence(lines) : null;
+                if (lines.length === 0) return t('documents.workNotesEmpty');
+                return total != null
+                  ? t('documents.workNotesSummary', { count: lines.length, amount: formatPence(total) })
+                  : t('documents.workNotesCount', { count: lines.length });
+              })(),
+              signature: signature
+                ? t('documents.workSignatureDone', { date: formatDateShort(signature.signedAt) })
+                : t('documents.workSignatureEmpty'),
+              details: t('documents.workDetailsHint'),
+              checklist: checklist
+                ? t('documents.workChecklistProgress', {
+                    done: checklist.items.filter((i) => i.checked).length,
+                    total: checklist.items.length,
+                  })
+                : undefined,
             }}
-          >
-            <GuidedJobHeader
-              title={job.title}
-              address={metaAddress}
-              dateLabel={dateLabel}
-              completed={guided.completedCount}
-              total={guided.totalCount}
-              intro={intro}
-            />
-            <GuidedStepList
-              steps={guided.steps}
-              currentId={guided.currentId}
-              isPro={isPro}
-              photoCounts={photoCounts}
-              photoThumbs={photoThumbs}
-              showYourStepsLabel={guided.completedCount === 0}
-              onPressStep={(stepId) => void openStep(stepId)}
-              onAddAfterPhotos={openPhotosTools}
-              onMeasure={() => router.push(`/job/${job.id}/measure`)}
-            />
-          </ScrollView>
-
-          <GuidedFooter
-            primaryLabel={primaryLabel}
-            primaryIcon={primaryIcon}
-            onPrimary={onPrimary}
-            showSavedNote={guided.completedCount === 0}
-            onSavedNotePress={() => router.push('/settings/data')}
-            showPreviewRow={guided.completedCount > 0}
-            unlockHint={
-              guided.canCreatePdf
-                ? null
-                : photoCounts.after === 0 && photoCounts.before + photoCounts.during > 0
-                  ? t('jobDetail.guided.unlockAfterPhotos')
-                  : t('jobDetail.guided.unlockRequired')
-            }
-            canCreatePdf={guided.canCreatePdf}
-            onPreview={() => router.push(`/job/${job.id}/preview`)}
           />
-        </>
-      )}
+        )}
+      </ScrollView>
+
+      {!showReady ? (
+        <GuidedFooter
+          primaryLabel={primaryLabel}
+          primaryIcon={primaryIcon}
+          onPrimary={onPrimary}
+          showSavedNote={guided.completedCount === 0}
+          onSavedNotePress={() => router.push('/settings/data')}
+          showPreviewRow={guided.completedCount > 0}
+          unlockHint={
+            guided.canCreatePdf
+              ? null
+              : photoCounts.after === 0 && photoCounts.before + photoCounts.during > 0
+                ? t('jobDetail.guided.unlockAfterPhotos')
+                : t('jobDetail.guided.unlockRequired')
+          }
+          canCreatePdf={guided.canCreatePdf}
+          onPreview={() => router.push(`/job/${job.id}/preview`)}
+        />
+      ) : null}
 
       <JobDetailsSheet
         visible={detailsSheetOpen}
@@ -327,11 +530,53 @@ export default function JobOverviewScreen() {
         onCancel={() => setConfirmDelete(false)}
         loading={deleting}
       />
+
+      <NewDocumentSheet
+        visible={newDocOpen}
+        isPro={isPro}
+        onClose={() => setNewDocOpen(false)}
+        onSelect={(kind) => void createDocumentOfKind(kind)}
+        onLocked={() => {
+          setNewDocOpen(false);
+          router.push({ pathname: '/paywall', params: { trigger: 'quote_invoice' } });
+        }}
+      />
+      <ConvertQuoteSheet
+        visible={convertQuoteId !== null}
+        quoteNumber={convertQuote?.number ?? null}
+        quoteTotalPence={convertQuote?.totalPence ?? null}
+        invoicePreviewNumber={nextInvoicePreview}
+        invoiceTotalPence={convertInvoiceTotal}
+        lineCount={convertLineCount}
+        defaultDueDays={defaultDueDays}
+        hasReport={documents.some((d) => d.kind === 'report')}
+        showVatNote={profileHasVat && (convertQuote?.vatPence ?? 0) > 0}
+        loading={docBusy}
+        onClose={() => setConvertQuoteId(null)}
+        onSubmit={handleConvertQuote}
+      />
+      <MarkPaidSheet
+        visible={markPaidId !== null}
+        defaultAmountPence={markPaidDoc?.totalPence ?? null}
+        loading={docBusy}
+        onClose={() => setMarkPaidId(null)}
+        onSubmit={handleMarkPaid}
+      />
     </Screen>
   );
 }
 
 type Translate = (key: string, options?: Record<string, string | number>) => string;
+
+function countPricingLines(pricingSnapshotJson: string | null | undefined): number {
+  if (!pricingSnapshotJson?.trim()) return 0;
+  try {
+    const raw = JSON.parse(pricingSnapshotJson) as { lines?: unknown[] };
+    return Array.isArray(raw.lines) ? raw.lines.length : 0;
+  } catch {
+    return 0;
+  }
+}
 
 function introForState(
   t: Translate,

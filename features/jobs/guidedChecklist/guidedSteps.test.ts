@@ -10,6 +10,8 @@ const baseJob = {
   description: null,
   status: 'draft' as const,
   coverPhotoId: null,
+  isQuick: false,
+  customerId: null,
   createdAt: '2026-11-24T10:00:00.000Z',
   updatedAt: '2026-11-24T10:00:00.000Z',
 };
@@ -29,49 +31,30 @@ describe('computeGuidedChecklist', () => {
     expect(state.totalCount).toBe(7);
     expect(state.currentId).toBe('details');
     expect(state.steps[0]?.status).toBe('in_progress');
-    expect(ctaForGuidedState(state)).toEqual({ stepId: 'details', kind: 'start' });
+    // Title alone unlocks Create PDF; work steps remain optional.
+    expect(ctaForGuidedState(state)).toEqual({ stepId: 'report', kind: 'create' });
   });
 
-  it('unlocks Create PDF only after details, before/after photos, and work notes', () => {
-    const locked = computeGuidedChecklist({
-      job: { ...baseJob, customerName: 'Sarah Mitchell' },
-      photoCounts: { before: 8, during: 4, after: 0 },
-      summary: {
-        jobId: 'j1',
-        workCompleted: 'Fitted units',
-        materials: null,
-        recommendations: null,
-        notes: null,
-        pricing: { enabled: false, lines: [] },
-        documentType: 'reference',
-        invoiceNumber: null,
-        updatedAt: '2026-11-24T10:00:00.000Z',
-      },
+  it('unlocks Create PDF as soon as the job has a title — work steps stay optional', () => {
+    const withTitleOnly = computeGuidedChecklist({
+      job: baseJob,
+      photoCounts: { before: 0, during: 0, after: 0 },
+      summary: null,
       hasSignature: false,
       checklist: null,
       isPro: false,
     });
-    expect(locked.canCreatePdf).toBe(false);
-    expect(locked.currentId).toBe('photos');
+    expect(withTitleOnly.canCreatePdf).toBe(true);
+    expect(ctaForGuidedState(withTitleOnly)).toEqual({ stepId: 'report', kind: 'create' });
 
-    const unlocked = computeGuidedChecklist({
-      job: { ...baseJob, customerName: 'Sarah Mitchell' },
-      photoCounts: { before: 8, during: 4, after: 2 },
-      summary: {
-        jobId: 'j1',
-        workCompleted: 'Fitted units',
-        materials: null,
-        recommendations: null,
-        notes: null,
-        pricing: { enabled: false, lines: [] },
-        documentType: 'reference',
-        invoiceNumber: null,
-        updatedAt: '2026-11-24T10:00:00.000Z',
-      },
+    const emptyTitle = computeGuidedChecklist({
+      job: { ...baseJob, title: '   ' },
+      photoCounts: { before: 0, during: 0, after: 0 },
+      summary: null,
       hasSignature: false,
       checklist: null,
       isPro: false,
     });
-    expect(unlocked.canCreatePdf).toBe(true);
+    expect(emptyTitle.canCreatePdf).toBe(false);
   });
 });

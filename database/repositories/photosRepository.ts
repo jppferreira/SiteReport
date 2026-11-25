@@ -1,4 +1,5 @@
 import { getDatabase } from '@/database/client';
+import * as jobsRepository from '@/database/repositories/jobsRepository';
 import { parsePhotoAnnotations, Photo, PhotoType, serializePhotoAnnotations } from '@/models';
 import { generateId } from '@/utils/id';
 
@@ -68,6 +69,8 @@ export async function addPhoto(photo: NewPhoto): Promise<Photo> {
       $createdAt: record.createdAt,
     }
   );
+
+  await jobsRepository.clearQuickJobFlag(photo.jobId);
 
   return record;
 }

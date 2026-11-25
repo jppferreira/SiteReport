@@ -2,6 +2,15 @@ import { Platform } from 'react-native';
 
 import type { SQLiteBindParams, SQLiteDatabase } from 'expo-sqlite';
 
+import {
+  formatInvoiceNumber,
+  formatQuoteNumber,
+  mapReportStatusToDocumentStatus,
+  parsePricing,
+  pricingVatBreakdown,
+  VAT_RATE_PERCENT,
+} from '@/models';
+import { generateId } from '@/utils/id';
 import { logger } from '@/utils/logger';
 
 import { orphanCleanupStatements } from './jobDelete';
@@ -12,7 +21,7 @@ import { readDatabaseSnapshot, writeDatabaseSnapshot } from './webSnapshot';
 // holds an exclusive lock per origin and breaks hot reload — and copies that
 // database into IndexedDB after each write so jobs survive reloads offline.
 const DATABASE_NAME = Platform.OS === 'web' ? ':memory:' : 'sitereport.db';
-const CURRENT_SCHEMA_VERSION = 13;
+const CURRENT_SCHEMA_VERSION = 15;
 
 type SQLiteModule = typeof import('expo-sqlite');
 
@@ -47,13 +56,111 @@ async function enableForeignKeys(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA foreign_keys = ON');
 }
 
+async function disableForeignKeys(db: SQLiteDatabase) {
+  await db.execAsync('PRAGMA foreign_keys = OFF');
+}
+
+/** Idempotent column/table repair so a half-failed migrate can recover. */
+async function ensureDocumentsSchema(db: SQLiteDatabase): Promise<void> {
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS documents (
+      id TEXT PRIMARY KEY NOT NULL,
+      jobId TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL,
+      number TEXT,
+      status TEXT NOT NULL,
+      title TEXT,
+      totalPence INTEGER,
+      netPence INTEGER,
+      vatPence INTEGER,
+      dueDate TEXT,
+      validUntil TEXT,
+      sentAt TEXT,
+      paidAt TEXT,
+      acceptedAt TEXT,
+      declinedAt TEXT,
+      paidMethod TEXT,
+      paidAmountPence INTEGER,
+      sourceDocumentId TEXT,
+      attachedReportId TEXT,
+      pricingSnapshotJson TEXT,
+      reportId TEXT,
+      localPdfUri TEXT,
+      fileName TEXT,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_documents_jobId ON documents(jobId);
+    CREATE INDEX IF NOT EXISTS idx_documents_kind ON documents(kind);
+    CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status);
+    CREATE INDEX IF NOT EXISTS idx_documents_number ON documents(number);
+
+    CREATE TABLE IF NOT EXISTS customers (
+      id TEXT PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL,
+      phone TEXT,
+      email TEXT,
+      address TEXT,
+      postcode TEXT,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name);
+    CREATE INDEX IF NOT EXISTS idx_customers_updatedAt ON customers(updatedAt);
+  `);
+
+  const jobColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(jobs)');
+  if (!jobColumns.some((column) => column.name === 'isQuick')) {
+    await db.execAsync(`ALTER TABLE jobs ADD COLUMN isQuick INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (!jobColumns.some((column) => column.name === 'customerId')) {
+    // No inline REFERENCES here — SQLite can't reliably add FK constraints via ALTER.
+    await db.execAsync(`ALTER TABLE jobs ADD COLUMN customerId TEXT`);
+  }
+  await db.execAsync('CREATE INDEX IF NOT EXISTS idx_jobs_customerId ON jobs(customerId)');
+
+  const profileColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(business_profile)');
+  if (!profileColumns.some((column) => column.name === 'nextQuoteSequence')) {
+    await db.execAsync(`ALTER TABLE business_profile ADD COLUMN nextQuoteSequence INTEGER NOT NULL DEFAULT 1`);
+  }
+  if (!profileColumns.some((column) => column.name === 'defaultQuoteValidityDays')) {
+    await db.execAsync(`ALTER TABLE business_profile ADD COLUMN defaultQuoteValidityDays INTEGER NOT NULL DEFAULT 30`);
+  }
+  if (!profileColumns.some((column) => column.name === 'stripePaymentLink')) {
+    await db.execAsync('ALTER TABLE business_profile ADD COLUMN stripePaymentLink TEXT');
+  }
+}
+
 async function migrate(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   let version = row?.user_version ?? 0;
 
+  // Always repair columns first — recovers DBs stuck after a failed v14/v15 migrate.
+  await disableForeignKeys(db);
+  try {
+    await ensureDocumentsSchema(db);
+  } finally {
+    await enableForeignKeys(db);
+  }
+
   if (version >= CURRENT_SCHEMA_VERSION) {
+    logger.debug('Database schema ready', { version: CURRENT_SCHEMA_VERSION });
     return;
   }
+
+  // Migrations that backfill rows must not trip on orphaned FKs.
+  await disableForeignKeys(db);
+  try {
+    await runVersionedMigrations(db, version);
+  } finally {
+    await enableForeignKeys(db);
+  }
+
+  logger.debug('Database schema ready', { version: CURRENT_SCHEMA_VERSION });
+}
+
+async function runVersionedMigrations(db: SQLiteDatabase, startVersion: number) {
+  let version = startVersion;
 
   if (version < 1) {
   await db.execAsync(`
@@ -294,9 +401,255 @@ async function migrate(db: SQLiteDatabase) {
       CREATE INDEX IF NOT EXISTS idx_report_events_reportId ON report_events(reportId);
     `);
     await db.execAsync('PRAGMA user_version = 13');
+    version = 13;
   }
 
-  logger.debug('Database schema ready', { version: CURRENT_SCHEMA_VERSION });
+  if (version < 14) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS documents (
+        id TEXT PRIMARY KEY NOT NULL,
+        jobId TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL,
+        number TEXT,
+        status TEXT NOT NULL,
+        title TEXT,
+        totalPence INTEGER,
+        netPence INTEGER,
+        vatPence INTEGER,
+        dueDate TEXT,
+        validUntil TEXT,
+        sentAt TEXT,
+        paidAt TEXT,
+        acceptedAt TEXT,
+        declinedAt TEXT,
+        paidMethod TEXT,
+        paidAmountPence INTEGER,
+        sourceDocumentId TEXT,
+        attachedReportId TEXT,
+        pricingSnapshotJson TEXT,
+        reportId TEXT,
+        localPdfUri TEXT,
+        fileName TEXT,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_documents_jobId ON documents(jobId);
+      CREATE INDEX IF NOT EXISTS idx_documents_kind ON documents(kind);
+      CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status);
+      CREATE INDEX IF NOT EXISTS idx_documents_number ON documents(number);
+    `);
+
+    const jobColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(jobs)');
+    if (!jobColumns.some((column) => column.name === 'isQuick')) {
+      await db.execAsync(`ALTER TABLE jobs ADD COLUMN isQuick INTEGER NOT NULL DEFAULT 0`);
+    }
+
+    const profileColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(business_profile)');
+    if (!profileColumns.some((column) => column.name === 'nextQuoteSequence')) {
+      await db.execAsync(`ALTER TABLE business_profile ADD COLUMN nextQuoteSequence INTEGER NOT NULL DEFAULT 1`);
+    }
+    if (!profileColumns.some((column) => column.name === 'defaultQuoteValidityDays')) {
+      await db.execAsync(`ALTER TABLE business_profile ADD COLUMN defaultQuoteValidityDays INTEGER NOT NULL DEFAULT 30`);
+    }
+
+    const reportRows = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM reports');
+    const now = new Date().toISOString();
+    for (const row of reportRows) {
+      const reportId = row.id as string;
+      const jobId = row.jobId as string;
+      const jobExists = await db.getFirstAsync<{ id: string }>('SELECT id FROM jobs WHERE id = ?', jobId);
+      if (!jobExists) continue;
+
+      const existing = await db.getFirstAsync<{ id: string }>(
+        'SELECT id FROM documents WHERE reportId = ?',
+        reportId
+      );
+      if (existing) continue;
+
+      const status = mapReportStatusToDocumentStatus(String(row.status ?? 'active'));
+      const generatedAt = (row.generatedAt as string) ?? now;
+      const createdAt = generatedAt;
+      try {
+        await db.runAsync(
+          `INSERT INTO documents (
+            id, jobId, kind, number, status, title,
+            totalPence, netPence, vatPence,
+            dueDate, validUntil, sentAt, paidAt, acceptedAt, declinedAt,
+            paidMethod, paidAmountPence, sourceDocumentId, attachedReportId,
+            pricingSnapshotJson, reportId, localPdfUri, fileName, createdAt, updatedAt
+          ) VALUES (
+            $id, $jobId, 'report', NULL, $status, $title,
+            NULL, NULL, NULL,
+            NULL, NULL, $sentAt, NULL, NULL, NULL,
+            NULL, NULL, NULL, NULL,
+            NULL, $reportId, $localPdfUri, $fileName, $createdAt, $updatedAt
+          )`,
+          {
+            $id: generateId(),
+            $jobId: jobId,
+            $status: status,
+            $title: (row.fileName as string) ?? null,
+            $sentAt: status === 'sent' ? generatedAt : null,
+            $reportId: reportId,
+            $localPdfUri: (row.localPdfUri as string) ?? null,
+            $fileName: (row.fileName as string) ?? null,
+            $createdAt: createdAt,
+            $updatedAt: createdAt,
+          }
+        );
+      } catch (error) {
+        logger.warn('Skipped orphaned report during documents backfill', {
+          reportId,
+          jobId,
+          error: String(error),
+        });
+      }
+    }
+
+    const profileRow = await db.getFirstAsync<Record<string, unknown>>(
+      'SELECT nextInvoiceSequence, nextQuoteSequence FROM business_profile WHERE id = 1'
+    );
+    let nextInvoiceSeq =
+      typeof profileRow?.nextInvoiceSequence === 'number' ? profileRow.nextInvoiceSequence : 1;
+    let nextQuoteSeq = typeof profileRow?.nextQuoteSequence === 'number' ? profileRow.nextQuoteSequence : 1;
+
+    const summaryRows = await db.getAllAsync<Record<string, unknown>>(
+      `SELECT * FROM work_summaries WHERE documentType IN ('quote', 'invoice')`
+    );
+    for (const row of summaryRows) {
+      const jobId = row.jobId as string;
+      const kind = row.documentType as 'quote' | 'invoice';
+      const jobExists = await db.getFirstAsync<{ id: string }>('SELECT id FROM jobs WHERE id = ?', jobId);
+      if (!jobExists) continue;
+
+      const dup = await db.getFirstAsync<{ id: string }>(
+        'SELECT id FROM documents WHERE jobId = ? AND kind = ?',
+        jobId,
+        kind
+      );
+      if (dup) continue;
+
+      const pricing = parsePricing(row.pricingJson);
+      const breakdown = pricing.enabled ? pricingVatBreakdown(pricing.lines, VAT_RATE_PERCENT) : null;
+      const pricingSnapshotJson = pricing.enabled ? JSON.stringify(pricing) : null;
+      const updatedAt = (row.updatedAt as string) ?? now;
+
+      let number: string | null = null;
+      const invoiceNumber = typeof row.invoiceNumber === 'string' ? row.invoiceNumber.trim() : '';
+      if (kind === 'invoice' && invoiceNumber) {
+        number = invoiceNumber;
+      } else if (kind === 'invoice') {
+        number = formatInvoiceNumber(nextInvoiceSeq);
+        nextInvoiceSeq += 1;
+      } else if (kind === 'quote') {
+        number = formatQuoteNumber(nextQuoteSeq);
+        nextQuoteSeq += 1;
+      }
+
+      try {
+        await db.runAsync(
+          `INSERT INTO documents (
+            id, jobId, kind, number, status, title,
+            totalPence, netPence, vatPence,
+            dueDate, validUntil, sentAt, paidAt, acceptedAt, declinedAt,
+            paidMethod, paidAmountPence, sourceDocumentId, attachedReportId,
+            pricingSnapshotJson, reportId, localPdfUri, fileName, createdAt, updatedAt
+          ) VALUES (
+            $id, $jobId, $kind, $number, 'draft', NULL,
+            $totalPence, $netPence, $vatPence,
+            NULL, NULL, NULL, NULL, NULL, NULL,
+            NULL, NULL, NULL, NULL,
+            $pricingSnapshotJson, NULL, NULL, NULL, $createdAt, $updatedAt
+          )`,
+          {
+            $id: generateId(),
+            $jobId: jobId,
+            $kind: kind,
+            $number: number,
+            $totalPence: breakdown?.totalPence ?? null,
+            $netPence: breakdown?.subtotalPence ?? null,
+            $vatPence: breakdown?.vatPence ?? null,
+            $pricingSnapshotJson: pricingSnapshotJson,
+            $createdAt: updatedAt,
+            $updatedAt: updatedAt,
+          }
+        );
+      } catch (error) {
+        logger.warn('Skipped orphaned work summary during documents backfill', {
+          jobId,
+          kind,
+          error: String(error),
+        });
+      }
+    }
+
+    await db.runAsync(
+      `UPDATE business_profile SET nextInvoiceSequence = $seq, nextQuoteSequence = $quoteSeq WHERE id = 1`,
+      { $seq: nextInvoiceSeq, $quoteSeq: nextQuoteSeq }
+    );
+
+    await db.execAsync('PRAGMA user_version = 14');
+    version = 14;
+  }
+
+  if (version < 15) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS customers (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        phone TEXT,
+        email TEXT,
+        address TEXT,
+        postcode TEXT,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name);
+      CREATE INDEX IF NOT EXISTS idx_customers_updatedAt ON customers(updatedAt);
+    `);
+
+    // customerId / customers table ensured by ensureDocumentsSchema (no ALTER FK).
+    await db.execAsync('CREATE INDEX IF NOT EXISTS idx_jobs_customerId ON jobs(customerId)');
+
+    const now = new Date().toISOString();
+    const jobRows = await db.getAllAsync<Record<string, unknown>>(
+      `SELECT id, customerName, address FROM jobs
+       WHERE customerName IS NOT NULL AND TRIM(customerName) != ''`
+    );
+    const customerByKey = new Map<string, string>();
+
+    for (const row of jobRows) {
+      const jobId = row.id as string;
+      const name = String(row.customerName).trim();
+      const address = typeof row.address === 'string' ? row.address.trim() || null : null;
+      const key = `${name.toLowerCase()}|${(address ?? '').toLowerCase()}`;
+      let customerId = customerByKey.get(key);
+      if (!customerId) {
+        customerId = generateId();
+        customerByKey.set(key, customerId);
+        await db.runAsync(
+          `INSERT INTO customers (id, name, phone, email, address, postcode, createdAt, updatedAt)
+           VALUES ($id, $name, NULL, NULL, $address, NULL, $createdAt, $updatedAt)`,
+          {
+            $id: customerId,
+            $name: name,
+            $address: address,
+            $createdAt: now,
+            $updatedAt: now,
+          }
+        );
+      }
+      await db.runAsync('UPDATE jobs SET customerId = ? WHERE id = ?', customerId, jobId);
+    }
+
+    const profileColumnsV15 = await db.getAllAsync<{ name: string }>('PRAGMA table_info(business_profile)');
+    if (!profileColumnsV15.some((column) => column.name === 'stripePaymentLink')) {
+      await db.execAsync('ALTER TABLE business_profile ADD COLUMN stripePaymentLink TEXT');
+    }
+
+    await db.execAsync('PRAGMA user_version = 15');
+    version = 15;
+  }
 }
 
 function queueWebSnapshot(db: SQLiteDatabase) {

@@ -297,19 +297,14 @@ export default function BusinessProfileScreen() {
           <Input label={t('businessProfile.registrationNumber')} value={registrationNumber} onChangeText={setRegistrationNumber} />
           <Input label={t('businessProfile.vatNumber')} value={vatNumber} onChangeText={setVatNumber} />
 
-          <Text variant="label" color={colors.textSecondary} style={{ marginTop: spacing.sm }}>
-            {t('businessProfile.bankSection')}
-          </Text>
-          <Input label={t('businessProfile.bankName')} value={bankName} onChangeText={setBankName} placeholder={t('businessProfile.bankNamePlaceholder')} />
-          <Input label={t('businessProfile.sortCode')} value={sortCode} onChangeText={setSortCode} placeholder={t('businessProfile.sortCodePlaceholder')} />
-          <Input label={t('businessProfile.accountNumber')} value={accountNumber} onChangeText={setAccountNumber} placeholder={t('businessProfile.accountNumberPlaceholder')} keyboardType="number-pad" />
-          <Input label={t('businessProfile.defaultDueDays')} value={defaultDueDays} onChangeText={setDefaultDueDays} keyboardType="number-pad" />
-          <Input
-            label={t('businessProfile.paymentTerms')}
-            value={paymentTerms}
-            onChangeText={setPaymentTerms}
-            placeholder={t('businessProfile.paymentTermsPlaceholder')}
-          />
+          <View style={{ marginTop: spacing.sm, alignSelf: 'flex-start' }}>
+            <TextButton
+              label={t('businessProfile.openQuotesInvoices')}
+              tone="accent"
+              align="left"
+              onPress={() => router.push('/settings/quotes-invoices')}
+            />
+          </View>
 
           <Text variant="caption" color={colors.textSecondary}>
             {savedState === 'saving'

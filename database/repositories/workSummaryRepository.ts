@@ -1,4 +1,5 @@
 import { getDatabase } from '@/database/client';
+import * as jobsRepository from '@/database/repositories/jobsRepository';
 import {
   coerceWorkSummaryDocumentFields,
   DEFAULT_DOCUMENT_TYPE,
@@ -80,6 +81,16 @@ export async function saveWorkSummary(
       $updatedAt: next.updatedAt,
     }
   );
+
+  const noteFields = [
+    patch.notes,
+    patch.workCompleted,
+    patch.materials,
+    patch.recommendations,
+  ];
+  if (noteFields.some((value) => typeof value === 'string' && value.trim().length > 0)) {
+    await jobsRepository.clearQuickJobFlag(jobId);
+  }
 
   return next;
 }

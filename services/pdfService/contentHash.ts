@@ -41,6 +41,7 @@ export type ReportBrandStamp = {
   accountNumber?: string | null;
   paymentTerms?: string | null;
   defaultDueDays?: number | null;
+  stripePaymentLink?: string | null;
   /** Effective evidence-stamp prefs that change printed photo captions. */
   stampDateTime?: boolean;
   stampAddress?: boolean;
@@ -101,6 +102,7 @@ export async function computeJobContentHash(
     ...(stamp.accountNumber ? { accountNumber: stamp.accountNumber } : {}),
     ...(stamp.paymentTerms ? { paymentTerms: stamp.paymentTerms } : {}),
     ...(stamp.defaultDueDays && stamp.defaultDueDays !== 14 ? { defaultDueDays: stamp.defaultDueDays } : {}),
+    ...(stamp.stripePaymentLink ? { stripePaymentLink: stamp.stripePaymentLink } : {}),
     // Defaults match AppPreferences: date/time + PDF stamp on. Address is Pro-gated at call sites.
     ...(stamp.stampDateTime === false ? { stampDateTime: false } : {}),
     ...(stamp.stampAddress === false ? { stampAddress: false } : {}),

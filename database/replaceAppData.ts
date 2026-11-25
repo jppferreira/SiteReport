@@ -21,15 +21,17 @@ export async function replaceAppData(manifest: BackupManifest, root: string): Pr
       DELETE FROM signatures;
       DELETE FROM report_events;
       DELETE FROM reports;
+      DELETE FROM documents;
       DELETE FROM job_checklists;
       DELETE FROM jobs;
+      DELETE FROM customers;
       DELETE FROM business_profile;
     `);
 
     for (const job of manifest.jobs) {
       await db.runAsync(
-        `INSERT INTO jobs (id, title, customerName, address, jobDate, referenceNumber, description, status, coverPhotoId, createdAt, updatedAt)
-         VALUES ($id, $title, $customerName, $address, $jobDate, $referenceNumber, $description, $status, $coverPhotoId, $createdAt, $updatedAt)`,
+        `INSERT INTO jobs (id, title, customerName, address, jobDate, referenceNumber, description, status, coverPhotoId, isQuick, customerId, createdAt, updatedAt)
+         VALUES ($id, $title, $customerName, $address, $jobDate, $referenceNumber, $description, $status, $coverPhotoId, $isQuick, $customerId, $createdAt, $updatedAt)`,
         {
           $id: job.id,
           $title: job.title,
@@ -40,6 +42,8 @@ export async function replaceAppData(manifest: BackupManifest, root: string): Pr
           $description: job.description,
           $status: job.status,
           $coverPhotoId: job.coverPhotoId,
+          $isQuick: job.isQuick ? 1 : 0,
+          $customerId: job.customerId,
           $createdAt: job.createdAt,
           $updatedAt: job.updatedAt,
         }
@@ -146,6 +150,75 @@ export async function replaceAppData(manifest: BackupManifest, root: string): Pr
           $updatedAt: checklist.updatedAt,
         }
       );
+    }
+
+    for (const doc of manifest.documents ?? []) {
+      await db.runAsync(
+        `INSERT INTO documents (
+          id, jobId, kind, number, status, title,
+          totalPence, netPence, vatPence,
+          dueDate, validUntil, sentAt, paidAt, acceptedAt, declinedAt,
+          paidMethod, paidAmountPence, sourceDocumentId, attachedReportId,
+          pricingSnapshotJson, reportId, localPdfUri, fileName, createdAt, updatedAt
+        ) VALUES (
+          $id, $jobId, $kind, $number, $status, $title,
+          $totalPence, $netPence, $vatPence,
+          $dueDate, $validUntil, $sentAt, $paidAt, $acceptedAt, $declinedAt,
+          $paidMethod, $paidAmountPence, $sourceDocumentId, $attachedReportId,
+          $pricingSnapshotJson, $reportId, $localPdfUri, $fileName, $createdAt, $updatedAt
+        )`,
+        {
+          $id: doc.id,
+          $jobId: doc.jobId,
+          $kind: doc.kind,
+          $number: doc.number,
+          $status: doc.status,
+          $title: doc.title,
+          $totalPence: doc.totalPence,
+          $netPence: doc.netPence,
+          $vatPence: doc.vatPence,
+          $dueDate: doc.dueDate,
+          $validUntil: doc.validUntil,
+          $sentAt: doc.sentAt,
+          $paidAt: doc.paidAt,
+          $acceptedAt: doc.acceptedAt,
+          $declinedAt: doc.declinedAt,
+          $paidMethod: doc.paidMethod,
+          $paidAmountPence: doc.paidAmountPence,
+          $sourceDocumentId: doc.sourceDocumentId,
+          $attachedReportId: doc.attachedReportId,
+          $pricingSnapshotJson: doc.pricingSnapshotJson,
+          $reportId: doc.reportId,
+          $localPdfUri: optionalPath(doc.localPdfUri),
+          $fileName: doc.fileName,
+          $createdAt: doc.createdAt,
+          $updatedAt: doc.updatedAt,
+        }
+      );
+    }
+
+    if ((manifest.customers ?? []).length > 0) {
+      try {
+        await db.execAsync('DELETE FROM customers');
+        for (const customer of manifest.customers ?? []) {
+          await db.runAsync(
+            `INSERT INTO customers (id, name, phone, email, address, postcode, createdAt, updatedAt)
+             VALUES ($id, $name, $phone, $email, $address, $postcode, $createdAt, $updatedAt)`,
+            {
+              $id: customer.id,
+              $name: customer.name,
+              $phone: customer.phone,
+              $email: customer.email,
+              $address: customer.address,
+              $postcode: customer.postcode,
+              $createdAt: customer.createdAt,
+              $updatedAt: customer.updatedAt,
+            }
+          );
+        }
+      } catch {
+        // customers table may not exist on older app builds
+      }
     }
 
     for (const event of manifest.events ?? []) {

@@ -8,3 +8,5 @@ export * as reportsRepository from './repositories/reportsRepository';
 export * as reportEventsRepository from './repositories/reportEventsRepository';
 export * as jobChecklistsRepository from './repositories/jobChecklistsRepository';
 export * as businessProfileRepository from './repositories/businessProfileRepository';
+export * as documentsRepository from './repositories/documentsRepository';
+export * as customersRepository from './repositories/customersRepository';

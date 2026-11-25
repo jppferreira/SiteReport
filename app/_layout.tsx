@@ -8,7 +8,6 @@ import {
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, AppState, LogBox, Platform, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -23,6 +22,7 @@ import { ToastProvider, ErrorState } from '@/components';
 import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { getDatabase } from '@/database';
 import { IcloudAutoBackupHost } from '@/features/backup/IcloudAutoBackupHost';
+import { DocumentRemindersHost } from '@/features/notifications/DocumentRemindersHost';
 import { LaunchSplash } from '@/features/splash/LaunchSplash';
 import { loadStoredLocale } from '@/i18n/localePreference';
 import { useI18n } from '@/i18n/useI18n';
@@ -154,7 +154,6 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <ToastProvider>
-            <StatusBar style="dark" />
             {appReady && dbState === 'expo-go' ? (
               <ErrorState title={t('root.expoGoTitle')} description={t('root.expoGoDescription')} />
             ) : null}
@@ -175,10 +174,14 @@ export default function RootLayout() {
                   <Stack.Screen name="onboarding" />
                   <Stack.Screen name="(tabs)" />
                   <Stack.Screen name="job" />
+                  <Stack.Screen name="document" />
+                  <Stack.Screen name="tools" />
+                  <Stack.Screen name="notifications" />
                   <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
                 </Stack>
               </AppErrorBoundary>
             ) : null}
+            {appReady && dbState === 'ready' && !splashHold ? <DocumentRemindersHost /> : null}
             {appReady && dbState === 'ready' && !splashHold && Platform.OS === 'ios' ? (
               <IcloudAutoBackupHost />
             ) : null}

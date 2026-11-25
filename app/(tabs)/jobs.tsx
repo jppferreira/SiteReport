@@ -1,9 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import React, { useCallback, useState } from 'react';
-import { LayoutChangeEvent, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -12,31 +11,62 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 
-import { ConfirmationDialog, EmptyState, ErrorState, LoadingPage, Screen, SearchInput, Skeleton, Text, TextButton, useToast } from '@/components';
+import {
+  ConfirmationDialog,
+  EmptyState,
+  ErrorState,
+  FloatingActionButton,
+  IconButton,
+  LoadingPage,
+  Screen,
+  SearchInput,
+  Skeleton,
+  Text,
+  useToast,
+} from '@/components';
 import { PILL_TAB_BAR_WASH_ABOVE } from '@/components/PillTabBar';
 import { jobsRepository } from '@/database';
-import { FilterChips } from '@/features/jobs/FilterChips';
+import type { JobDocumentSummary } from '@/database/repositories/documentsRepository';
 import { FirstReportPromptCard } from '@/features/jobs/FirstReportPromptCard';
 import { JobCard } from '@/features/jobs/JobCard';
+import { JobDocSegments } from '@/features/jobs/JobDocSegments';
+import { JobsFilterSheet } from '@/features/jobs/JobsFilterSheet';
 import { Wordmark } from '@/features/onboarding/Wordmark';
 import { useJobs } from '@/hooks/useJobs';
 import { useI18n } from '@/i18n/useI18n';
+import type { DocumentKind } from '@/models';
 import { Job } from '@/models';
 import { deleteJobFiles } from '@/services/fileService';
-import { resetOnboarding } from '@/services/preferencesService';
 import { motionTiming, reduceMotion, useTheme } from '@/theme';
 
 const NO_MATCHING_JOBS = require('../../assets/images/no-matching-jobs.png');
 const NOTHING_HERE_YET = require('../../assets/images/nothing-here-yet.png');
 
 export default function JobsScreen() {
-  const { colors, radius, spacing, shadows } = useTheme();
+  const { colors, spacing } = useTheme();
   const { t } = useI18n();
   const tabBarHeight = useBottomTabBarHeight();
-  const { jobs, photoSummaries, filter, setFilter, search, setSearch, loading, error, refresh } = useJobs();
+  const {
+    jobs,
+    photoSummaries,
+    documentSummaries,
+    kindPresence,
+    docKind,
+    setDocKind,
+    sheetFilters,
+    setSheetFilters,
+    sheetActive,
+    search,
+    setSearch,
+    loading,
+    error,
+    refresh,
+  } = useJobs();
   const { showToast } = useToast();
   const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const scrollY = useSharedValue(0);
   const wordmarkHeight = useSharedValue(0);
 
@@ -56,7 +86,6 @@ export default function JobsScreen() {
       return { opacity: 1, transform: [{ scale: 1 }] };
     }
     const progress = interpolate(scrollY.value, [0, distance], [0, 1], Extrapolation.CLAMP);
-    // Smoothstep keeps the mark visible while it is still on screen, then eases it out.
     const eased = progress * progress * (3 - 2 * progress);
     return {
       opacity: 1 - eased,
@@ -91,7 +120,9 @@ export default function JobsScreen() {
     if (copy) router.push(`/job/${copy.id}`);
   };
 
-  // Figma "00d · Loading" — full-screen branded wait when jobs aren't ready yet.
+  const statusKind: DocumentKind | null = docKind === 'all' ? null : docKind;
+  const isFiltered = docKind !== 'all' || sheetActive || search.length > 0;
+
   if (loading && jobs.length === 0 && !error) {
     return <LoadingPage label={t('jobs.loading')} />;
   }
@@ -108,12 +139,26 @@ export default function JobsScreen() {
         <Animated.View
           onLayout={onWordmarkLayout}
           style={[
-            styles.wordmark,
+            styles.headerRow,
             { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.sm },
             wordmarkStyle,
           ]}
         >
-          <Wordmark />
+          <View style={styles.wordmark}>
+            <Wordmark />
+          </View>
+          <View style={styles.headerActions}>
+            <IconButton
+              name="notifications-outline"
+              accessibilityLabel={t('notifications.openA11y')}
+              onPress={() => router.push('/notifications')}
+            />
+            <IconButton
+              name="settings-outline"
+              accessibilityLabel={t('settings.openA11y')}
+              onPress={() => router.push('/(tabs)/settings')}
+            />
+          </View>
         </Animated.View>
 
         <View
@@ -124,26 +169,47 @@ export default function JobsScreen() {
               paddingHorizontal: spacing.lg,
               paddingTop: spacing.xs,
               paddingBottom: spacing.sm,
+              gap: spacing.sm,
             },
           ]}
         >
-          <SearchInput value={search} onChangeText={setSearch} placeholder={t('jobs.searchPlaceholder')} />
+          <JobDocSegments value={docKind} onChange={setDocKind} presence={kindPresence} />
 
-          <View style={{ marginTop: spacing.sm }}>
-            <FilterChips value={filter} onChange={setFilter} />
-          </View>
-
-          {__DEV__ ? (
-            <TextButton
-              label="Test onboarding"
-              align="left"
-              tone="accent"
-              onPress={async () => {
-                await resetOnboarding();
-                router.push('/onboarding');
+          <View style={styles.toolRow}>
+            {searchOpen || search.length > 0 ? (
+              <SearchInput
+                value={search}
+                onChangeText={setSearch}
+                placeholder={t('jobs.searchPlaceholder')}
+                variant="compact"
+              />
+            ) : (
+              <View style={{ flex: 1 }} />
+            )}
+            <IconButton
+              name="search"
+              accessibilityLabel={t('jobs.searchPlaceholder')}
+              onPress={() => {
+                if (searchOpen && search.length === 0) {
+                  setSearchOpen(false);
+                } else {
+                  setSearchOpen(true);
+                }
               }}
             />
-          ) : null}
+            <View>
+              <IconButton
+                name="options-outline"
+                accessibilityLabel={
+                  sheetActive ? t('jobs.filtersActiveA11y') : t('jobs.filtersOpenA11y')
+                }
+                onPress={() => setFilterOpen(true)}
+              />
+              {sheetActive ? (
+                <View style={[styles.filterBadge, { backgroundColor: colors.accent }]} />
+              ) : null}
+            </View>
+          </View>
         </View>
 
         {error ? (
@@ -152,12 +218,12 @@ export default function JobsScreen() {
           </View>
         ) : loading ? (
           <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: tabBarHeight }}>
-            <Skeleton height={76} radius={16} style={{ marginBottom: 12 }} />
-            <Skeleton height={76} radius={16} style={{ marginBottom: 12 }} />
-            <Skeleton height={76} radius={16} />
+            <Skeleton height={100} radius={20} style={{ marginBottom: 12 }} />
+            <Skeleton height={100} radius={20} style={{ marginBottom: 12 }} />
+            <Skeleton height={100} radius={20} />
           </View>
         ) : jobs.length === 0 ? (
-          search.length > 0 || filter !== 'all' ? (
+          isFiltered ? (
             <View style={{ flexGrow: 1, paddingBottom: tabBarHeight }}>
               {search.length > 0 ? (
                 <EmptyState
@@ -178,7 +244,7 @@ export default function JobsScreen() {
               style={{
                 paddingHorizontal: spacing.lg,
                 paddingTop: spacing.md,
-                paddingBottom: spacing.lg + tabBarHeight,
+                paddingBottom: spacing.lg + tabBarHeight + PILL_TAB_BAR_WASH_ABOVE,
               }}
             >
               <FirstReportPromptCard onPress={() => router.push('/job/new')} />
@@ -189,15 +255,16 @@ export default function JobsScreen() {
             style={{
               paddingHorizontal: spacing.lg,
               paddingTop: spacing.md,
-              paddingBottom: spacing.lg + tabBarHeight,
+              paddingBottom: spacing.lg + tabBarHeight + PILL_TAB_BAR_WASH_ABOVE,
             }}
           >
             {jobs.map((item) => (
               <SwipeableJobCard
                 key={item.id}
                 job={item}
-                photoCount={photoSummaries[item.id]?.count ?? 0}
                 thumbnailUri={photoSummaries[item.id]?.thumbnailUri ?? null}
+                documentSummary={documentSummaries[item.id] ?? null}
+                statusKind={statusKind}
                 onPress={() => router.push(`/job/${item.id}`)}
                 onDuplicate={() => handleDuplicate(item)}
                 onDelete={() => setJobToDelete(item)}
@@ -207,28 +274,18 @@ export default function JobsScreen() {
         )}
       </Animated.ScrollView>
 
-      <Pressable
-        onPress={() => {
-          if (Platform.OS !== 'web') {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          }
-          router.push('/job/new');
-        }}
-        accessibilityRole="button"
+      <FloatingActionButton
+        label={t('jobs.newJob')}
         accessibilityLabel={t('jobs.newJobA11y')}
-        style={({ pressed }) => [
-          styles.addButton,
-          shadows.floating,
-          {
-            right: spacing.lg,
-            bottom: tabBarHeight - PILL_TAB_BAR_WASH_ABOVE + spacing.sm,
-            backgroundColor: pressed ? colors.ctaDarkPressed : colors.ctaDark,
-            borderRadius: radius.pill,
-          },
-        ]}
-      >
-        <Ionicons name="add" size={28} color={colors.textInverse} />
-      </Pressable>
+        onPress={() => router.push('/job/new')}
+      />
+
+      <JobsFilterSheet
+        visible={filterOpen}
+        value={sheetFilters}
+        onClose={() => setFilterOpen(false)}
+        onApply={setSheetFilters}
+      />
 
       <ConfirmationDialog
         visible={jobToDelete !== null}
@@ -246,15 +303,17 @@ export default function JobsScreen() {
 
 function SwipeableJobCard({
   job,
-  photoCount,
   thumbnailUri,
+  documentSummary,
+  statusKind,
   onPress,
   onDuplicate,
   onDelete,
 }: {
   job: Job;
-  photoCount: number;
   thumbnailUri: string | null;
+  documentSummary: JobDocumentSummary | null;
+  statusKind: DocumentKind | null;
   onPress: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
@@ -275,7 +334,13 @@ function SwipeableJobCard({
   return (
     <View>
       <Pressable onLongPress={toggle} delayLongPress={300}>
-        <JobCard job={job} photoCount={photoCount} thumbnailUri={thumbnailUri} onPress={onPress} />
+        <JobCard
+          job={job}
+          thumbnailUri={thumbnailUri}
+          documentSummary={documentSummary}
+          statusKind={statusKind}
+          onPress={onPress}
+        />
       </Pressable>
       <Animated.View style={[styles.actionsRow, { gap: spacing.xs }, animatedStyle]}>
         <ActionChip icon="copy-outline" label={t('common.duplicate')} onPress={onDuplicate} />
@@ -316,20 +381,35 @@ function ActionChip({
 }
 
 const styles = StyleSheet.create({
-  wordmark: {
-    alignSelf: 'flex-start',
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     transformOrigin: 'left center',
+  },
+  wordmark: {
+    flexShrink: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   toolbar: {
     zIndex: 1,
   },
-  addButton: {
-    position: 'absolute',
-    zIndex: 3,
-    width: 56,
-    height: 56,
+  toolRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   actionsRow: {
     flexDirection: 'row',

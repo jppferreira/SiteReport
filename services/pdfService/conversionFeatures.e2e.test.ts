@@ -238,6 +238,8 @@ describe('conversion features E2E pipeline', () => {
       description: 'Valve work',
       status: 'complete',
       coverPhotoId: null,
+      isQuick: false,
+      customerId: null,
       createdAt: '2026-11-23T10:00:00.000Z',
       updatedAt: '2026-11-23T10:00:00.000Z',
     };

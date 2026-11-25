@@ -22,21 +22,35 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="documents"
+        options={{
+          title: t('tabs.documents'),
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'documents' : 'documents-outline'} size={22} color={typeof color === 'string' ? color : undefined} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="toolbox"
+        options={{
+          title: t('tabs.toolbox'),
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'construct' : 'construct-outline'} size={22} color={typeof color === 'string' ? color : undefined} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="reports"
         options={{
-          title: t('tabs.reports'),
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'document-text' : 'document-text-outline'} size={22} color={typeof color === 'string' ? color : undefined} />
-          ),
+          href: null,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: t('tabs.settings'),
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'settings' : 'settings-outline'} size={22} color={typeof color === 'string' ? color : undefined} />
-          ),
+          // Reachable from Jobs top-right (My Account); kept out of the pill bar.
+          href: null,
+          title: t('settings.title'),
         }}
       />
     </Tabs>

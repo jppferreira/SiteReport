@@ -9,26 +9,41 @@ type SearchInputProps = {
   value: string;
   onChangeText: (value: string) => void;
   placeholder?: string;
+  /** `compact` — 44px white bordered field (Jobs home Figma). Default keeps the taller sunken field. */
+  variant?: 'default' | 'compact';
+  style?: object;
 };
 
-export function SearchInput({ value, onChangeText, placeholder }: SearchInputProps) {
+export function SearchInput({
+  value,
+  onChangeText,
+  placeholder,
+  variant = 'default',
+  style,
+}: SearchInputProps) {
   const { colors, radius, spacing } = useTheme();
   const { t } = useI18n();
   const resolvedPlaceholder = placeholder ?? t('jobs.searchPlaceholder');
+  const compact = variant === 'compact';
 
   return (
     <View
       style={[
         styles.container,
+        compact ? styles.compact : null,
         {
-          backgroundColor: colors.surfaceSunken,
-          borderRadius: radius.xl,
-          paddingHorizontal: spacing.md,
-          width: '100%',
+          backgroundColor: compact ? colors.surface : colors.surfaceSunken,
+          borderRadius: compact ? radius.pill : radius.xl,
+          paddingHorizontal: compact ? 14 : spacing.md,
+          borderWidth: compact ? 1 : 0,
+          borderColor: compact ? colors.border : 'transparent',
+          width: compact ? undefined : '100%',
+          flex: compact ? 1 : undefined,
         },
+        style,
       ]}
     >
-      <Ionicons name="search" size={22} color={colors.textSecondary} />
+      <Ionicons name="search" size={compact ? 20 : 22} color={colors.textSecondary} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -36,7 +51,12 @@ export function SearchInput({ value, onChangeText, placeholder }: SearchInputPro
         placeholderTextColor={colors.textTertiary}
         accessibilityLabel={resolvedPlaceholder}
         returnKeyType="search"
-        style={[styles.input, { color: colors.textPrimary }, Platform.OS === 'web' ? webOutline : null]}
+        style={[
+          styles.input,
+          compact ? styles.inputCompact : null,
+          { color: colors.textPrimary },
+          Platform.OS === 'web' ? webOutline : null,
+        ]}
       />
       {value.length > 0 ? (
         <Pressable
@@ -45,7 +65,7 @@ export function SearchInput({ value, onChangeText, placeholder }: SearchInputPro
           accessibilityLabel={t('components.searchClear')}
           hitSlop={8}
         >
-          <Ionicons name="close-circle" size={22} color={colors.textTertiary} />
+          <Ionicons name="close-circle" size={compact ? 18 : 22} color={colors.textTertiary} />
         </Pressable>
       ) : null}
     </View>
@@ -59,12 +79,20 @@ const styles = StyleSheet.create({
     height: 56,
     gap: 10,
   },
+  compact: {
+    height: 44,
+    gap: 8,
+    minWidth: 0,
+  },
   input: {
     flex: 1,
     fontSize: 17,
     fontFamily: fontFamily.regular,
     height: '100%',
     paddingVertical: 0,
+  },
+  inputCompact: {
+    fontSize: 14.5,
   },
 });
 

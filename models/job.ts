@@ -11,6 +11,10 @@ export type Job = {
   status: JobStatus;
   /** Photo the user saved as the cover for this job's reports. */
   coverPhotoId: string | null;
+  /** Lightweight job created from the Documents tab without full job setup. */
+  isQuick: boolean;
+  /** Optional link to a saved customer record. */
+  customerId: string | null;
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
 };
@@ -22,6 +26,8 @@ export type JobDraft = {
   jobDate?: string;
   referenceNumber?: string;
   description?: string;
+  customerId?: string | null;
+  isQuick?: boolean;
 };
 
 export type JobSectionKey = 'details' | 'photos' | 'summary' | 'signature' | 'report';

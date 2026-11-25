@@ -3,29 +3,51 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Card, LocalImage, Text } from '@/components';
+import type { JobDocumentSummary } from '@/database/repositories/documentsRepository';
 import { useI18n } from '@/i18n/useI18n';
+import { DOCUMENT_KINDS, documentStatusLabel, effectiveStatus, type DocumentKind } from '@/models';
 import { Job } from '@/models';
 import { useTheme } from '@/theme';
 import { formatDate } from '@/utils/format';
 
+import { JobPip } from './JobPip';
+
 type JobCardProps = {
   job: Job;
-  photoCount: number;
   thumbnailUri: string | null;
+  documentSummary?: JobDocumentSummary | null;
+  /** When set, show "Kind · Status" for that document on the card. */
+  statusKind?: DocumentKind | null;
   onPress: () => void;
 };
 
-export function JobCard({ job, photoCount, thumbnailUri, onPress }: JobCardProps) {
+export function JobCard({
+  job,
+  thumbnailUri,
+  documentSummary,
+  statusKind = null,
+  onPress,
+}: JobCardProps) {
   const { colors, radius, spacing } = useTheme();
   const { t } = useI18n();
-  const subtitle = job.address || job.customerName;
-  const photoLabel =
-    photoCount > 0
-      ? `  ·  ${t('jobs.photoCount', {
-          count: photoCount,
-          unit: photoCount === 1 ? t('common.photo') : t('common.photos'),
-        })}`
-      : '';
+
+  let status: string | null = null;
+  if (statusKind) {
+    const entry = documentSummary?.[statusKind];
+    if (entry) {
+      const kindLabel =
+        statusKind === 'quote'
+          ? t('jobs.segmentQuote')
+          : statusKind === 'report'
+            ? t('jobs.segmentReport')
+            : t('jobs.segmentInvoice');
+      const label = documentStatusLabel(
+        statusKind,
+        effectiveStatus({ kind: statusKind, status: entry.status, dueDate: null })
+      );
+      status = `${kindLabel} · ${label}`;
+    }
+  }
 
   return (
     <Card onPress={onPress} style={styles.card}>
@@ -44,20 +66,39 @@ export function JobCard({ job, photoCount, thumbnailUri, onPress }: JobCardProps
         </View>
 
         <View style={styles.content}>
-          <Text variant="h3" numberOfLines={1}>
-            {job.title}
-          </Text>
+          <View style={styles.top}>
+            <Text variant="bodyMedium" numberOfLines={1} style={styles.title}>
+              {job.title}
+            </Text>
+            <Text variant="caption" color={colors.textSecondary} style={styles.date}>
+              {formatDate(job.jobDate)}
+            </Text>
+          </View>
 
-          {subtitle ? (
-            <Text variant="bodySmall" color={colors.textSecondary} numberOfLines={1} style={{ marginTop: 2 }}>
-              {subtitle}
+          {job.customerName ? (
+            <Text variant="bodySmall" color={colors.textSecondary} numberOfLines={1} style={styles.meta}>
+              {job.customerName}
             </Text>
           ) : null}
 
-          <Text variant="caption" color={colors.textTertiary} style={{ marginTop: spacing.xs }}>
-            {formatDate(job.jobDate)}
-            {photoLabel}
-          </Text>
+          {job.address ? (
+            <Text variant="bodySmall" color={colors.textSecondary} numberOfLines={1} style={styles.meta}>
+              {job.address}
+            </Text>
+          ) : null}
+
+          <View style={styles.metaRow}>
+            <View style={styles.pips}>
+              {DOCUMENT_KINDS.map((kind) => (
+                <JobPip key={kind} kind={kind} on={Boolean(documentSummary?.[kind])} />
+              ))}
+            </View>
+            {status ? (
+              <Text variant="caption" color={colors.textPrimary} numberOfLines={1} style={styles.status}>
+                {status}
+              </Text>
+            ) : null}
+          </View>
         </View>
       </View>
     </Card>
@@ -67,10 +108,12 @@ export function JobCard({ job, photoCount, thumbnailUri, onPress }: JobCardProps
 const styles = StyleSheet.create({
   card: {
     marginBottom: 12,
+    borderRadius: 20,
+    padding: 14,
   },
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   thumb: {
     width: 72,
@@ -81,5 +124,43 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    minWidth: 0,
+    gap: 5,
+  },
+  top: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  title: {
+    flex: 1,
+    minWidth: 0,
+    fontFamily: 'Lexend_600SemiBold',
+    fontSize: 16,
+  },
+  date: {
+    flexShrink: 0,
+    fontSize: 12.5,
+  },
+  meta: {
+    fontSize: 13.5,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingTop: 4,
+  },
+  pips: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  status: {
+    flex: 1,
+    minWidth: 0,
+    textAlign: 'right',
+    fontFamily: 'Lexend_500Medium',
+    fontSize: 12.5,
   },
 });

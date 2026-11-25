@@ -297,7 +297,7 @@ export function PhotosToolsScreen({ jobId }: PhotosToolsScreenProps) {
           <Pressable
             onPress={() => openCapture(primaryType, 'library')}
             disabled={processing || savingCapture}
-            style={[styles.galleryBtn, { borderColor: colors.borderStrong }]}
+            style={[styles.galleryBtn, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}
             accessibilityRole="button"
             accessibilityLabel={t('photos.captureChoosePhotos')}
           >
@@ -703,7 +703,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
   },
   primaryBtn: {
     flex: 1,

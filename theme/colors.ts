@@ -1,9 +1,8 @@
 /**
  * Trade Report color tokens.
  *
- * The design system is light-first. Every token below is grouped by role
- * (not by raw hue) so the app can later grow a `dark` palette with the same
- * shape and swap at runtime without touching component code.
+ * The design system is light-first. Both palettes share the same role shape so
+ * the ThemeProvider can swap at runtime without touching component code.
  */
 
 export type ColorScheme = {
@@ -72,6 +71,44 @@ const light: ColorScheme = {
   skeleton: '#ECEEEC',
 };
 
-export const colors = { light };
+/**
+ * Dark palette uses neutral charcoal (not green-tinted). Cards sit just above
+ * the page background; ink CTAs stay a touch lighter so white label copy reads.
+ */
+const dark: ColorScheme = {
+  background: '#111111',
+  backgroundElevated: '#181818',
+  surface: '#1A1A1A',
+  surfaceSunken: '#141414',
+  border: '#2A2A2A',
+  borderStrong: '#3A3A3A',
 
-export type ThemeColors = typeof light;
+  textPrimary: '#F2F2F2',
+  textSecondary: '#A3A3A3',
+  textTertiary: '#7A7A7A',
+  textInverse: '#FFFFFF',
+
+  accent: '#2DBF5A',
+  accentPressed: '#26A84E',
+  accentSoft: '#1A2E22',
+  accentOnAccent: '#FFFFFF',
+
+  ctaDark: '#1F1F1F',
+  ctaDarkPressed: '#2A2A2A',
+
+  success: '#3DCF6A',
+  successSoft: '#1A2E22',
+  warning: '#E0A03A',
+  warningSoft: '#2E2410',
+  destructive: '#E85A5A',
+  destructiveSoft: '#2E1515',
+  destructivePressed: '#C44A4A',
+
+  overlay: 'rgba(0, 0, 0, 0.62)',
+  skeleton: '#2A2A2A',
+};
+
+export const colors = { light, dark };
+
+export type ThemeColors = ColorScheme;
+export type ThemeScheme = keyof typeof colors;

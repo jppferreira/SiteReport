@@ -18,6 +18,8 @@ function job(): Job {
     description: null,
     status: 'complete',
     coverPhotoId: null,
+    isQuick: false,
+    customerId: null,
     createdAt: '2026-10-04T00:00:00.000Z',
     updatedAt: '2026-10-04T00:00:00.000Z',
   };

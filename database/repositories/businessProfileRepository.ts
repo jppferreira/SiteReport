@@ -4,6 +4,7 @@ import {
   coerceBusinessProfileFields,
   DEFAULT_BUSINESS_PROFILE,
   formatInvoiceNumber,
+  formatQuoteNumber,
   normalizeReportImageMask,
 } from '@/models';
 
@@ -46,8 +47,8 @@ export async function saveBusinessProfile(patch: Partial<Omit<BusinessProfile, '
 
   await db.runAsync(
     `INSERT INTO business_profile
-       (id, businessName, logoUri, ownerName, email, phone, website, address, registrationNumber, vatNumber, accentColor, footerMessage, coverImageUri, thanksImageUri, imageMask, reviewUrl, reviewProvider, bankName, sortCode, accountNumber, paymentTerms, defaultDueDays, nextInvoiceSequence, updatedAt)
-     VALUES (1, $businessName, $logoUri, $ownerName, $email, $phone, $website, $address, $registrationNumber, $vatNumber, $accentColor, $footerMessage, $coverImageUri, $thanksImageUri, $imageMask, $reviewUrl, $reviewProvider, $bankName, $sortCode, $accountNumber, $paymentTerms, $defaultDueDays, $nextInvoiceSequence, $updatedAt)
+       (id, businessName, logoUri, ownerName, email, phone, website, address, registrationNumber, vatNumber, accentColor, footerMessage, coverImageUri, thanksImageUri, imageMask, reviewUrl, reviewProvider, bankName, sortCode, accountNumber, paymentTerms, defaultDueDays, nextInvoiceSequence, nextQuoteSequence, defaultQuoteValidityDays, stripePaymentLink, updatedAt)
+     VALUES (1, $businessName, $logoUri, $ownerName, $email, $phone, $website, $address, $registrationNumber, $vatNumber, $accentColor, $footerMessage, $coverImageUri, $thanksImageUri, $imageMask, $reviewUrl, $reviewProvider, $bankName, $sortCode, $accountNumber, $paymentTerms, $defaultDueDays, $nextInvoiceSequence, $nextQuoteSequence, $defaultQuoteValidityDays, $stripePaymentLink, $updatedAt)
      ON CONFLICT(id) DO UPDATE SET
        businessName = excluded.businessName,
        logoUri = excluded.logoUri,
@@ -71,6 +72,9 @@ export async function saveBusinessProfile(patch: Partial<Omit<BusinessProfile, '
        paymentTerms = excluded.paymentTerms,
        defaultDueDays = excluded.defaultDueDays,
        nextInvoiceSequence = excluded.nextInvoiceSequence,
+       nextQuoteSequence = excluded.nextQuoteSequence,
+       defaultQuoteValidityDays = excluded.defaultQuoteValidityDays,
+       stripePaymentLink = excluded.stripePaymentLink,
        updatedAt = excluded.updatedAt`,
     {
       $businessName: next.businessName,
@@ -95,6 +99,9 @@ export async function saveBusinessProfile(patch: Partial<Omit<BusinessProfile, '
       $paymentTerms: next.paymentTerms,
       $defaultDueDays: next.defaultDueDays,
       $nextInvoiceSequence: next.nextInvoiceSequence,
+      $nextQuoteSequence: next.nextQuoteSequence,
+      $defaultQuoteValidityDays: next.defaultQuoteValidityDays,
+      $stripePaymentLink: next.stripePaymentLink,
       $updatedAt: next.updatedAt,
     }
   );
@@ -104,8 +111,27 @@ export async function saveBusinessProfile(patch: Partial<Omit<BusinessProfile, '
 
 /** Allocates the next invoice number and advances the sequence. */
 export async function allocateInvoiceNumber(): Promise<string> {
+  const db = await getDatabase();
   const profile = await getBusinessProfile();
   const number = formatInvoiceNumber(profile.nextInvoiceSequence);
-  await saveBusinessProfile({ nextInvoiceSequence: profile.nextInvoiceSequence + 1 });
+  // Targeted bump — avoids full-profile upsert failing on missing optional columns.
+  await db.runAsync(
+    'UPDATE business_profile SET nextInvoiceSequence = ?, updatedAt = ? WHERE id = 1',
+    profile.nextInvoiceSequence + 1,
+    new Date().toISOString()
+  );
+  return number;
+}
+
+/** Allocates the next quote number and advances the sequence. */
+export async function allocateQuoteNumber(): Promise<string> {
+  const db = await getDatabase();
+  const profile = await getBusinessProfile();
+  const number = formatQuoteNumber(profile.nextQuoteSequence);
+  await db.runAsync(
+    'UPDATE business_profile SET nextQuoteSequence = ?, updatedAt = ? WHERE id = 1',
+    profile.nextQuoteSequence + 1,
+    new Date().toISOString()
+  );
   return number;
 }

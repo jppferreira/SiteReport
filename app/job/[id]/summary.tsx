@@ -323,6 +323,7 @@ export default function WorkSummaryScreen() {
             onSavePricing={savePricing}
             onChangeDocumentType={(next) => void saveDocumentType(next)}
             onLocked={() => router.push({ pathname: '/paywall', params: { trigger: 'quote_invoice' } })}
+            showTypeControl={false}
           />
 
           {undo ? (

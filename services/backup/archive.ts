@@ -2,6 +2,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 
 import {
   BusinessProfile,
+  Customer,
   Job,
   JobChecklist,
   Photo,
@@ -9,11 +10,14 @@ import {
   Report,
   ReportEvent,
   Signature,
+  TradeDocument,
   WorkSummary,
   coerceBusinessProfileFields,
   coercePhotoAnnotations,
   isReportTemplateId,
   normalizeChecklistTemplateId,
+  normalizeDocumentKind,
+  normalizeDocumentStatus,
   normalizeDocumentType,
   normalizeReportEventKind,
   normalizeReportImageMask,
@@ -50,6 +54,8 @@ export type BackupManifest = {
   checklists: JobChecklist[];
   events: ReportEvent[];
   businessProfile: BusinessProfile | null;
+  documents: TradeDocument[];
+  customers: Customer[];
 };
 
 export type OpenedBackup = {
@@ -159,6 +165,9 @@ function referencedPaths(manifest: BackupManifest): string[] {
   }
   for (const signature of manifest.signatures) paths.push(signature.localSignatureUri);
   for (const report of manifest.reports) paths.push(report.localPdfUri);
+  for (const document of manifest.documents ?? []) {
+    if (document.localPdfUri) paths.push(document.localPdfUri);
+  }
   const profile = manifest.businessProfile;
   if (profile) {
     for (const uri of [profile.logoUri, profile.coverImageUri, profile.thanksImageUri]) {
@@ -210,6 +219,8 @@ function parseManifest(value: unknown): BackupManifest | null {
   const reportIds = new Set((reports ?? []).map((report) => report.id));
   const events = parseEvents(record.events, jobIds, reportIds);
   const businessProfile = parseProfile(record.businessProfile);
+  const documents = parseDocuments(record.documents, jobIds);
+  const customers = parseCustomers(record.customers);
   if (
     !photos ||
     !areas ||
@@ -218,7 +229,9 @@ function parseManifest(value: unknown): BackupManifest | null {
     !reports ||
     !checklists ||
     !events ||
-    businessProfile === undefined
+    businessProfile === undefined ||
+    !documents ||
+    !customers
   ) {
     return null;
   }
@@ -237,6 +250,8 @@ function parseManifest(value: unknown): BackupManifest | null {
     checklists,
     events,
     businessProfile,
+    documents,
+    customers,
   };
 }
 
@@ -258,6 +273,8 @@ function parseJobs(value: unknown): Job[] | null {
       description: textOrNull(row.description),
       status: row.status,
       coverPhotoId: textOrNull(row.coverPhotoId),
+      isQuick: row.isQuick === true || row.isQuick === 1,
+      customerId: textOrNull(row.customerId),
       createdAt: typeof row.createdAt === 'string' ? row.createdAt : row.jobDate,
       updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : row.jobDate,
     });
@@ -467,4 +484,72 @@ function optionalPath(value: unknown): string | null | undefined {
 
 function textOrNull(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+/** Older backups omit documents; treat missing as empty. */
+function parseDocuments(value: unknown, jobIds: Set<string>): TradeDocument[] | null {
+  if (value == null) return [];
+  if (!Array.isArray(value)) return null;
+  const documents: TradeDocument[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== 'object') return null;
+    const row = item as Record<string, unknown>;
+    if (typeof row.id !== 'string' || typeof row.jobId !== 'string' || !jobIds.has(row.jobId)) return null;
+    const kind = normalizeDocumentKind(row.kind);
+    if (typeof row.createdAt !== 'string' || typeof row.updatedAt !== 'string') return null;
+    const localPdfUri = optionalPath(row.localPdfUri) ?? null;
+    if (row.localPdfUri != null && row.localPdfUri !== '' && localPdfUri === undefined) return null;
+    documents.push({
+      id: row.id,
+      jobId: row.jobId,
+      kind,
+      number: textOrNull(row.number),
+      status: normalizeDocumentStatus(kind, row.status),
+      title: textOrNull(row.title),
+      totalPence: row.totalPence == null ? null : Number(row.totalPence),
+      netPence: row.netPence == null ? null : Number(row.netPence),
+      vatPence: row.vatPence == null ? null : Number(row.vatPence),
+      dueDate: textOrNull(row.dueDate),
+      validUntil: textOrNull(row.validUntil),
+      sentAt: textOrNull(row.sentAt),
+      paidAt: textOrNull(row.paidAt),
+      acceptedAt: textOrNull(row.acceptedAt),
+      declinedAt: textOrNull(row.declinedAt),
+      paidMethod: textOrNull(row.paidMethod),
+      paidAmountPence: row.paidAmountPence == null ? null : Number(row.paidAmountPence),
+      sourceDocumentId: textOrNull(row.sourceDocumentId),
+      attachedReportId: textOrNull(row.attachedReportId),
+      pricingSnapshotJson: typeof row.pricingSnapshotJson === 'string' ? row.pricingSnapshotJson : null,
+      reportId: textOrNull(row.reportId),
+      localPdfUri,
+      fileName: textOrNull(row.fileName),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    });
+  }
+  return documents;
+}
+
+/** Older backups omit customers; treat missing as empty. */
+function parseCustomers(value: unknown): Customer[] | null {
+  if (value == null) return [];
+  if (!Array.isArray(value)) return null;
+  const customers: Customer[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== 'object') return null;
+    const row = item as Record<string, unknown>;
+    if (typeof row.id !== 'string' || typeof row.name !== 'string') return null;
+    if (typeof row.createdAt !== 'string' || typeof row.updatedAt !== 'string') return null;
+    customers.push({
+      id: row.id,
+      name: row.name,
+      phone: textOrNull(row.phone),
+      email: textOrNull(row.email),
+      address: textOrNull(row.address),
+      postcode: textOrNull(row.postcode),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    });
+  }
+  return customers;
 }

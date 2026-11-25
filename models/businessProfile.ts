@@ -1,5 +1,6 @@
 import { normalizeDueDays } from './documentType';
 import { normalizeReviewProvider, normalizeReviewUrl, ReviewProvider } from './reviewLink';
+import { normalizeStripePaymentLink } from './stripePaymentLink';
 import { DEFAULT_REPORT_IMAGE_MASK, ReportImageMask } from './reportImageMask';
 
 export type BusinessProfile = {
@@ -32,6 +33,12 @@ export type BusinessProfile = {
   defaultDueDays: number;
   /** Next invoice sequence number (1-based). */
   nextInvoiceSequence: number;
+  /** Next quote sequence number (1-based). */
+  nextQuoteSequence: number;
+  /** Default validity window for new quotes, in days. */
+  defaultQuoteValidityDays: number;
+  /** Stripe Payment Link for invoice card payments (https://buy.stripe.com/…). */
+  stripePaymentLink: string | null;
   updatedAt: string;
 };
 
@@ -58,6 +65,9 @@ export const DEFAULT_BUSINESS_PROFILE: BusinessProfile = {
   paymentTerms: null,
   defaultDueDays: 14,
   nextInvoiceSequence: 1,
+  nextQuoteSequence: 1,
+  defaultQuoteValidityDays: 30,
+  stripePaymentLink: null,
   updatedAt: new Date(0).toISOString(),
 };
 
@@ -79,6 +89,9 @@ export function coerceBusinessProfileFields(
   | 'paymentTerms'
   | 'defaultDueDays'
   | 'nextInvoiceSequence'
+  | 'nextQuoteSequence'
+  | 'defaultQuoteValidityDays'
+  | 'stripePaymentLink'
 > {
   const seqRaw = row.nextInvoiceSequence;
   const seq =
@@ -87,6 +100,20 @@ export function coerceBusinessProfileFields(
       : typeof seqRaw === 'string' && Number.isFinite(Number(seqRaw))
         ? Math.max(1, Math.trunc(Number(seqRaw)))
         : 1;
+  const quoteSeqRaw = row.nextQuoteSequence;
+  const quoteSeq =
+    typeof quoteSeqRaw === 'number' && Number.isFinite(quoteSeqRaw)
+      ? Math.max(1, Math.trunc(quoteSeqRaw))
+      : typeof quoteSeqRaw === 'string' && Number.isFinite(Number(quoteSeqRaw))
+        ? Math.max(1, Math.trunc(Number(quoteSeqRaw)))
+        : 1;
+  const validityRaw = row.defaultQuoteValidityDays;
+  const defaultQuoteValidityDays =
+    typeof validityRaw === 'number' && Number.isFinite(validityRaw)
+      ? Math.min(365, Math.max(1, Math.trunc(validityRaw)))
+      : typeof validityRaw === 'string' && Number.isFinite(Number(validityRaw))
+        ? Math.min(365, Math.max(1, Math.trunc(Number(validityRaw))))
+        : 30;
   return {
     reviewUrl: normalizeReviewUrl(row.reviewUrl),
     reviewProvider: normalizeReviewProvider(row.reviewProvider),
@@ -96,5 +123,8 @@ export function coerceBusinessProfileFields(
     paymentTerms: normalizeBankField(row.paymentTerms, 500),
     defaultDueDays: normalizeDueDays(row.defaultDueDays, 14),
     nextInvoiceSequence: seq,
+    nextQuoteSequence: quoteSeq,
+    defaultQuoteValidityDays,
+    stripePaymentLink: normalizeStripePaymentLink(row.stripePaymentLink),
   };
 }

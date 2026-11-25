@@ -7,7 +7,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components';
-import { ArTopBar, AR_COLORS, type ArToolMode } from '@/features/arTools';
+import { ArTopBar, GlassIconButton, AR_COLORS, type ArToolMode } from '@/features/arTools';
 import { useI18n } from '@/i18n/useI18n';
 
 import { calibratedReading, calibrationFor } from './levelCalibration';
@@ -226,7 +226,34 @@ export function LevelToolView({ active, onClose, onChangeMode, topReserve = 0 }:
           animatedFrameStyle,
         ]}
       >
-        {onClose && onChangeMode ? <ArTopBar mode="level" onChangeMode={onChangeMode} onClose={onClose} right={{ icon: settings.sound ? 'volume-high-outline' : 'volume-mute-outline', label: t(settings.sound ? 'arTools.level.soundOff' : 'arTools.level.soundOn'), onPress: toggleSound, active: settings.sound }} /> : null}
+        {onClose && onChangeMode ? (
+          <ArTopBar
+            mode="level"
+            onChangeMode={onChangeMode}
+            onClose={onClose}
+            right={{
+              icon: settings.sound ? 'volume-high-outline' : 'volume-mute-outline',
+              label: t(settings.sound ? 'arTools.level.soundOff' : 'arTools.level.soundOn'),
+              onPress: toggleSound,
+              active: settings.sound,
+            }}
+          />
+        ) : onClose ? (
+          <View style={styles.standaloneBar}>
+            <GlassIconButton icon="close" label={t('common.close')} onPress={onClose} />
+            <View style={styles.standaloneTitle}>
+              <Text variant="label" color="#FFFFFF">
+                {t('arTools.modeLevel')}
+              </Text>
+            </View>
+            <GlassIconButton
+              icon={settings.sound ? 'volume-high-outline' : 'volume-mute-outline'}
+              label={t(settings.sound ? 'arTools.level.soundOff' : 'arTools.level.soundOn')}
+              onPress={toggleSound}
+              active={settings.sound}
+            />
+          </View>
+        ) : null}
         {!longEdge ? (
           <>
             <View style={styles.orientationRow}><View style={styles.orientationChip}><Ionicons name={plumb ? 'phone-portrait-outline' : 'phone-landscape-outline'} color={AR_COLORS.textSoft} size={14} /><Text variant="caption" color={AR_COLORS.textSoft}>{t(`arTools.level.orientation.${shownOrientation}`)}</Text></View></View>
@@ -279,6 +306,14 @@ function ToolButton({ icon, label, active, disabled, onPress, vibrate }: {
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: AR_COLORS.bg },
+  standaloneBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    height: 40,
+  },
+  standaloneTitle: { flex: 1, alignItems: 'center' },
   frame: { position: 'absolute', alignItems: 'stretch', paddingTop: 4, paddingBottom: 8 },
   orientationRow: { alignItems: 'center', paddingTop: 14 },
   orientationChip: { flexDirection: 'row', gap: 6, alignItems: 'center', backgroundColor: AR_COLORS.pill, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999 },

@@ -28,6 +28,9 @@ export type PhotoQuality = 'standard' | 'high';
 /** AR tape-measure display unit. */
 export type MeasureUnit = 'm' | 'cm' | 'mm' | 'ftIn';
 
+/** UI appearance: follow the device, or force light / dark. */
+export type AppearancePreference = 'system' | 'light' | 'dark';
+
 export type AppPreferences = {
   defaultPhotoQuality: PhotoQuality;
   includeSignatureByDefault: boolean;
@@ -58,6 +61,8 @@ export type AppPreferences = {
   measureUnit: MeasureUnit;
   /** Last job-type chip from the guided details sheet (remembered next time). */
   lastJobTrade: string | null;
+  /** Follow system appearance, or force light / dark. */
+  appearance: AppearancePreference;
 };
 
 export function defaultMeasureUnit(): MeasureUnit {
@@ -70,6 +75,11 @@ export function normalizeMeasureUnit(value: unknown): MeasureUnit {
   if (value === 'imperial') return 'ftIn';
   if (value === 'metric') return 'm';
   return defaultMeasureUnit();
+}
+
+export function normalizeAppearancePreference(value: unknown): AppearancePreference {
+  if (value === 'system' || value === 'light' || value === 'dark') return value;
+  return 'system';
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -90,6 +100,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   stampShowOnPdf: true,
   measureUnit: 'm',
   lastJobTrade: null,
+  appearance: 'system',
 };
 
 export async function hasCompletedOnboarding(): Promise<boolean> {
@@ -133,6 +144,7 @@ export async function getPreferences(): Promise<AppPreferences> {
     if (typeof parsed.stampShowOnPdf !== 'boolean') parsed.stampShowOnPdf = true;
     parsed.measureUnit = normalizeMeasureUnit(parsed.measureUnit);
     if (typeof parsed.lastJobTrade !== 'string') parsed.lastJobTrade = null;
+    parsed.appearance = normalizeAppearancePreference(parsed.appearance);
     return parsed;
   } catch {
     return { ...DEFAULT_PREFERENCES, measureUnit: defaultMeasureUnit() };

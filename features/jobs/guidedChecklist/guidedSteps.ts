@@ -77,12 +77,12 @@ const ORDER: GuidedStepId[] = [
 
 const REQUIREMENT: Record<GuidedStepId, GuidedRequirement> = {
   details: 'required',
-  photos: 'required',
+  photos: 'recommended',
   measure: 'optional',
   level: 'optional',
-  notes: 'required',
+  notes: 'recommended',
   checklist: 'optional',
-  signature: 'recommended',
+  signature: 'optional',
 };
 
 const BADGE: Partial<Record<GuidedStepId, GuidedStepBadge>> = {
@@ -244,15 +244,10 @@ export function computeGuidedChecklist(input: GuidedChecklistInput): GuidedCheck
 
   const completedCount = steps.filter((s) => s.status === 'complete').length;
   const currentId = steps.find((s) => s.status !== 'complete')?.id ?? null;
-  const requiredComplete = (['details', 'photos', 'notes'] as GuidedStepId[]).every(
-    (id) => statuses[id] === 'complete'
-  );
-  // Details can be "complete" for PDF unlock with just a title; photos need before+after.
-  const canCreatePdf =
-    Boolean(job.title.trim()) &&
-    photoCounts.before > 0 &&
-    photoCounts.after > 0 &&
-    Boolean(summary?.workCompleted?.trim());
+  const requiredComplete = statuses.details === 'complete' || Boolean(job.title.trim());
+  // Report PDF is available as soon as the job has a title — photos, measure,
+  // checklist and signature stay optional add-ons, not gates.
+  const canCreatePdf = Boolean(job.title.trim());
 
   return {
     steps,
@@ -269,11 +264,7 @@ export function ctaForGuidedState(state: GuidedChecklistState): {
   stepId: GuidedStepId | 'report';
   kind: 'start' | 'continue' | 'create';
 } {
-  if (state.canCreatePdf && (state.allComplete || !state.currentId)) {
-    return { stepId: 'report', kind: 'create' };
-  }
-  if (state.canCreatePdf && state.currentId && state.currentId !== 'photos') {
-    // Prefer finishing optional steps via list; primary CTA creates PDF once unlocked.
+  if (state.canCreatePdf) {
     return { stepId: 'report', kind: 'create' };
   }
   const id = state.currentId ?? 'details';

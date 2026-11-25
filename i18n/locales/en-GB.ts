@@ -80,6 +80,32 @@ const enGBOverrides = {
     captureBody: 'Snap the job as you go. Photos stay organised by area in the report.',
     documentBody: 'Note what you did, what you used, and labour — costs stay optional.',
   },
+  tabs: {
+    documents: 'Documents',
+    toolbox: 'Toolbox',
+  },
+  toolbox: {
+    title: 'Toolbox',
+    subtitle: 'Measure, level, and notes for the job site',
+    measureTitle: 'AR Measure',
+    measureSubtitle: 'Distances and areas with the camera',
+    levelTitle: 'Level',
+    levelSubtitle: 'Bubble and line level',
+    notesTitle: 'Notes',
+    notesSubtitle: 'Work done, materials, and voice notes',
+    pickJobTitle: 'Save to a job',
+    pickJobBody: 'Choose which job the measurement belongs to.',
+    pickJobNotesTitle: 'Open job notes',
+    pickJobNotesBody: 'Choose which job to add notes to.',
+    noJobsTitle: 'No jobs yet',
+    noJobsBody: 'Create a job first so measurements can be saved with the report.',
+    noJobsNotesBody: 'Create a job first so notes can be saved with the report.',
+    createJob: 'New job',
+    recentJobs: 'Recent jobs',
+  },
+  costs: {
+    captionPriceLines: 'Price lines saved for quotes and invoices on this job.',
+  },
 } as const;
 
 const enGB: TranslationTree = deepMerge(

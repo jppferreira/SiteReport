@@ -19,6 +19,8 @@ function rowToJob(row: Record<string, unknown>): Job {
     description: (row.description as string | null) ?? null,
     status: row.status as JobStatus,
     coverPhotoId: (row.coverPhotoId as string | null) ?? null,
+    isQuick: Number(row.isQuick ?? 0) === 1,
+    customerId: (row.customerId as string | null) ?? null,
     createdAt: row.createdAt as string,
     updatedAt: row.updatedAt as string,
   };
@@ -37,13 +39,18 @@ export async function createJob(draft: JobDraft): Promise<Job> {
     description: draft.description?.trim() || null,
     status: 'draft',
     coverPhotoId: null,
+    isQuick: draft.isQuick ?? false,
+    customerId: draft.customerId ?? null,
     createdAt: now,
     updatedAt: now,
   };
 
   await db.runAsync(
-    `INSERT INTO jobs (id, title, customerName, address, jobDate, referenceNumber, description, status, createdAt, updatedAt)
-     VALUES ($id, $title, $customerName, $address, $jobDate, $referenceNumber, $description, $status, $createdAt, $updatedAt)`,
+    `INSERT INTO jobs (
+      id, title, customerName, address, jobDate, referenceNumber, description, status, coverPhotoId, isQuick, customerId, createdAt, updatedAt
+    ) VALUES (
+      $id, $title, $customerName, $address, $jobDate, $referenceNumber, $description, $status, $coverPhotoId, $isQuick, $customerId, $createdAt, $updatedAt
+    )`,
     {
       $id: job.id,
       $title: job.title,
@@ -53,6 +60,9 @@ export async function createJob(draft: JobDraft): Promise<Job> {
       $referenceNumber: job.referenceNumber,
       $description: job.description,
       $status: job.status,
+      $coverPhotoId: job.coverPhotoId,
+      $isQuick: job.isQuick ? 1 : 0,
+      $customerId: job.customerId,
       $createdAt: job.createdAt,
       $updatedAt: job.updatedAt,
     }
@@ -61,7 +71,63 @@ export async function createJob(draft: JobDraft): Promise<Job> {
   return job;
 }
 
-export async function updateJob(id: string, patch: Partial<JobDraft & { status: JobStatus }>): Promise<void> {
+export async function createQuickJob(opts: {
+  title: string;
+  customerId?: string | null;
+  customerName?: string | null;
+  address?: string | null;
+}): Promise<Job> {
+  return createJob({
+    title: opts.title.trim() || 'Quick job',
+    customerName: opts.customerName ?? undefined,
+    address: opts.address ?? undefined,
+    customerId: opts.customerId ?? null,
+    isQuick: true,
+  });
+}
+
+/** Turns a quick job into a normal job once real site work is captured. */
+export async function clearQuickJobFlag(jobId: string): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('UPDATE jobs SET isQuick = 0, updatedAt = ? WHERE id = ? AND isQuick = 1', [
+    new Date().toISOString(),
+    jobId,
+  ]);
+}
+
+/** Removes quick jobs that only existed to hold a lone document. */
+export async function maybeDeleteEmptyQuickJob(jobId: string): Promise<void> {
+  const job = await getJob(jobId);
+  if (!job?.isQuick) return;
+
+  const db = await getDatabase();
+  const docRow = await db.getFirstAsync<{ c: number }>(
+    'SELECT COUNT(*) AS c FROM documents WHERE jobId = ?',
+    jobId
+  );
+  if ((docRow?.c ?? 0) > 0) return;
+
+  const photoRow = await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) AS c FROM photos WHERE jobId = ?', jobId);
+  if ((photoRow?.c ?? 0) > 0) return;
+
+  const summaryRow = await db.getFirstAsync<Record<string, unknown>>(
+    'SELECT notes, workCompleted, materials, recommendations FROM work_summaries WHERE jobId = ?',
+    jobId
+  );
+  if (summaryRow) {
+    const hasNotes = [summaryRow.notes, summaryRow.workCompleted, summaryRow.materials, summaryRow.recommendations].some(
+      (value) => typeof value === 'string' && value.trim().length > 0
+    );
+    if (hasNotes) return;
+  }
+
+  await deleteJob(jobId);
+}
+
+export async function updateJob(
+  id: string,
+  patch: Partial<JobDraft & { status: JobStatus; isQuick: boolean; customerId: string | null }>
+): Promise<void> {
   const db = await getDatabase();
   const existing = await getJob(id);
   if (!existing) return;
@@ -75,12 +141,15 @@ export async function updateJob(id: string, patch: Partial<JobDraft & { status: 
     ...(patch.referenceNumber !== undefined ? { referenceNumber: patch.referenceNumber.trim() || null } : {}),
     ...(patch.description !== undefined ? { description: patch.description.trim() || null } : {}),
     ...(patch.status !== undefined ? { status: patch.status } : {}),
+    ...(patch.isQuick !== undefined ? { isQuick: patch.isQuick } : {}),
+    ...(patch.customerId !== undefined ? { customerId: patch.customerId } : {}),
     updatedAt: new Date().toISOString(),
   };
 
   await db.runAsync(
     `UPDATE jobs SET title=$title, customerName=$customerName, address=$address, jobDate=$jobDate,
-       referenceNumber=$referenceNumber, description=$description, status=$status, updatedAt=$updatedAt
+       referenceNumber=$referenceNumber, description=$description, status=$status, isQuick=$isQuick,
+       customerId=$customerId, updatedAt=$updatedAt
      WHERE id=$id`,
     {
       $id: next.id,
@@ -91,6 +160,8 @@ export async function updateJob(id: string, patch: Partial<JobDraft & { status: 
       $referenceNumber: next.referenceNumber,
       $description: next.description,
       $status: next.status,
+      $isQuick: next.isQuick ? 1 : 0,
+      $customerId: next.customerId,
       $updatedAt: next.updatedAt,
     }
   );
@@ -161,5 +232,6 @@ export async function duplicateJob(id: string): Promise<Job | null> {
     jobDate: todayIsoDate(),
     referenceNumber: undefined,
     description: original.description ?? undefined,
+    customerId: original.customerId ?? undefined,
   });
 }

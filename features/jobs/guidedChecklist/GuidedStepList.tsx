@@ -493,7 +493,7 @@ function StagePill({
   const { colors } = useTheme();
   if (missing && !done) {
     return (
-      <View style={[styles.stage, styles.stageMissing]}>
+      <View style={[styles.stage, styles.stageMissing, { backgroundColor: colors.surface }]}>
         <Ionicons name="camera-outline" size={12} color="#9A6A00" />
         <Text variant="caption" style={[styles.stageLabel, { color: '#9A6A00' }]}>
           {label}
@@ -678,7 +678,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   stageMissing: {
-    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: '#E8A317',

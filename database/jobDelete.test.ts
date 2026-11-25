@@ -9,6 +9,7 @@ describe('job delete', () => {
       'DELETE FROM work_summaries WHERE jobId = ?',
       'DELETE FROM signatures WHERE jobId = ?',
       'DELETE FROM reports WHERE jobId = ?',
+      'DELETE FROM documents WHERE jobId = ?',
       'DELETE FROM jobs WHERE id = ?',
     ]);
     expect(statements.at(-1)).toContain('DELETE FROM jobs');

@@ -26,6 +26,8 @@ async function manifest(): Promise<BackupManifest> {
         description: null,
         status: 'complete',
         coverPhotoId: null,
+        isQuick: false,
+        customerId: null,
         createdAt: '2026-10-04T00:00:00.000Z',
         updatedAt: '2026-10-04T00:00:00.000Z',
       },
@@ -75,6 +77,8 @@ async function manifest(): Promise<BackupManifest> {
     checklists: [],
     events: [],
     businessProfile: null,
+    documents: [],
+    customers: [],
   };
 }
 

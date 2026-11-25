@@ -46,9 +46,10 @@ const savedFrames: Record<string, TabFrame> = {};
  * tab frames on press and when the focused route changes.
  */
 export function PillTabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {
-  const { colors, spacing, radius, shadows } = useTheme();
+  const { colors, spacing, radius, shadows, scheme } = useTheme();
   const onHeightChange = useContext(BottomTabBarHeightCallbackContext);
   const frames = useRef(savedFrames);
+  const dark = scheme === 'dark';
 
   const focusedRoute = state.routes[state.index];
   const focusedKey = focusedRoute?.key;
@@ -123,22 +124,23 @@ export function PillTabBar({ state, descriptors, emitter, navigateToTab, insets 
           style={[
             styles.pill,
             {
-              borderColor: 'rgba(255, 255, 255, 0.66)',
+              borderColor: dark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.66)',
               borderRadius: radius.pill,
               padding: spacing.xxs,
             },
           ]}
         >
           <BlurView
-            intensity={64}
-            tint="default"
+            intensity={dark ? 48 : 64}
+            tint={dark ? 'dark' : 'default'}
             style={[StyleSheet.absoluteFill, { borderRadius: radius.pill, pointerEvents: 'none' }]}
           />
           <View
             style={[
               StyleSheet.absoluteFill,
               {
-                backgroundColor: withAlpha(colors.accentSoft, 0.55),
+                // Main app background for the bar track — selected pill stays accent.
+                backgroundColor: withAlpha(colors.background, dark ? 0.88 : 0.92),
                 borderRadius: radius.pill,
                 pointerEvents: 'none',
               },
@@ -255,7 +257,8 @@ function resolveLabel(options: BottomTabNavigationOptions, routeName: string) {
   return options.title ?? routeName;
 }
 
-function isHidden(options: BottomTabNavigationOptions) {
+function isHidden(options: BottomTabNavigationOptions & { href?: string | null }) {
+  if (options.href === null) return true;
   const style = StyleSheet.flatten(options.tabBarItemStyle);
   return style?.display === 'none';
 }

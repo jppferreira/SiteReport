@@ -22,7 +22,7 @@ import { useTheme } from '@/theme';
 import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/utils/siteUrls';
 
 export default function SettingsScreen() {
-  const { spacing } = useTheme();
+  const { spacing, appearance } = useTheme();
   const { t, locale } = useI18n();
   const tabBarHeight = useBottomTabBarHeight();
   const { profile } = useBusinessProfile();
@@ -30,6 +30,13 @@ export default function SettingsScreen() {
   const [layoutLabel, setLayoutLabel] = useState<string>();
   const [contactOpen, setContactOpen] = useState(false);
   const [icloudAutoBackup, setIcloudAutoBackup] = useIcloudAutoBackupSetting();
+
+  const appearanceLabel =
+    appearance === 'system'
+      ? t('appearance.system')
+      : appearance === 'light'
+        ? t('appearance.light')
+        : t('appearance.dark');
 
   useFocusEffect(
     useCallback(() => {
@@ -73,6 +80,12 @@ export default function SettingsScreen() {
             onPress={() => router.push('/settings/business-profile')}
           />
           <SettingRow
+            label={t('settings.quotesInvoices')}
+            value={isPro ? undefined : t('common.proBadge')}
+            icon="receipt-outline"
+            onPress={() => router.push('/settings/quotes-invoices')}
+          />
+          <SettingRow
             label={t('settings.brandingAndLayout')}
             value={layoutLabel}
             icon="color-palette-outline"
@@ -81,6 +94,12 @@ export default function SettingsScreen() {
         </SettingsGroup>
 
         <SettingsGroup title={t('settings.groupPreferences')}>
+          <SettingRow
+            label={t('settings.appearance')}
+            value={appearanceLabel}
+            icon="moon-outline"
+            onPress={() => router.push('/settings/appearance')}
+          />
           <SettingRow
             label={t('settings.language')}
             value={LOCALE_LABELS[locale]}

@@ -3,11 +3,19 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Platform, ScrollView } from 'react-native';
 
 import { ConfirmationDialog, NavigationHeader, Screen, SettingRow, Text, ToggleRow, useToast } from '@/components';
+import { BackupPasswordSheet } from '@/features/backup/BackupPasswordSheet';
 import { DeleteAllDataDialog } from '@/features/settings/DeleteAllDataDialog';
 import { SettingsGroup } from '@/features/settings/SettingsGroup';
 import { useIcloudAutoBackupSetting } from '@/hooks/useIcloudAutoBackupSetting';
 import { useI18n } from '@/i18n/useI18n';
-import { BackupDestination, restoreBackupFromPicker, saveBackup, userFacingBackupError } from '@/services/backup/backupService';
+import { shareAccountantExport } from '@/services/accountantExport';
+import {
+  BackupDestination,
+  pickBackupFile,
+  restoreBackupBytes,
+  saveBackup,
+  userFacingBackupError,
+} from '@/services/backup/backupService';
 import { googleDriveAvailable } from '@/services/backup/googleDrive';
 import { deleteAllAppData, exportAppDataToJson } from '@/services/dataManagementService';
 import { getStorageUsage, StorageUsage } from '@/services/fileService';
@@ -25,9 +33,13 @@ export default function DataPrivacyScreen() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [accountantBusy, setAccountantBusy] = useState(false);
   const [backupBusy, setBackupBusy] = useState(false);
   const [confirmRestore, setConfirmRestore] = useState(false);
   const [pendingBackup, setPendingBackup] = useState<BackupDestination | null>(null);
+  const [backupPasswordOpen, setBackupPasswordOpen] = useState(false);
+  const [restorePasswordOpen, setRestorePasswordOpen] = useState(false);
+  const [pendingRestoreBytes, setPendingRestoreBytes] = useState<Uint8Array | null>(null);
   const [icloudAutoBackup, setIcloudAutoBackup] = useIcloudAutoBackupSetting();
 
   const backupPrompt = useMemo(
@@ -53,10 +65,10 @@ export default function DataPrivacyScreen() {
     getStorageUsage().then(setUsage);
   }, []);
 
-  const handleBackup = async (destination: BackupDestination) => {
+  const handleBackup = async (destination: BackupDestination, password?: string) => {
     setBackupBusy(true);
     try {
-      const result = await saveBackup(destination);
+      const result = await saveBackup(destination, password ? { password } : undefined);
       if (result !== 'saved') return;
       const message =
         destination === 'icloud'
@@ -72,11 +84,10 @@ export default function DataPrivacyScreen() {
     }
   };
 
-  const handleRestore = async () => {
-    setConfirmRestore(false);
+  const finishRestore = async (bytes: Uint8Array, password?: string) => {
     setBackupBusy(true);
     try {
-      const result = await restoreBackupFromPicker();
+      const result = await restoreBackupBytes(bytes, password);
       if (result.ok) {
         showToast({ message: t('data.toastRestored'), tone: 'success' });
         router.replace('/(tabs)/jobs');
@@ -86,6 +97,39 @@ export default function DataPrivacyScreen() {
       showToast({ message: result.message, tone: 'destructive' });
     } finally {
       setBackupBusy(false);
+      setPendingRestoreBytes(null);
+      setRestorePasswordOpen(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setConfirmRestore(false);
+    setBackupBusy(true);
+    try {
+      const picked = await pickBackupFile();
+      if (picked.kind === 'cancelled') return;
+      if (picked.encrypted) {
+        setPendingRestoreBytes(picked.bytes);
+        setRestorePasswordOpen(true);
+        return;
+      }
+      await finishRestore(picked.bytes);
+    } catch {
+      showToast({ message: t('backup.couldNotOpen'), tone: 'destructive' });
+    } finally {
+      setBackupBusy(false);
+    }
+  };
+
+  const handleAccountantExport = async () => {
+    setAccountantBusy(true);
+    try {
+      const shared = await shareAccountantExport();
+      if (!shared) showToast({ message: t('data.toastShareUnavailable'), tone: 'warning' });
+    } catch {
+      showToast({ message: t('data.toastAccountantExportError'), tone: 'destructive' });
+    } finally {
+      setAccountantBusy(false);
     }
   };
 
@@ -187,6 +231,11 @@ export default function DataPrivacyScreen() {
             icon="download-outline"
             onPress={exporting || backupBusy ? undefined : handleExport}
           />
+          <SettingRow
+            label={accountantBusy ? t('data.preparingExport') : t('data.exportForAccountant')}
+            icon="calculator-outline"
+            onPress={accountantBusy || backupBusy ? undefined : handleAccountantExport}
+          />
         </SettingsGroup>
 
         <SettingsGroup title={t('data.groupDanger')}>
@@ -214,11 +263,39 @@ export default function DataPrivacyScreen() {
         }
         confirmVariant="primary"
         onConfirm={() => {
-          const destination = pendingBackup;
-          setPendingBackup(null);
-          if (destination) void handleBackup(destination);
+          setBackupPasswordOpen(true);
         }}
         onCancel={() => setPendingBackup(null)}
+      />
+
+      <BackupPasswordSheet
+        visible={backupPasswordOpen}
+        mode="save"
+        loading={backupBusy}
+        onCancel={() => {
+          setBackupPasswordOpen(false);
+          setPendingBackup(null);
+        }}
+        onConfirm={(password) => {
+          const destination = pendingBackup;
+          setBackupPasswordOpen(false);
+          setPendingBackup(null);
+          if (destination) void handleBackup(destination, password ?? undefined);
+        }}
+      />
+
+      <BackupPasswordSheet
+        visible={restorePasswordOpen}
+        mode="restore"
+        loading={backupBusy}
+        onCancel={() => {
+          setRestorePasswordOpen(false);
+          setPendingRestoreBytes(null);
+        }}
+        onConfirm={(password) => {
+          if (!pendingRestoreBytes || !password) return;
+          void finishRestore(pendingRestoreBytes, password);
+        }}
       />
 
       <ConfirmationDialog

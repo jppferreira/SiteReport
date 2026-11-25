@@ -4,6 +4,8 @@ import { Platform } from 'react-native';
 
 import {
   businessProfileRepository,
+  customersRepository,
+  documentsRepository,
   jobChecklistsRepository,
   jobsRepository,
   photoAreasRepository,
@@ -21,6 +23,7 @@ import { shareFile } from '@/services/shareService';
 import { logger } from '@/utils/logger';
 
 import { BackupManifest, packArchive, restoreIfValid, sha256Hex } from './archive';
+import { decryptBackupZip, encryptBackupZip, isEncryptedBackup } from './backupCrypto';
 import { assertGoogleDriveReady, saveZipToGoogleDrive } from './googleDrive';
 import { assertIcloudReady, saveZipToIcloudDrive } from './icloudDrive';
 import { orphanBackupPath, toBackupPath } from './paths';
@@ -31,10 +34,16 @@ export { userFacingBackupError };
 
 export type BackupDestination = 'icloud' | 'google-drive' | 'manual';
 
+export type SaveBackupOptions = { password?: string };
+
 export type RestoreOutcome =
   | { ok: true }
   | { ok: false; cancelled: true }
   | { ok: false; liveDataChanged: false; message: string };
+
+export type RestorePickResult =
+  | { kind: 'cancelled' }
+  | { kind: 'ready'; bytes: Uint8Array; encrypted: boolean };
 
 function liveRoot(): string {
   return Platform.OS === 'web' ? 'sitereport/' : `${FileSystem.documentDirectory}sitereport/`;
@@ -50,8 +59,11 @@ export function backupFileName(): string {
 }
 
 /** Builds a zip of jobs, photos, signatures, and PDFs. Nothing is deleted. */
-export async function createBackupFile(): Promise<string> {
-  const bytes = await buildBackup();
+export async function createBackupFile(options?: SaveBackupOptions): Promise<string> {
+  let bytes = await buildBackup();
+  if (options?.password) {
+    bytes = await encryptBackupZip(bytes, options.password);
+  }
   const path = temporaryFilePath(backupFileName());
   await writeBytes(path, bytes);
   return path;
@@ -62,12 +74,15 @@ export async function createBackupFile(): Promise<string> {
  * Android "Save to Google Drive" opens Google Drive's save screen.
  * "Save a copy" still uses the system folder picker. This app does not sign in to either.
  */
-export async function saveBackup(destination: BackupDestination): Promise<'saved' | 'cancelled'> {
+export async function saveBackup(
+  destination: BackupDestination,
+  options?: SaveBackupOptions
+): Promise<'saved' | 'cancelled'> {
   const transport = backupTransport(Platform.OS, destination);
   if (transport === 'icloud') assertIcloudReady();
   if (transport === 'google-drive') assertGoogleDriveReady();
 
-  const path = await createBackupFile();
+  const path = await createBackupFile(options);
   const fileName = fileNameFromPath(path, backupFileName());
   try {
     if (transport === 'web') {
@@ -100,14 +115,28 @@ export async function saveBackup(destination: BackupDestination): Promise<'saved
   }
 }
 
-export async function restoreBackupFromPicker(): Promise<RestoreOutcome> {
+export async function pickBackupFile(): Promise<RestorePickResult> {
   try {
     const picked = await File.pickFileAsync({
       mimeTypes: ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'],
     });
-    if (picked.canceled || !picked.result) return { ok: false, cancelled: true };
+    if (picked.canceled || !picked.result) return { kind: 'cancelled' };
     const bytes = await picked.result.bytes();
-    return restoreBackupBytes(bytes);
+    return { kind: 'ready', bytes, encrypted: isEncryptedBackup(bytes) };
+  } catch (error) {
+    if (isCancel(error)) return { kind: 'cancelled' };
+    throw error;
+  }
+}
+
+export async function restoreBackupFromPicker(password?: string): Promise<RestoreOutcome> {
+  try {
+    const picked = await pickBackupFile();
+    if (picked.kind === 'cancelled') return { ok: false, cancelled: true };
+    if (picked.encrypted && !password) {
+      return { ok: false, liveDataChanged: false, message: t('backup.passwordRequired') };
+    }
+    return restoreBackupBytes(picked.bytes, password);
   } catch (error) {
     if (isCancel(error)) return { ok: false, cancelled: true };
     return {
@@ -118,10 +147,22 @@ export async function restoreBackupFromPicker(): Promise<RestoreOutcome> {
   }
 }
 
-export async function restoreBackupBytes(bytes: Uint8Array): Promise<RestoreOutcome> {
+export async function restoreBackupBytes(bytes: Uint8Array, password?: string): Promise<RestoreOutcome> {
+  let zipBytes = bytes;
+  if (isEncryptedBackup(bytes)) {
+    if (!password) {
+      return { ok: false, liveDataChanged: false, message: t('backup.passwordRequired') };
+    }
+    try {
+      zipBytes = await decryptBackupZip(bytes, password);
+    } catch {
+      return { ok: false, liveDataChanged: false, message: t('backup.wrongPassword') };
+    }
+  }
+
   let committed = false;
   try {
-    const opened = await restoreIfValid(bytes, async (backup) => {
+    const opened = await restoreIfValid(zipBytes, async (backup) => {
       await deleteFileSafely(incomingRoot());
       for (const [relative, data] of backup.files) {
         const destination = `${incomingRoot()}${relative}`;
@@ -212,6 +253,23 @@ async function buildBackup(): Promise<Uint8Array> {
   }
 
   const business = relativizeProfile(await businessProfileRepository.getBusinessProfile(), claim);
+  const tradeDocuments = [];
+  for (const doc of await documentsRepository.listAllDocuments()) {
+    let localPdfUri = doc.localPdfUri;
+    if (localPdfUri) {
+      localPdfUri = claim(localPdfUri);
+      if (!localPdfUri) throw new Error(t('backup.reportCouldNotBeAdded'));
+    }
+    tradeDocuments.push({ ...doc, localPdfUri });
+  }
+
+  let customers: Awaited<ReturnType<typeof customersRepository.listRecentCustomers>> = [];
+  try {
+    customers = await customersRepository.listRecentCustomers(50_000);
+  } catch {
+    customers = [];
+  }
+
   const files: { path: string; data: Uint8Array }[] = [];
   for (const [relative, uri] of uriByPath) {
     const data = await readBytes(uri);
@@ -237,6 +295,8 @@ async function buildBackup(): Promise<Uint8Array> {
     checklists,
     events,
     businessProfile: business,
+    documents: tradeDocuments,
+    customers,
   };
   return packArchive(manifest, files);
 }

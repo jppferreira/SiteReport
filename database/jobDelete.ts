@@ -3,7 +3,14 @@
  * is never removed while its photos, notes, signature, or reports remain.
  * photo_areas has no foreign key, so it has to be listed here explicitly.
  */
-export const JOB_CHILD_TABLES = ['photos', 'photo_areas', 'work_summaries', 'signatures', 'reports'] as const;
+export const JOB_CHILD_TABLES = [
+  'photos',
+  'photo_areas',
+  'work_summaries',
+  'signatures',
+  'reports',
+  'documents',
+] as const;
 
 export function deleteJobStatements(): string[] {
   return [

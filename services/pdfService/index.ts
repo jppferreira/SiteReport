@@ -1,7 +1,17 @@
 import * as Print from 'expo-print';
 import { Platform } from 'react-native';
 
-import { businessProfileRepository, jobChecklistsRepository, jobsRepository, photoAreasRepository, photosRepository, reportsRepository, signatureRepository, workSummaryRepository } from '@/database';
+import {
+  businessProfileRepository,
+  documentsRepository,
+  jobChecklistsRepository,
+  jobsRepository,
+  photoAreasRepository,
+  photosRepository,
+  reportsRepository,
+  signatureRepository,
+  workSummaryRepository,
+} from '@/database';
 import {
   DEFAULT_DOCUMENT_TYPE,
   DEFAULT_REPORT_TEMPLATE,
@@ -59,6 +69,7 @@ function brandStamp(
     accountNumber: string | null;
     paymentTerms: string | null;
     defaultDueDays: number;
+    stripePaymentLink: string | null;
   },
   coverDesign: string,
   includeReviewLink: boolean,
@@ -87,6 +98,7 @@ function brandStamp(
     accountNumber: business.accountNumber,
     paymentTerms: business.paymentTerms,
     defaultDueDays: business.defaultDueDays,
+    stripePaymentLink: business.stripePaymentLink,
     stampDateTime: stampPrefs?.stampDateTime ?? true,
     stampAddress: stampPrefs?.stampAddress ?? true,
     stampShowOnPdf: stampPrefs?.stampShowOnPdf ?? true,
@@ -314,6 +326,7 @@ export async function loadReportDocument(
               sortCode: business.sortCode,
               accountNumber: business.accountNumber,
               paymentTerms: business.paymentTerms,
+              stripePaymentLink: business.stripePaymentLink,
             }
           : null,
       review: includeReview && reviewUrl ? { url: reviewUrl, provider: business.reviewProvider } : null,
@@ -405,7 +418,7 @@ export async function generateReportPdf(jobId: string, template: ReportTemplateI
   const fileSize = await getFileSize(destination);
   const storedFileName = Platform.OS === 'web' ? fileName.replace(/\.pdf$/i, '.html') : fileName;
 
-  return reportsRepository.createReport({
+  const report = await reportsRepository.createReport({
     jobId,
     localPdfUri: destination,
     fileName: storedFileName,
@@ -413,6 +426,10 @@ export async function generateReportPdf(jobId: string, template: ReportTemplateI
     sourceHash: document.sourceHash,
     templateId: allowed,
   });
+
+  await documentsRepository.syncGeneratedReportPdf(jobId, report, htmlInput.documentType ?? DEFAULT_DOCUMENT_TYPE);
+
+  return report;
 }
 
 export async function getReportFreshness(jobId: string): Promise<'none' | 'stale' | 'fresh'> {

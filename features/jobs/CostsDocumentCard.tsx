@@ -79,8 +79,9 @@ export function CostsDocumentCard({
     onChangeDocumentType(next);
   };
 
-  const caption =
-    documentType === 'reference'
+  const caption = !showTypeControl
+    ? t('costs.captionPriceLines')
+    : documentType === 'reference'
       ? t('costs.captionReference')
       : t('costs.captionTyped');
 
@@ -115,7 +116,11 @@ export function CostsDocumentCard({
             {caption}
           </Text>
         </View>
-      ) : null}
+      ) : (
+        <Text variant="caption" color={colors.textSecondary} style={{ textAlign: 'center' }}>
+          {caption}
+        </Text>
+      )}
 
       <View
         style={{

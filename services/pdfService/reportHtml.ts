@@ -35,6 +35,7 @@ import { formatDate, formatDateTime } from '@/utils/format';
 import { DEFAULT_COVER_SCENE, DEFAULT_THANKS_SCENE } from './defaultScenes';
 import { premiumFontLinks, premiumStylesheet, renderPremiumTemplate } from './premium';
 import { premiumTheme } from './premium/shared';
+import { invoicePayByCardBlock } from './invoicePayByCard';
 import { reviewQrDataUri } from './qrSvg';
 import { ReportHtmlInput, ReportPhotoData } from './types';
 
@@ -323,6 +324,7 @@ function invoiceDetailsBlock(input: ReportHtmlInput): string {
     )}</span></div>
     ${rows.join('')}
     <div class="invoice-terms"><div class="eyebrow">Payment terms</div><p>${escapeHtml(terms)}</p></div>
+    ${invoicePayByCardBlock(inv)}
   </div>`;
 }
 
@@ -1702,6 +1704,22 @@ function stylesheet(theme: Theme): string {
     margin-top: 2mm; padding: 2.4mm 2.8mm; border-radius: 2mm; background: ${cssColor(WASH)};
   }
   .invoice-terms p { margin: 1mm 0 0; font-size: 9pt; color: ${cssColor(MUTED)}; line-height: 1.4; }
+  .invoice-pay-card {
+    display: flex; gap: 3mm; align-items: center; justify-content: space-between;
+    margin-top: 3mm; padding: 3mm 2.8mm; border-radius: 2.4mm;
+    background: ${theme.tint}; border: 1px solid ${theme.accent}44;
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .invoice-pay-copy { flex: 1; min-width: 0; }
+  .invoice-pay-title { margin: 0; font-size: 11pt; font-weight: 700; color: ${cssColor(INK)}; }
+  .invoice-pay-lede { margin: 1mm 0 0; font-size: 8.5pt; color: ${cssColor(MUTED)}; line-height: 1.35; }
+  .invoice-pay-link {
+    display: inline-block; margin-top: 2mm; color: ${theme.accent};
+    font-size: 9pt; font-weight: 600; text-decoration: underline;
+  }
+  .invoice-pay-qr { flex-shrink: 0; text-align: center; }
+  .invoice-pay-qr span { display: block; margin-top: 1mm; font-size: 7pt; color: ${cssColor(MUTED)}; max-width: 24mm; line-height: 1.25; }
+  .invoice-pay-ref { font-weight: 600; }
   .review-card {
     display: flex; gap: 3mm; align-items: center; justify-content: space-between;
     margin: 4mm 0 0; padding: 3.5mm 3.2mm; border-radius: 2.6mm;

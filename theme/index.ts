@@ -1,5 +1,5 @@
 export { colors } from './colors';
-export type { ColorScheme, ThemeColors } from './colors';
+export type { ColorScheme, ThemeColors, ThemeScheme } from './colors';
 export { spacing, screenPadding, sectionGap, cardPadding } from './spacing';
 export type { SpacingToken } from './spacing';
 export { radius } from './radius';

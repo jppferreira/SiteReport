@@ -45,6 +45,7 @@ export type ReportInvoiceDetails = {
   sortCode: string | null;
   accountNumber: string | null;
   paymentTerms: string | null;
+  stripePaymentLink?: string | null;
 };
 
 export type ReportHtmlInput = {

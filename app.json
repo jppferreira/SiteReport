@@ -104,6 +104,13 @@
       "expo-iap",
       "expo-mail-composer",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#101310"
+        }
+      ],
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "Trade Report uses your location to stamp the job address on photos when you turn on the evidence location stamp."

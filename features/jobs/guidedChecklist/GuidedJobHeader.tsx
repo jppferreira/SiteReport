@@ -14,6 +14,11 @@ type GuidedJobHeaderProps = {
   completed: number;
   total: number;
   intro: string | null;
+  /** Customer name shown as “Name · address” when set (Figma Documents redesign). */
+  customerName?: string | null;
+  /** When true, matches Figma J1: status chips, no progress ring / intro callout. */
+  documentsLayout?: boolean;
+  statusLabel?: string;
 };
 
 export function GuidedJobHeader({
@@ -23,8 +28,48 @@ export function GuidedJobHeader({
   completed,
   total,
   intro,
+  customerName,
+  documentsLayout = false,
+  statusLabel,
 }: GuidedJobHeaderProps) {
   const { colors } = useTheme();
+
+  const subtitle = [customerName?.trim(), address?.trim()].filter(Boolean).join(' · ');
+
+  if (documentsLayout) {
+    return (
+      <View style={styles.wrap}>
+        <Text
+          variant="h1"
+          style={{ fontSize: 26, lineHeight: 32, fontFamily: 'Lexend_600SemiBold', letterSpacing: -0.4 }}
+          numberOfLines={2}
+        >
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text variant="bodySmall" color={colors.textSecondary} style={{ marginTop: 6 }} numberOfLines={2}>
+            {subtitle}
+          </Text>
+        ) : null}
+        <View style={styles.chips}>
+          {statusLabel ? (
+            <View style={[styles.chip, { backgroundColor: colors.ctaDark }]}>
+              <Text variant="caption" color={colors.textInverse} style={styles.chipLabel}>
+                {statusLabel}
+              </Text>
+            </View>
+          ) : null}
+          {dateLabel ? (
+            <View style={[styles.chip, { backgroundColor: colors.surfaceSunken }]}>
+              <Text variant="caption" color={colors.textSecondary} style={styles.chipLabelMuted}>
+                {dateLabel.startsWith('Started') ? dateLabel : `Started ${dateLabel}`}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.wrap}>
@@ -81,37 +126,27 @@ export function GuidedJobHeader({
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    gap: 8,
-  },
-  top: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  titleBlock: {
-    flex: 1,
-    gap: 4,
-    minWidth: 0,
-  },
-  meta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
-  },
-  metaText: {
-    fontSize: 13,
-    lineHeight: 16,
-    fontFamily: 'Lexend_400Regular',
-    letterSpacing: 0,
-  },
+  wrap: { gap: 10 },
+  top: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  titleBlock: { flex: 1, minWidth: 0, gap: 6 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
+  metaText: { flexShrink: 1 },
   intro: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 8,
+    borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 12,
   },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  chip: {
+    height: 24,
+    paddingHorizontal: 9,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipLabel: { fontFamily: 'Lexend_600SemiBold', fontSize: 12 },
+  chipLabelMuted: { fontFamily: 'Lexend_500Medium', fontSize: 12 },
 });
