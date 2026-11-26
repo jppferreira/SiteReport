@@ -16,6 +16,10 @@ import type {
   VoiceReportPhase,
   VoiceReportSession,
 } from './types';
+import {
+  WhisperModelDownloadError,
+  whisperModelDownloader,
+} from './whisperModelDownloader';
 
 type Listener = (session: VoiceReportSession) => void;
 
@@ -65,6 +69,7 @@ export class VoiceReportController {
       professional: null,
       error: null,
       aiAvailability: emptyAvailability(),
+      modelDownload: null,
     };
     this.emit();
 
@@ -83,9 +88,98 @@ export class VoiceReportController {
     }
 
     const aiAvailability = await this.ai.getAvailability();
-    this.patch({ phase: 'ready', aiAvailability, error: null });
+    const modelReady = await whisperModelDownloader.isReady();
+    if (!modelReady) {
+      this.patch({ phase: 'modelSetup', aiAvailability, error: null, modelDownload: null });
+      this.attachAppState();
+      return;
+    }
+
+    this.patch({ phase: 'ready', aiAvailability, error: null, modelDownload: null });
     void localTranscriptionService.warmUp().catch(() => undefined);
     this.attachAppState();
+  }
+
+  /** One-time download of the on-device speech model. */
+  async downloadModel(): Promise<void> {
+    if (
+      !this.session ||
+      (this.session.phase !== 'modelSetup' &&
+        this.session.phase !== 'error' &&
+        this.session.phase !== 'modelDownloading')
+    ) {
+      return;
+    }
+
+    this.abort?.abort();
+    this.abort = new AbortController();
+    const signal = this.abort.signal;
+
+    this.patch({
+      phase: 'modelDownloading',
+      error: null,
+      modelDownload: { bytesWritten: 0, totalBytes: whisperModelDownloader.getModelBytes(), ratio: 0 },
+    });
+
+    try {
+      await whisperModelDownloader.ensureModel((progress) => {
+        if (!this.session || this.session.phase !== 'modelDownloading') return;
+        this.patch({ modelDownload: progress });
+      }, signal);
+
+      const aiAvailability = await this.ai.getAvailability();
+      this.patch({
+        phase: 'ready',
+        aiAvailability,
+        error: null,
+        modelDownload: {
+          bytesWritten: whisperModelDownloader.getModelBytes(),
+          totalBytes: whisperModelDownloader.getModelBytes(),
+          ratio: 1,
+        },
+      });
+      void localTranscriptionService.warmUp().catch(() => undefined);
+    } catch (error) {
+      if (error instanceof WhisperModelDownloadError) {
+        if (error.code === 'cancelled') {
+          this.patch({
+            phase: 'modelSetup',
+            error: null,
+            modelDownload: null,
+          });
+          return;
+        }
+        const code =
+          error.code === 'offline'
+            ? 'offline'
+            : error.code === 'insufficient_storage'
+              ? 'insufficient_storage'
+              : 'model_download_failed';
+        this.stopTick();
+        this.patch({ phase: 'error', error: { code, message: error.message }, metering: 0, modelDownload: null });
+        return;
+      }
+      this.stopTick();
+      this.patch({
+        phase: 'error',
+        error: {
+          code: 'model_download_failed',
+          message: errorMessage(error, 'Could not download the speech model. Try again.'),
+        },
+        metering: 0,
+        modelDownload: null,
+      });
+    } finally {
+      this.abort = null;
+    }
+  }
+
+  async cancelModelDownload(): Promise<void> {
+    this.abort?.abort();
+    await whisperModelDownloader.cancel();
+    if (this.session?.phase === 'modelDownloading') {
+      this.patch({ phase: 'modelSetup', modelDownload: null, error: null });
+    }
   }
 
   async startRecording(): Promise<void> {
@@ -163,6 +257,8 @@ export class VoiceReportController {
         this.patch({ phase: 'cancelled', error: { code: 'cancelled', message: 'Cancelled.' } });
       } else if (code === 'no_speech') {
         this.fail({ code: 'no_speech', message: 'No speech detected. Try again a little closer to the phone.' });
+      } else if (code === 'model_not_downloaded') {
+        this.patch({ phase: 'modelSetup', error: null, modelDownload: null });
       } else if (code === 'model_unavailable') {
         this.fail({
           code: 'model_unavailable',
@@ -265,6 +361,7 @@ export class VoiceReportController {
 
   async cancel(): Promise<void> {
     this.abort?.abort();
+    await whisperModelDownloader.cancel();
     await localTranscriptionService.cancel();
     await audioRecordingService.cancel();
     await audioRecordingService.deleteRecording(this.recording?.uri);
@@ -325,6 +422,7 @@ export class VoiceReportController {
     this.stopTick();
     this.appStateSub?.remove();
     this.appStateSub = null;
+    await whisperModelDownloader.cancel();
     await audioRecordingService.cancel();
     await audioRecordingService.deleteRecording(this.recording?.uri);
     this.recording = null;

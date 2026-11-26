@@ -692,6 +692,21 @@ const enUS = {
     useProfessional: 'Use tidied notes',
     useTranscript: 'Put all text in Summary',
     recordAgain: 'Record again',
+    modelSetupTitle: 'Set up offline voice reports',
+    modelSetupBody:
+      'Download a one-time speech recognition model to create reports using your voice. Once installed, voice transcription works offline and your recordings stay on your device.',
+    modelSetupSize: 'Download size: %{size}',
+    modelSetupDownload: 'Download speech model',
+    modelDownloadingTitle: 'Downloading speech model…',
+    modelDownloadingBody: 'This only happens once. When it finishes, voice reports work offline.',
+    modelDownloadingProgress: '%{percent}% · %{downloaded} of %{total}',
+    modelDownloadCancel: 'Cancel download',
+    modelDownloadRetry: 'Try download again',
+    modelReadyHint: 'Speech model ready. Future transcription works offline.',
+    modelOffline:
+      'No internet connection. Connect once to download the speech model. After that, voice reports work offline.',
+    modelStorage:
+      'Not enough free storage for the speech model. Free some space and try again.',
   },
 
   costs: {

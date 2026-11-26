@@ -4,7 +4,7 @@ const { getDefaultConfig } = require('expo/metro-config');
 const config = getDefaultConfig(__dirname);
 
 config.resolver.assetExts.push('wasm');
-// whisper.rn: bundled GGML model (+ optional Core ML assets later)
+// Optional local Whisper tooling assets (not required() into the production bundle)
 config.resolver.assetExts.push('bin', 'mil');
 // Transparent report-build loop for web / tooling
 config.resolver.assetExts.push('webm');

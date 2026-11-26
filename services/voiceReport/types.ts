@@ -4,6 +4,8 @@ import type { PricingCategory, ReportPricing } from '@/models';
 export type VoiceReportPhase =
   | 'idle'
   | 'requestingPermission'
+  | 'modelSetup'
+  | 'modelDownloading'
   | 'ready'
   | 'recording'
   | 'paused'
@@ -18,6 +20,10 @@ export type VoiceReportErrorCode =
   | 'recording_failed'
   | 'no_speech'
   | 'model_unavailable'
+  | 'model_not_downloaded'
+  | 'model_download_failed'
+  | 'insufficient_storage'
+  | 'offline'
   | 'transcription_failed'
   | 'ai_unavailable'
   | 'ai_busy'
@@ -26,6 +32,13 @@ export type VoiceReportErrorCode =
   | 'storage'
   | 'unsupported_platform'
   | 'unknown';
+
+/** Progress while downloading the on-device Whisper model. */
+export type VoiceModelDownloadProgress = {
+  bytesWritten: number;
+  totalBytes: number;
+  ratio: number;
+};
 
 export type VoiceReportError = {
   code: VoiceReportErrorCode;
@@ -103,4 +116,6 @@ export type VoiceReportSession = {
   professional: ProfessionalRewriteResult | null;
   error: VoiceReportError | null;
   aiAvailability: OnDeviceAIAvailability;
+  /** Present while the one-time speech model is downloading. */
+  modelDownload: VoiceModelDownloadProgress | null;
 };

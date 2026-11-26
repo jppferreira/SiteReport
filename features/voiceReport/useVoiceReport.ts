@@ -53,6 +53,8 @@ export function useVoiceReport() {
       pauseRecording: () => controller.pauseRecording(),
       resumeRecording: () => controller.resumeRecording(),
       stopAndTranscribe: () => controller.stopAndTranscribe(),
+      downloadModel: () => controller.downloadModel(),
+      cancelModelDownload: () => controller.cancelModelDownload(),
       makeProfessional: () => controller.makeProfessional(),
       setTranscript: (value: string) => controller.setTranscript(value),
       recordAgain: () => controller.recordAgain(),

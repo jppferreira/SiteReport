@@ -42,7 +42,7 @@ qrcode-terminal-*.tgz
 pnpm-lock.yaml
 pnpm-workspace.yaml
 
-# Whisper weights are fetched in eas-build-post-install
+# Whisper weights are downloaded on-device at first voice use — never ship in the binary
 assets/whisper/
 assets/whisper/**
 *.bin

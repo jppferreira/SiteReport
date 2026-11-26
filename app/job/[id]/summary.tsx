@@ -369,6 +369,8 @@ export default function WorkSummaryScreen() {
         onPause={voice.pauseRecording}
         onResume={voice.resumeRecording}
         onStop={() => void stopAndReview()}
+        onDownloadModel={() => void voice.downloadModel()}
+        onCancelModelDownload={() => void voice.cancelModelDownload()}
         onMakeProfessional={() => void voice.makeProfessional()}
         onChangeTranscript={voice.setTranscript}
         onRecordAgain={() => void voice.recordAgain()}

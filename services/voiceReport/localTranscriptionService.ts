@@ -2,8 +2,9 @@ import { NativeModules, Platform, TurboModuleRegistry } from 'react-native';
 
 import { logger } from '@/utils/logger';
 
-import { getWhisperModelAsset, WHISPER_MODEL_ID } from './constants';
+import { WHISPER_MODEL_ID } from './constants';
 import type { TranscriptionResult } from './types';
+import { whisperModelDownloader } from './whisperModelDownloader';
 
 type WhisperContextLike = {
   transcribe: (
@@ -26,14 +27,18 @@ export function isWhisperNativeAvailable(): boolean {
 
 /**
  * On-device Whisper transcription. No network fallback.
+ * The GGML model is downloaded on first use and reused from persistent storage.
  */
 export class LocalTranscriptionService {
   private context: WhisperContextLike | null = null;
   private initPromise: Promise<WhisperContextLike> | null = null;
   private activeStop: (() => Promise<void>) | null = null;
+  private loadedModelPath: string | null = null;
 
   async warmUp(): Promise<void> {
     if (Platform.OS === 'web' || !isWhisperNativeAvailable()) return;
+    const ready = await whisperModelDownloader.isReady();
+    if (!ready) return;
     await this.getContext();
   }
 
@@ -98,6 +103,7 @@ export class LocalTranscriptionService {
     }
     this.context = null;
     this.initPromise = null;
+    this.loadedModelPath = null;
   }
 
   getModelId(): string {
@@ -119,28 +125,48 @@ export class LocalTranscriptionService {
 
     this.initPromise = (async () => {
       try {
+        const status = await whisperModelDownloader.getStatus();
+        if (status.state !== 'ready') {
+          throw Object.assign(
+            new Error('The offline speech model is not installed yet.'),
+            { code: 'model_not_downloaded' as const }
+          );
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const whisper = require('whisper.rn') as {
-          initWhisper: (options: { filePath: number | string; useGpu?: boolean }) => Promise<WhisperContextLike>;
+          initWhisper: (options: {
+            filePath: number | string;
+            isBundleAsset?: boolean;
+            useGpu?: boolean;
+          }) => Promise<WhisperContextLike>;
         };
         if (typeof whisper?.initWhisper !== 'function') {
           throw new Error('whisper.rn initWhisper is missing');
         }
+
+        const modelPath = status.path.startsWith('file://') ? status.path : `file://${status.path}`;
         const context = await whisper.initWhisper({
-          filePath: getWhisperModelAsset(),
+          filePath: modelPath,
+          isBundleAsset: false,
           useGpu: Platform.OS === 'ios',
         });
         if (!context) {
           throw new Error('whisper.rn returned no context');
         }
         this.context = context;
+        this.loadedModelPath = status.path;
         return context;
       } catch (error) {
         this.initPromise = null;
+        const code = (error as { code?: string }).code;
+        if (code === 'model_not_downloaded' || code === 'model_unavailable') {
+          throw error;
+        }
         logger.error('voiceReport.whisperInitFailed', error);
         throw Object.assign(
           new Error(
-            'Voice transcription failed to start. Rebuild the app with npx expo run:android or npx expo run:ios.'
+            'Voice transcription failed to start. Try downloading the speech model again, or rebuild with npx expo run:android / ios.'
           ),
           { code: 'model_unavailable' as const }
         );

@@ -6,7 +6,12 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } 
 
 import { BottomSheet, Button, IconButton, Text, TextArea } from '@/components';
 import { useI18n } from '@/i18n/useI18n';
-import { MAX_RECORDING_MS, type VoiceReportSession } from '@/services/voiceReport';
+import {
+  MAX_RECORDING_MS,
+  WHISPER_MODEL_BYTES,
+  WHISPER_MODEL_SIZE_LABEL,
+  type VoiceReportSession,
+} from '@/services/voiceReport';
 import { useTheme } from '@/theme';
 
 import { formatElapsed } from './formatElapsed';
@@ -20,6 +25,8 @@ type VoiceReportSheetProps = {
   onPause: () => void;
   onResume: () => void;
   onStop: () => void;
+  onDownloadModel: () => void;
+  onCancelModelDownload: () => void;
   onMakeProfessional: () => void;
   onChangeTranscript: (value: string) => void;
   onRecordAgain: () => void;
@@ -35,6 +42,8 @@ export function VoiceReportSheet({
   onPause,
   onResume,
   onStop,
+  onDownloadModel,
+  onCancelModelDownload,
   onMakeProfessional,
   onChangeTranscript,
   onRecordAgain,
@@ -47,6 +56,10 @@ export function VoiceReportSheet({
 
   const title = useMemo(() => {
     switch (phase) {
+      case 'modelSetup':
+        return t('voiceReport.modelSetupTitle');
+      case 'modelDownloading':
+        return t('voiceReport.modelDownloadingTitle');
       case 'transcribing':
         return t('voiceReport.transcribingTitle');
       case 'formatting':
@@ -66,6 +79,11 @@ export function VoiceReportSheet({
       ? t('voiceReport.professionalAiLabel')
       : t('voiceReport.professionalFormattedLabel');
 
+  const modelError =
+    session?.error?.code === 'offline' ||
+    session?.error?.code === 'insufficient_storage' ||
+    session?.error?.code === 'model_download_failed';
+
   return (
     <BottomSheet visible={visible} onClose={onClose} dragHandleOnly maxHeight={640}>
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: spacing.md }}>
@@ -77,6 +95,23 @@ export function VoiceReportSheet({
         <Text variant="caption" color={colors.textSecondary}>
           {t('voiceReport.privacyNote')}
         </Text>
+
+        {(phase === 'modelSetup' || (phase === 'error' && modelError)) && (
+          <ModelSetupBody
+            errorMessage={phase === 'error' ? session?.error?.message : null}
+            onDownload={onDownloadModel}
+            onCancel={onClose}
+          />
+        )}
+
+        {phase === 'modelDownloading' ? (
+          <ModelDownloadingBody
+            session={session}
+            onCancel={() => {
+              void onCancelModelDownload();
+            }}
+          />
+        ) : null}
 
         {(phase === 'ready' ||
           phase === 'requestingPermission' ||
@@ -155,7 +190,7 @@ export function VoiceReportSheet({
           </ScrollView>
         ) : null}
 
-        {phase === 'error' && session?.error ? (
+        {phase === 'error' && session?.error && !modelError ? (
           <View style={{ gap: spacing.md }}>
             <Text variant="body" color={colors.destructive}>
               {session.error.message}
@@ -169,6 +204,102 @@ export function VoiceReportSheet({
         ) : null}
       </View>
     </BottomSheet>
+  );
+}
+
+function formatMegabytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 MB';
+  return `${(bytes / 1_000_000).toFixed(bytes >= 10_000_000 ? 0 : 1)} MB`;
+}
+
+function ModelSetupBody({
+  errorMessage,
+  onDownload,
+  onCancel,
+}: {
+  errorMessage: string | null | undefined;
+  onDownload: () => void;
+  onCancel: () => void;
+}) {
+  const { colors, spacing, radius } = useTheme();
+  const { t } = useI18n();
+
+  return (
+    <View style={{ gap: spacing.md }}>
+      <View style={[styles.processing, { backgroundColor: colors.accentSoft, borderRadius: radius.lg }]}>
+        <Ionicons name="cloud-download-outline" size={36} color={colors.accent} />
+        <Text variant="body" color={colors.textSecondary} style={{ marginTop: spacing.sm, textAlign: 'center' }}>
+          {t('voiceReport.modelSetupBody')}
+        </Text>
+        <Text variant="caption" color={colors.textTertiary} style={{ marginTop: spacing.sm, textAlign: 'center' }}>
+          {t('voiceReport.modelSetupSize', { size: WHISPER_MODEL_SIZE_LABEL })}
+        </Text>
+      </View>
+      {errorMessage ? (
+        <Text variant="body" color={colors.destructive}>
+          {errorMessage}
+        </Text>
+      ) : null}
+      <Button
+        label={errorMessage ? t('voiceReport.modelDownloadRetry') : t('voiceReport.modelSetupDownload')}
+        onPress={() => {
+          if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          void onDownload();
+        }}
+      />
+      <Button label={t('common.cancel')} onPress={onCancel} variant="tertiary" />
+    </View>
+  );
+}
+
+function ModelDownloadingBody({
+  session,
+  onCancel,
+}: {
+  session: VoiceReportSession | null;
+  onCancel: () => void;
+}) {
+  const { colors, spacing, radius } = useTheme();
+  const { t } = useI18n();
+  const progress = session?.modelDownload;
+  const ratio = Math.min(1, Math.max(0, progress?.ratio ?? 0));
+  const percent = Math.round(ratio * 100);
+  const total = progress?.totalBytes || WHISPER_MODEL_BYTES;
+  const written = progress?.bytesWritten ?? 0;
+
+  return (
+    <View style={{ gap: spacing.md }}>
+      <View style={[styles.processing, { backgroundColor: colors.accentSoft, borderRadius: radius.lg }]}>
+        <ActivityIndicator color={colors.accent} />
+        <Text variant="body" color={colors.textSecondary} style={{ marginTop: spacing.sm, textAlign: 'center' }}>
+          {t('voiceReport.modelDownloadingBody')}
+        </Text>
+        <View
+          style={[styles.track, { backgroundColor: colors.surfaceSunken, borderRadius: radius.pill, marginTop: spacing.md }]}
+          accessibilityRole="progressbar"
+          accessibilityValue={{ min: 0, max: 100, now: percent }}
+        >
+          <View
+            style={[
+              styles.fill,
+              {
+                backgroundColor: colors.accent,
+                borderRadius: radius.pill,
+                width: `${percent}%`,
+              },
+            ]}
+          />
+        </View>
+        <Text variant="caption" color={colors.textTertiary} style={{ marginTop: spacing.sm, textAlign: 'center' }}>
+          {t('voiceReport.modelDownloadingProgress', {
+            percent: String(percent),
+            downloaded: formatMegabytes(written),
+            total: formatMegabytes(total),
+          })}
+        </Text>
+      </View>
+      <Button label={t('voiceReport.modelDownloadCancel')} onPress={onCancel} variant="tertiary" />
+    </View>
   );
 }
 
@@ -285,5 +416,13 @@ const styles = StyleSheet.create({
   professionalBox: {
     padding: 14,
     minHeight: 88,
+  },
+  track: {
+    height: 8,
+    width: '100%',
+    overflow: 'hidden',
+  },
+  fill: {
+    height: '100%',
   },
 });

@@ -85,8 +85,7 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "postinstall": "patch-package",
-    "voice:model": "node ./scripts/download-whisper-model.js",
-    "eas-build-post-install": "node ./scripts/download-whisper-model.js"
+    "voice:model": "node ./scripts/download-whisper-model.js"
   },
   "private": true,
   "expo": {

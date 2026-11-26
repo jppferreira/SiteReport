@@ -9,7 +9,7 @@ or to hosted AI APIs.**
 | Data | Handling |
 | --- | --- |
 | Microphone audio | Captured locally, written to a temporary WAV under the app cache, deleted after transcription, cancel, or failure |
-| Whisper transcript | Produced by on-device `whisper.rn` / whisper.cpp (`tiny.en`, bundled) |
+| Whisper transcript | Produced by on-device `whisper.rn` / whisper.cpp (`tiny.en`, downloaded once then kept on device) |
 | Professional rewrite | On-device only when an approved engine is available; otherwise deterministic `LocalReportFormatter` |
 | Saved report text | Written only through the existing SQLite / local file storage used by jobs |
 
@@ -19,9 +19,9 @@ There is **no** OpenAI, Google Cloud, Azure, or Trade Report inference endpoint 
 
 ### Trade Report app code
 
-Voice recording, Whisper transcription, and the local formatter perform **no network I/O**.
-Once the Whisper model is bundled in the app binary, the feature is intended to work in
-airplane mode.
+Voice recording, Whisper transcription, and the local formatter perform **no network I/O**
+after setup. The first use of voice reports downloads a pinned Whisper GGML model over HTTPS
+(checksum verified). After that install, the feature is intended to work in airplane mode.
 
 ### Apple Foundation Models (iOS, when available)
 

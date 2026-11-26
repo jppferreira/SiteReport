@@ -9,10 +9,9 @@ export const VOICE_BITS_PER_SAMPLE = 16;
 /** Android MediaRecorder.AudioSource.VOICE_RECOGNITION */
 export const ANDROID_VOICE_RECOGNITION_SOURCE = 6;
 
-export const WHISPER_MODEL_ID = 'tiny.en' as const;
-
-/** Bundled English Whisper model asset id (see MODEL.md). Lazy so Jest can load pure helpers without the .bin. */
-export function getWhisperModelAsset(): number {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require('../../assets/whisper/ggml-tiny.en.bin') as number;
-}
+export {
+  WHISPER_MODEL_BYTES,
+  WHISPER_MODEL_ID,
+  WHISPER_MODEL_SIZE_LABEL,
+  WHISPER_MODEL_URL,
+} from './whisperModelConfig';
