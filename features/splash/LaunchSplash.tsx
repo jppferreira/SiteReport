@@ -24,7 +24,7 @@ const WASH = 'rgb(104, 232, 198)';
 const INK = '#000000';
 const REPORT = '#02885D';
 
-const CREW_IMAGE = require('../../assets/images/splash-crew.png');
+const CREW_IMAGE = require('../../assets/images/crew-hero.webp');
 
 export function LaunchSplash() {
   const { t } = useI18n();

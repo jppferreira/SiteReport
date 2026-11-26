@@ -18,10 +18,10 @@ import { useTheme } from '@/theme';
 import { formatFileSize } from '@/utils/format';
 import { logger } from '@/utils/logger';
 
-const REPORT_READY = require('../../../assets/images/report-ready.png');
-/** Transparent looping build animation (GIF plays reliably in expo-image). */
-const CREATING_REPORT_BUILD = require('../../../assets/animations/creating-report-build.gif');
-const CREATING_REPORT_STILL = require('../../../assets/animations/creating-report-build-still.png');
+const REPORT_READY = require('../../../assets/images/report-ready.webp');
+/** Transparent looping build animation (animated WebP via expo-image). */
+const CREATING_REPORT_BUILD = require('../../../assets/animations/creating-report-build.webp');
+const CREATING_REPORT_STILL = require('../../../assets/animations/creating-report-build-still.webp');
 
 type GenerationState = 'working' | 'success' | 'error';
 

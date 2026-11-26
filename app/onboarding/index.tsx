@@ -10,7 +10,7 @@ export default function OnboardingWelcome() {
   const steps: HeroOnboardingStep[] = useMemo(
     () => [
       {
-        image: require('../../assets/images/onboarding-welcome-hero.png'),
+        image: require('../../assets/images/crew-hero.webp'),
         imageLabel: t('onboarding.welcomeImageLabel'),
         title: t('onboarding.welcomeTitle'),
         subtitle: t('onboarding.welcomeSubtitle'),

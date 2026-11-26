@@ -42,6 +42,12 @@ qrcode-terminal-*.tgz
 pnpm-lock.yaml
 pnpm-workspace.yaml
 
+# Design / marketing source trees — never ship in the binary
+assets/samples/
+assets/samples/**
+docs/
+AUDIT.md
+
 # Whisper weights are downloaded on-device at first voice use — never ship in the binary
 assets/whisper/
 assets/whisper/**

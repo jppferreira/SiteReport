@@ -9,9 +9,6 @@
     "userInterfaceStyle": "automatic",
     "primaryColor": "#101310",
     "backgroundColor": "#F7F8F7",
-    "assetBundlePatterns": [
-      "**/*"
-    ],
     "ios": {
       "bundleIdentifier": "com.tradesreport.app",
       "buildNumber": "16",
@@ -133,7 +130,17 @@
       ],
       "./plugins/withStoreKitConfig.js",
       "./plugins/withIcloudDocuments.js",
-      "./plugins/withRecordAudioPermission.js"
+      "./plugins/withRecordAudioPermission.js",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "-keep class com.facebook.react.** { *; }\n-keep class com.facebook.hermes.** { *; }\n-keep class com.swmansion.reanimated.** { *; }\n-keep class com.swmansion.worklets.** { *; }\n-keep class expo.modules.** { *; }\n-keep class com.RNWhisper.** { *; }\n-keep class com.rnwhisper.** { *; }\n-keep class com.whisper.** { *; }\n-keep class com.stewmore.** { *; }\n-keep class expo.modules.sqlite.** { *; }\n-keep class expo.modules.iap.** { *; }\n-keep class com.android.billingclient.** { *; }\n-keep class com.revenuecat.** { *; }\n-dontwarn com.RNWhisper.**\n-dontwarn com.rnwhisper.**"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

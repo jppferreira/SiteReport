@@ -16,7 +16,7 @@ import { useTheme } from '@/theme';
 import { Screen } from './Screen';
 import { Text } from './Text';
 
-const MUG = require('../assets/images/coffee-mug.png');
+const MUG = require('../assets/images/coffee-mug.webp');
 
 /** Figma "00d · Loading" (97:14) hero frame. */
 const MUG_WIDTH = 248;

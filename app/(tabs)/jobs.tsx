@@ -53,8 +53,8 @@ const SUMMARY_EXPAND_AT = 8;
 const SUMMARY_SCROLL_MOTION_MS = 280;
 const SUMMARY_SCROLL_EASING = Easing.out(Easing.cubic);
 
-const NO_MATCHING_JOBS = require('../../assets/images/no-matching-jobs.png');
-const NOTHING_HERE_YET = require('../../assets/images/nothing-here-yet.png');
+const NO_MATCHING_JOBS = require('../../assets/images/no-matching-jobs.webp');
+const NOTHING_HERE_YET = require('../../assets/images/nothing-here-yet.webp');
 
 export default function JobsScreen() {
   const { colors, spacing } = useTheme();

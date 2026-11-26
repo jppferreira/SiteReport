@@ -4,7 +4,7 @@ import React from 'react';
 import { useI18n } from '@/i18n/useI18n';
 
 /** App mark — same asset as the launcher / splash brand mark. */
-const SOURCE = require('../../assets/images/brand-mark.png');
+const SOURCE = require('../../assets/images/brand-mark.webp');
 
 /** Matches the LaunchSplash / iOS continuous-corner factor. */
 const CORNER = 0.2237;

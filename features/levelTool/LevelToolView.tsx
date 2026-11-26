@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useRef, useState } from 'react';
@@ -301,7 +301,21 @@ function ToolButton({ icon, label, active, disabled, onPress, vibrate }: {
   vibrate?: boolean;
 }) {
   const color = active ? AR_COLORS.brandText : '#FFFFFF';
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: active, disabled: !!disabled }} disabled={disabled} onPress={onPress} style={[styles.tool, active && styles.toolActive, disabled && { opacity: 0.35 }]}>{vibrate ? <MaterialCommunityIcons name="vibrate" size={22} color={color} /> : <Ionicons name={icon!} size={22} color={color} />}<Text variant="caption" color={active ? AR_COLORS.brandText : AR_COLORS.textSoft}>{label}</Text></Pressable>;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active, disabled: !!disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={[styles.tool, active && styles.toolActive, disabled && { opacity: 0.35 }]}
+    >
+      <Ionicons name={vibrate ? 'phone-portrait-outline' : icon!} size={22} color={color} />
+      <Text variant="caption" color={active ? AR_COLORS.brandText : AR_COLORS.textSoft}>
+        {label}
+      </Text>
+    </Pressable>
+  );
 }
 
 const styles = StyleSheet.create({
