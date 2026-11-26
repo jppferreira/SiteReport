@@ -332,7 +332,6 @@ class WhisperModelDownloader {
       this.emitProgress({ bytesWritten: 0, totalBytes: WHISPER_MODEL_BYTES, ratio: 0 });
 
       const task = File.createDownloadTask(WHISPER_MODEL_URL, partial, {
-        idempotent: true,
         headers: {
           Accept: 'application/octet-stream',
           'User-Agent': 'TradeReport-App',
