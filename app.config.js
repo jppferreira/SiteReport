@@ -68,10 +68,7 @@ module.exports = ({ config }) => {
     extra: {
       ...(config.extra ?? {}),
       appVariant: isDevBuild ? 'development' : 'production',
-      // Fine-grained PAT with Issues: Write on jppferreira/SiteReport. Set via
-      // EAS secret / env GITHUB_BUG_REPORT_TOKEN before store builds.
-      githubBugReportToken:
-        process.env.GITHUB_BUG_REPORT_TOKEN || process.env.EXPO_PUBLIC_GITHUB_BUG_TOKEN || '',
+      // Never put PATs or other secrets in `extra` — they ship inside the binary.
     },
     plugins: (config.plugins ?? []).map((plugin) => {
       const name = typeof plugin === 'string' ? plugin : plugin[0];

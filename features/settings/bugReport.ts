@@ -1,10 +1,8 @@
-import Constants from 'expo-constants';
-
 import { t } from '@/i18n';
 
 export const BUG_REPORT_EMAIL = 'hello@jppferreira.com';
 
-/** Issues land on this repo so crash and contact reports show up in git. */
+/** Public repo for optional manual issue filing (no app-embedded credentials). */
 export const BUG_REPORT_GITHUB = {
   owner: 'jppferreira',
   repo: 'SiteReport',
@@ -100,7 +98,7 @@ export function buildBugReportBody(draft: BugReportDraft): string {
   return sections.join('\n\n');
 }
 
-/** Mail-app fallback when GitHub does not accept the message. Body is capped for mailto URL limits. */
+/** Opens the device mail app with a prefilled report. Body is capped for mailto URL limits. */
 export function bugReportMailtoUrl(draft: BugReportDraft): string {
   let body = buildBugReportBody(draft);
   if (body.length > MAILTO_BODY_LIMIT) body = `${body.slice(0, MAILTO_BODY_LIMIT - 1)}…`;
@@ -108,91 +106,28 @@ export function bugReportMailtoUrl(draft: BugReportDraft): string {
   return `mailto:${BUG_REPORT_EMAIL}?subject=${subject}&body=${encodeURIComponent(body)}`;
 }
 
-export function githubBugReportToken(
-  extra: { githubBugReportToken?: string } | undefined = Constants.expoConfig?.extra as
-    | { githubBugReportToken?: string }
-    | undefined,
-): string {
-  const fromExtra = extra?.githubBugReportToken?.trim() ?? '';
-  if (fromExtra) return fromExtra;
-  return (process.env.EXPO_PUBLIC_GITHUB_BUG_TOKEN ?? process.env.GITHUB_BUG_REPORT_TOKEN ?? '').trim();
-}
-
-export function githubIssuesUrl(): string {
-  return `https://api.github.com/repos/${BUG_REPORT_GITHUB.owner}/${BUG_REPORT_GITHUB.repo}/issues`;
+/** Public “new issue” link for people who prefer GitHub (no embedded credentials). */
+export function githubNewIssueUrl(draft: BugReportDraft): string {
+  const title = encodeURIComponent(contactSubject(draft.topic).slice(0, 200));
+  let body = buildBugReportBody(draft);
+  if (body.length > 1800) body = `${body.slice(0, 1799)}…`;
+  return `https://github.com/${BUG_REPORT_GITHUB.owner}/${BUG_REPORT_GITHUB.repo}/issues/new?title=${title}&body=${encodeURIComponent(body)}`;
 }
 
 /**
- * Creates a GitHub issue on the Trade Report repo. Needs a fine-grained PAT with
- * Issues: Write on that repo, passed as GITHUB_BUG_REPORT_TOKEN (EAS / local env).
- */
-export async function sendBugReport(
-  draft: BugReportDraft,
-  fetchImpl: typeof fetch = fetch,
-  token: string = githubBugReportToken(),
-): Promise<void> {
-  if (!token) throw new BugReportDeliveryError();
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
-
-  try {
-    const response = await fetchImpl(githubIssuesUrl(), {
-      method: 'POST',
-      headers: {
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        'User-Agent': 'TradeReport-App',
-      },
-      body: JSON.stringify({
-        title: contactSubject(draft.topic).slice(0, 200),
-        body: buildBugReportBody(draft),
-      }),
-      signal: controller.signal,
-    });
-
-    if (!response.ok) throw new BugReportDeliveryError();
-
-    let payload: { html_url?: unknown; number?: unknown };
-    try {
-      payload = (await response.json()) as { html_url?: unknown; number?: unknown };
-    } catch {
-      throw new BugReportDeliveryError();
-    }
-
-    if (typeof payload.number !== 'number' && typeof payload.html_url !== 'string') {
-      throw new BugReportDeliveryError();
-    }
-  } catch (error) {
-    if (error instanceof BugReportDeliveryError) throw error;
-    throw new BugReportDeliveryError();
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-/**
- * Tries GitHub Issues first. If that fails, opens the device mail app with the
- * same text so the report can still be sent.
+ * Delivers a bug/contact report without embedding secrets in the app binary.
+ *
+ * Uses the device mail app (mailto). Authenticated GitHub Issues API calls were
+ * removed because Expo `extra` / `EXPO_PUBLIC_*` would ship any PAT to every install.
  */
 export async function deliverBugReport(
   draft: BugReportDraft,
   openUrl: (url: string) => Promise<unknown>,
-  fetchImpl: typeof fetch = fetch,
-  token: string = githubBugReportToken(),
-): Promise<'delivered' | 'mail'> {
+): Promise<'mail'> {
   try {
-    await sendBugReport(draft, fetchImpl, token);
-    return 'delivered';
-  } catch (error) {
-    if (!(error instanceof BugReportDeliveryError)) throw new BugReportDeliveryError();
-    try {
-      await openUrl(bugReportMailtoUrl(draft));
-      return 'mail';
-    } catch {
-      throw new BugReportDeliveryError();
-    }
+    await openUrl(bugReportMailtoUrl(draft));
+    return 'mail';
+  } catch {
+    throw new BugReportDeliveryError();
   }
 }
