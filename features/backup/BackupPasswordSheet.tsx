@@ -32,6 +32,7 @@ export function BackupPasswordSheet({ visible, mode, loading = false, onConfirm,
   return (
     <Modal visible={visible} onRequestClose={onCancel} dismissOnBackdropPress={!loading}>
       <View
+        accessible={false}
         style={[
           {
             backgroundColor: colors.surface,
@@ -76,6 +77,7 @@ export function BackupPasswordSheet({ visible, mode, loading = false, onConfirm,
             label={mode === 'save' ? t('common.save') : t('data.backupRestoreConfirm')}
             disabled={mode === 'save' ? !canSave : !canRestore}
             loading={loading}
+            testID="backup-password-confirm"
             onPress={() => onConfirm(mode === 'save' ? password : password)}
           />
           {mode === 'save' ? (
@@ -83,10 +85,17 @@ export function BackupPasswordSheet({ visible, mode, loading = false, onConfirm,
               label={t('data.backupNoPassword')}
               variant="tertiary"
               disabled={loading}
+              testID="backup-save-without-password"
               onPress={() => onConfirm(null)}
             />
           ) : null}
-          <Button label={t('common.cancel')} variant="tertiary" disabled={loading} onPress={onCancel} />
+          <Button
+            label={t('common.cancel')}
+            variant="tertiary"
+            disabled={loading}
+            testID="backup-password-cancel"
+            onPress={onCancel}
+          />
         </View>
       </View>
     </Modal>

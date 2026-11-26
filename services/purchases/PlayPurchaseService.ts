@@ -15,13 +15,39 @@ import {
 import { Entitlement, PlanId, ProductInfo, PurchaseResult, RestoreResult } from '@/models';
 import { logger } from '@/utils/logger';
 
-import { catalogItemForOwned, catalogItemForPlan, isPlayProduct, LIFETIME_PRODUCT_ID, PRO_CATALOG, SUBSCRIPTION_PRODUCT_IDS } from './catalog';
+import {
+  catalogItemForOwned,
+  catalogItemForPlan,
+  isPlayProduct,
+  LIFETIME_PRODUCT_ID,
+  PRO_CATALOG,
+  sortProductsByCatalog,
+  SUBSCRIPTION_PRODUCT_IDS,
+} from './catalog';
 import { entitlementFromPlay, offerTokenFor, PlayOwnedItem, PlayProductSnapshot, productInfoFromPlay } from './playMapping';
 import { PurchaseService } from './PurchaseService';
 import { t } from '@/i18n';
 
 function asSnapshot(product: ProductOrSubscription): PlayProductSnapshot {
   return product as PlayProductSnapshot;
+}
+
+/** Prefer the shared `tradesreport.pro` product; fall back to legacy `monthly` / `annual` SKUs. */
+function playProductForPlan(
+  item: ReturnType<typeof catalogItemForPlan>,
+  products: Map<string, ProductOrSubscription>
+): ProductOrSubscription | undefined {
+  const primary = products.get(item.productId);
+  if (item.kind === 'in-app') return primary;
+  if (primary) {
+    const info = productInfoFromPlay(item, asSnapshot(primary));
+    if (info) return primary;
+  }
+  if (item.basePlanId) {
+    const legacy = products.get(item.basePlanId);
+    if (legacy) return legacy;
+  }
+  return primary;
 }
 
 function productIdsOf(purchase: Purchase): string[] {
@@ -89,15 +115,30 @@ export class PlayPurchaseService implements PurchaseService {
     this.products = new Map(listed.map((product) => [product.id, product]));
 
     const infos = PRO_CATALOG.flatMap((item) => {
-      const product = this.products.get(item.productId);
+      const product = playProductForPlan(item, this.products);
       if (!product) return [];
-      const info = productInfoFromPlay(item, asSnapshot(product));
-      return info ? [info] : [];
+      const snapshot = asSnapshot(product);
+      // Legacy standalone SKUs use the product id as the base plan id.
+      const mappedItem =
+        item.kind === 'subs' && product.id !== item.productId
+          ? { ...item, productId: product.id, basePlanId: item.basePlanId ?? product.id }
+          : item;
+      const info = productInfoFromPlay(mappedItem, snapshot);
+      if (!info) return [];
+      // Keep catalog productId for the shared subscription so restore/entitlement stay consistent
+      // when Play returns the modern `tradesreport.pro` product; use the resolved id otherwise.
+      return [{ ...info, productId: product.id }];
     });
     if (infos.length === 0) {
       throw new Error(t('purchases.googlePlayNoProducts'));
     }
-    return infos;
+    if (infos.length < PRO_CATALOG.length) {
+      logger.warn('Google Play returned a partial Pro catalog', {
+        plans: infos.map((info) => info.planId),
+        fetchedIds: listed.map((product) => product.id),
+      });
+    }
+    return sortProductsByCatalog(infos);
   }
 
   async purchase(planId: PlanId): Promise<PurchaseResult> {
@@ -106,11 +147,13 @@ export class PlayPurchaseService implements PurchaseService {
       await this.getProducts();
     }
     const item = catalogItemForPlan(planId);
-    const product = this.products.get(item.productId);
+    const product = playProductForPlan(item, this.products);
     if (!product) {
       return { outcome: 'error', message: t('purchases.planUnavailableGooglePlay') };
     }
-    const offerToken = item.kind === 'subs' && item.basePlanId ? offerTokenFor(asSnapshot(product), item.basePlanId) : undefined;
+    const sku = product.id;
+    const basePlanId = item.basePlanId ?? (sku === 'monthly' || sku === 'annual' ? sku : undefined);
+    const offerToken = item.kind === 'subs' && basePlanId ? offerTokenFor(asSnapshot(product), basePlanId) : undefined;
     if (item.kind === 'subs' && !offerToken) {
       return { outcome: 'error', message: t('purchases.subscriptionNoBasePlan') };
     }
@@ -122,14 +165,14 @@ export class PlayPurchaseService implements PurchaseService {
           ? requestPurchase({
               request: {
                 google: {
-                  skus: [item.productId],
-                  subscriptionOffers: [{ sku: item.productId, offerToken: offerToken! }],
+                  skus: [sku],
+                  subscriptionOffers: [{ sku, offerToken: offerToken! }],
                 },
               },
               type: 'subs',
             })
           : requestPurchase({
-              request: { google: { skus: [item.productId] } },
+              request: { google: { skus: [sku] } },
               type: 'in-app',
             });
 

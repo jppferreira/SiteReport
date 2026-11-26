@@ -1,7 +1,9 @@
 import {
   autoPlaceLabel,
+  expandBoundsForMove,
   handlesForShape,
   hitTestHandle,
+  hitTestMoveTarget,
   hitTestShape,
   moveShape,
   resizeShape,
@@ -14,7 +16,7 @@ describe('photoMarkupHitTest', () => {
     expect(placed.y).toBeLessThan(0.6);
   });
 
-  it('hits a callout pin and label', () => {
+  it('hits a callout pin, label, and leader line', () => {
     const shapes = [
       {
         kind: 'callout' as const,
@@ -26,20 +28,24 @@ describe('photoMarkupHitTest', () => {
     ];
     expect(hitTestShape(shapes, { x: 0.5, y: 0.5 })).toBe(0);
     expect(hitTestShape(shapes, { x: 0.2, y: 0.2 })).toBe(0);
+    expect(hitTestShape(shapes, { x: 0.35, y: 0.35 })).toBe(0);
     expect(hitTestShape(shapes, { x: 0.9, y: 0.9 })).toBeNull();
   });
 
-  it('hits an arrow shaft', () => {
+  it('hits an arrow shaft and nearby offset (fat hit target)', () => {
     const shapes = [
       {
         kind: 'arrow' as const,
         color: '#FF5A36' as const,
         width: 0.01,
-        from: { x: 0.1, y: 0.1 },
-        to: { x: 0.9, y: 0.9 },
+        from: { x: 0.1, y: 0.5 },
+        to: { x: 0.9, y: 0.5 },
       },
     ];
     expect(hitTestShape(shapes, { x: 0.5, y: 0.5 })).toBe(0);
+    expect(hitTestShape(shapes, { x: 0.5, y: 0.54 })).toBe(0);
+    expect(hitTestShape(shapes, { x: 0.1, y: 0.5 })).toBe(0);
+    expect(hitTestShape(shapes, { x: 0.5, y: 0.8 })).toBeNull();
   });
 
   it('exposes endpoint handles for arrows and hits them', () => {
@@ -53,6 +59,21 @@ describe('photoMarkupHitTest', () => {
     expect(handlesForShape(arrow).map((h) => h.id)).toEqual(['from', 'to']);
     expect(hitTestHandle(arrow, { x: 0.1, y: 0.2 })).toBe('from');
     expect(hitTestHandle(arrow, { x: 0.8, y: 0.2 })).toBe('to');
+  });
+
+  it('gives thin marks a fat move target after selection', () => {
+    const arrow = {
+      kind: 'arrow' as const,
+      color: '#FF5A36' as const,
+      width: 0.01,
+      from: { x: 0.2, y: 0.5 },
+      to: { x: 0.8, y: 0.5 },
+    };
+    // Off the shaft but inside the expanded selection grab box.
+    expect(hitTestMoveTarget(arrow, { x: 0.5, y: 0.53 })).toBe(true);
+    expect(hitTestMoveTarget(arrow, { x: 0.5, y: 0.9 })).toBe(false);
+    const expanded = expandBoundsForMove({ minX: 0.2, minY: 0.5, maxX: 0.8, maxY: 0.5 });
+    expect(expanded.maxY - expanded.minY).toBeGreaterThanOrEqual(0.08);
   });
 
   it('moves and resizes shapes', () => {

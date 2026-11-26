@@ -20,26 +20,36 @@ Privacy and Terms are live on the marketing site. Use these HTTPS URLs in App St
 
 Promotional text (170 characters max):
 
-Before-and-after photos, on-device voice notes, AR measure, and a branded PDF. Jobs stay on your phone.
+Quotes, invoices, before-and-after photos, AR measure, voice notes, and a branded PDF. Jobs stay on your phone.
 
 Description:
 
-Trade Report is for trades and small service businesses. Photograph the job, dictate or write what you did, collect an optional customer signature, and generate a branded PDF, quote, or invoice.
+Trade Report is for trades and small service businesses. Run the job from quote to invoice: photograph the work, mark up photos, dictate or write what you did, collect an optional customer signature, and generate a branded PDF report, quote, or invoice.
 
-Jobs stay on the device. There is no account. Trade Report does not upload customer photos, names, or addresses. Optional voice dictation is transcribed on this device. Optional evidence stamps can add a location label to photos when you turn that on. AR measure and a spirit level help you capture dimensions and check surfaces where your phone supports them. Job checklists and a review-link QR can appear on reports when you choose.
+Primary features:
 
-A backup is created when you ask, after a confirmation that lists what is in the file, or on iPhone via optional iCloud auto-backup to your own iCloud Drive. You save backups to a folder you pick. Google Drive and iCloud Drive can appear in that picker. The app does not sign in to Google or Apple.
+• Jobs home with Quote / Report / Invoice views and a money summary for drafts, awaiting replies, and unpaid invoices
+• Before, during, and after photos by room or section, with optional evidence stamps (date, address, verified on device)
+• Photo markup — arrows, callouts, dimensions, highlights, and freehand notes that appear on the PDF
+• AR measure and spirit level in the Toolbox (where your phone supports them), with readings saved to the job
+• Work notes with optional on-device voice dictation
+• Field Proof job checklists that can print on the report
+• Customer sign-off and premium report templates (Pro)
+• Quotes and invoices with status tracking, send, and mark paid
+• Manual zip backup; optional iCloud auto-backup on iPhone to your own iCloud Drive
 
-The free tier includes PDF reports for 3 jobs. Pro unlocks unlimited reports, your logo and colours, customer sign-off, and other Pro tools shown in the app.
+Jobs stay on the device. There is no account. Trade Report does not upload customer photos, names, or addresses. Optional voice dictation is transcribed on this device. A backup is created when you ask, after a confirmation that lists what is in the file, or on iPhone via optional iCloud auto-backup. You save backups to a folder you pick. Google Drive and iCloud Drive can appear in that picker. The app does not sign in to Google or Apple.
+
+The free tier includes PDF reports for 3 jobs. Pro unlocks unlimited reports, your logo and colours, customer sign-off, photo markup, and other Pro tools shown in the app.
 
 Monthly and annual Pro plans renew until you cancel them in your App Store account settings, at least 24 hours before the end of the current period. Apple charges the renewal within 24 hours before that period ends. A lifetime purchase is charged once and does not renew. The price is the amount shown on the upgrade screen, charged to your Apple ID. Deleting the app does not cancel a subscription.
 
 Privacy policy: https://tradereportapp.com/privacy.html
 Terms of use: https://tradereportapp.com/terms.html
 
-Keywords (88 characters, comma-separated, under the 100-character limit):
+Keywords (under 100 characters):
 
-trades,builder,plumber,electrician,job,photos,pdf,signature,handover,site,diary,snagging
+trades,builder,plumber,electrician,quote,invoice,photos,pdf,signature,handover,measure
 
 ## Subscriptions and the lifetime purchase
 
@@ -74,23 +84,23 @@ Declare these two types, both with purpose App Functionality, not linked to the 
 
 Do not declare photos, videos, precise location, contacts, name, email, phone, physical address, payment info, purchases, device ID, crash data, product interaction, or audio data as collected by Trade Report. Microphone audio and optional location stamps are processed on device for app functionality and are not received by the developer. Customer names, addresses, photos, signatures, and private notes stay on the device unless the user shares a PDF or saves a backup into their own Drive or Files. That backup is not collected by Trade Report, and Google or Apple are not partners collecting it for the developer.
 
-## Screenshots still to capture
+## Screenshots (1.1.0 — all primary features)
 
-Apple requires at least one screenshot per required display, up to 10, as PNG or JPEG with no transparency. The app is portrait-only. Capture on a device or simulator. Do not invent a marketing frame that is not the app.
+Apple requires at least one screenshot per required display, up to 10, as PNG or JPEG with no transparency. The app is portrait-only (`supportsTablet: false`) — iPhone set only. Native captures are 1206 × 2622; resized large set is 1320 × 2868 under `store/ios-headers/` and `store/screenshots/1.1.0-store-set/iphone-1320/`.
 
-Required, because `ios.supportsTablet` is true in `app.json`:
+Recommended upload order (up to 10):
 
-- iPhone with Dynamic Island, medium display: 1179 × 2556 or 1206 × 2622 pixels, portrait.
-- iPad 13-inch: 2064 × 2752 or 2048 × 2732 pixels, portrait.
+| # | File | Feature |
+| --- | --- | --- |
+| 1 | `01-jobs.png` | Jobs home — Quote/Report/Invoice + money summary + job cards with photos |
+| 2 | `02-job-guided.png` | Guided job steps (photos, measure, level, notes, checklist, sign-off, PDF) |
+| 3 | `03-photos.png` | Before / during / after photos by section |
+| 4 | `04-photo-evidence.png` | Evidence stamp + callout on a real job photo |
+| 5 | `06-measure.png` | AR measure on a real door/opening |
+| 6 | `07-level.png` | Spirit level (prefer a physical-device recapture without the simulator sensor warning) |
+| 7 | `08-notes.png` | Work notes + voice mic |
+| 8 | `11-quote.png` / `11b-invoice.png` | Quote or invoice status workflow |
+| 9 | `12-preview.png` | Branded PDF preview |
+| 10 | `14-paywall.png` | Pro upgrade with prices |
 
-Also upload the large iPhone set so the newest phones are not a scaled image: 1320 × 2868, 1290 × 2796, or 1260 × 2736 pixels, portrait. If that set is missing, the medium set above is still the required one.
-
-Use the same five screens in each set:
-
-1. Jobs list, with a few real-looking jobs.
-2. A job’s before-and-after photos.
-3. The PDF preview of a finished report.
-4. The customer signature screen.
-5. The upgrade screen, showing the price, the renewal terms, and the Privacy and Terms links.
-
-Setting `supportsTablet` to false drops the iPad set. Do that only if the first version should be iPhone-only.
+Also in the set: checklist, toolbox, annotate, signature, backup (`15-backup.png`). Source folder: `store/screenshots/1.1.0-store-set/`.

@@ -27,6 +27,7 @@ import { LaunchSplash } from '@/features/splash/LaunchSplash';
 import { loadStoredLocale } from '@/i18n/localePreference';
 import { useI18n } from '@/i18n/useI18n';
 import { refreshEntitlement } from '@/services/entitlementService';
+import { repairStaleSitereportUris } from '@/services/storagePathRepair';
 import { ThemeProvider } from '@/theme';
 import { logger } from '@/utils/logger';
 
@@ -97,7 +98,12 @@ export default function RootLayout() {
     if (isExpoGo) return;
     let cancelled = false;
     getDatabase()
-      .then(() => {
+      .then(async () => {
+        try {
+          await repairStaleSitereportUris();
+        } catch (error) {
+          logger.warn('Sitereport path repair skipped', { error: String(error) });
+        }
         if (!cancelled) setDbState('ready');
       })
       .catch((error) => {
@@ -177,6 +183,7 @@ export default function RootLayout() {
                   <Stack.Screen name="document" />
                   <Stack.Screen name="tools" />
                   <Stack.Screen name="notifications" />
+                  <Stack.Screen name="settings" />
                   <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
                 </Stack>
               </AppErrorBoundary>

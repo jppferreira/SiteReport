@@ -27,10 +27,12 @@ export type PricingReferenceHandle = {
 type PricingReferenceProps = {
   pricing: ReportPricing;
   onSave: (pricing: ReportPricing) => Promise<ReportPricing>;
+  /** When set (quotes/invoices), avoid report-only “reference / not an invoice” copy. */
+  copyTone?: 'report' | 'document';
 };
 
 export const PricingReference = forwardRef<PricingReferenceHandle, PricingReferenceProps>(function PricingReference(
-  { pricing, onSave },
+  { pricing, onSave, copyTone = 'report' },
   ref
 ) {
   const { colors, spacing } = useTheme();
@@ -118,7 +120,9 @@ export const PricingReference = forwardRef<PricingReferenceHandle, PricingRefere
     <View style={{ gap: spacing.md }}>
       <ToggleRow
         label={t('pricing.includeLabel')}
-        description={t('pricing.includeDescription')}
+        description={
+          copyTone === 'document' ? t('pricing.includeDescriptionDocument') : t('pricing.includeDescription')
+        }
         value={draft.enabled}
         onValueChange={(enabled) => {
           const lines =
@@ -214,12 +218,12 @@ export const PricingReference = forwardRef<PricingReferenceHandle, PricingRefere
             <Text variant="bodyMedium">{t('pricing.total', { amount: formatPence(total) })}</Text>
           ) : (
             <Text variant="bodySmall" color={colors.textSecondary}>
-              {t('pricing.emptyHint')}
+              {copyTone === 'document' ? t('pricing.emptyHintDocument') : t('pricing.emptyHint')}
             </Text>
           )}
 
           <Text variant="caption" color={colors.textSecondary}>
-            {t('pricing.disclaimer')}
+            {copyTone === 'document' ? t('pricing.disclaimerDocument') : t('pricing.disclaimer')}
           </Text>
         </View>
       ) : null}

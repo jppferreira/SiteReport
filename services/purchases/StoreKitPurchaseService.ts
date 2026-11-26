@@ -17,7 +17,7 @@ import {
 import { Entitlement, PlanId, ProductInfo, PurchaseResult, RestoreResult } from '@/models';
 import { logger } from '@/utils/logger';
 
-import { catalogItemForApple, catalogItemForPlan, isAppleProduct, PRO_CATALOG } from './catalog';
+import { catalogItemForApple, catalogItemForPlan, isAppleProduct, PRO_CATALOG, sortProductsByCatalog } from './catalog';
 import { PurchaseService } from './PurchaseService';
 import { entitlementFromStoreKit, productInfoFromStoreKit, StoreKitOwnedItem, StoreKitProductSnapshot } from './storeKitMapping';
 import { t } from '@/i18n';
@@ -113,7 +113,13 @@ export class StoreKitPurchaseService implements PurchaseService {
     if (infos.length === 0) {
       throw new Error(t('purchases.appStoreNoProducts'));
     }
-    return infos;
+    if (infos.length < PRO_CATALOG.length) {
+      logger.warn('App Store returned a partial Pro catalog', {
+        plans: infos.map((info) => info.planId),
+        fetchedIds: listed.map((product) => product.id),
+      });
+    }
+    return sortProductsByCatalog(infos);
   }
 
   async purchase(planId: PlanId): Promise<PurchaseResult> {

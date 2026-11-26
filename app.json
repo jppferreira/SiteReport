@@ -14,8 +14,8 @@
     ],
     "ios": {
       "bundleIdentifier": "com.tradesreport.app",
-      "buildNumber": "10",
-      "supportsTablet": false,
+      "buildNumber": "16",
+      "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Trade Report uses your camera to take before and after job photos and to measure distances with AR for your reports.",
         "NSPhotoLibraryUsageDescription": "Trade Report needs access to your photo library so you can add existing photos to a job report.",
@@ -26,10 +26,12 @@
     },
     "android": {
       "package": "com.tradesreport.app",
-      "versionCode": 13,
+      "versionCode": 17,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundColor": "#152638"
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "backgroundColor": "#1D2B3B",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "permissions": [
         "CAMERA",
@@ -119,7 +121,7 @@
       [
         "@stewmore/expo-ar",
         {
-          "cameraPermission": "Trade Report uses your camera to take before and after job photos and to measure walls, doors and floors for your reports.",
+          "cameraPermission": "Trade Report uses your camera to take before and after job photos and to measure distances with AR for your reports.",
           "arRequired": false
         }
       ],
@@ -131,14 +133,7 @@
       ],
       "./plugins/withStoreKitConfig.js",
       "./plugins/withIcloudDocuments.js",
-      "./plugins/withRecordAudioPermission.js",
-      [
-        "@stewmore/expo-ar",
-        {
-          "cameraPermission": "Trade Report uses your camera to take before and after job photos and to measure distances with AR for your reports.",
-          "arRequired": false
-        }
-      ]
+      "./plugins/withRecordAudioPermission.js"
     ],
     "experiments": {
       "typedRoutes": true

@@ -107,27 +107,54 @@ async function ensureDocumentsSchema(db: SQLiteDatabase): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name);
     CREATE INDEX IF NOT EXISTS idx_customers_updatedAt ON customers(updatedAt);
+
+    CREATE TABLE IF NOT EXISTS job_checklists (
+      jobId TEXT PRIMARY KEY NOT NULL,
+      templateId TEXT NOT NULL,
+      includeInPdf INTEGER NOT NULL DEFAULT 1,
+      itemsJson TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS report_events (
+      id TEXT PRIMARY KEY NOT NULL,
+      reportId TEXT NOT NULL,
+      jobId TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      label TEXT NOT NULL,
+      recipient TEXT,
+      createdAt TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_report_events_jobId ON report_events(jobId);
+    CREATE INDEX IF NOT EXISTS idx_report_events_reportId ON report_events(reportId);
   `);
 
+  // Fresh installs run this before versioned migrations create `jobs` /
+  // `business_profile`. Skip ALTERs until those tables exist.
   const jobColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(jobs)');
-  if (!jobColumns.some((column) => column.name === 'isQuick')) {
-    await db.execAsync(`ALTER TABLE jobs ADD COLUMN isQuick INTEGER NOT NULL DEFAULT 0`);
+  if (jobColumns.length > 0) {
+    if (!jobColumns.some((column) => column.name === 'isQuick')) {
+      await db.execAsync(`ALTER TABLE jobs ADD COLUMN isQuick INTEGER NOT NULL DEFAULT 0`);
+    }
+    if (!jobColumns.some((column) => column.name === 'customerId')) {
+      // No inline REFERENCES here — SQLite can't reliably add FK constraints via ALTER.
+      await db.execAsync(`ALTER TABLE jobs ADD COLUMN customerId TEXT`);
+    }
+    await db.execAsync('CREATE INDEX IF NOT EXISTS idx_jobs_customerId ON jobs(customerId)');
   }
-  if (!jobColumns.some((column) => column.name === 'customerId')) {
-    // No inline REFERENCES here — SQLite can't reliably add FK constraints via ALTER.
-    await db.execAsync(`ALTER TABLE jobs ADD COLUMN customerId TEXT`);
-  }
-  await db.execAsync('CREATE INDEX IF NOT EXISTS idx_jobs_customerId ON jobs(customerId)');
 
   const profileColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(business_profile)');
-  if (!profileColumns.some((column) => column.name === 'nextQuoteSequence')) {
-    await db.execAsync(`ALTER TABLE business_profile ADD COLUMN nextQuoteSequence INTEGER NOT NULL DEFAULT 1`);
-  }
-  if (!profileColumns.some((column) => column.name === 'defaultQuoteValidityDays')) {
-    await db.execAsync(`ALTER TABLE business_profile ADD COLUMN defaultQuoteValidityDays INTEGER NOT NULL DEFAULT 30`);
-  }
-  if (!profileColumns.some((column) => column.name === 'stripePaymentLink')) {
-    await db.execAsync('ALTER TABLE business_profile ADD COLUMN stripePaymentLink TEXT');
+  if (profileColumns.length > 0) {
+    if (!profileColumns.some((column) => column.name === 'nextQuoteSequence')) {
+      await db.execAsync(`ALTER TABLE business_profile ADD COLUMN nextQuoteSequence INTEGER NOT NULL DEFAULT 1`);
+    }
+    if (!profileColumns.some((column) => column.name === 'defaultQuoteValidityDays')) {
+      await db.execAsync(
+        `ALTER TABLE business_profile ADD COLUMN defaultQuoteValidityDays INTEGER NOT NULL DEFAULT 30`
+      );
+    }
+    if (!profileColumns.some((column) => column.name === 'stripePaymentLink')) {
+      await db.execAsync('ALTER TABLE business_profile ADD COLUMN stripePaymentLink TEXT');
+    }
   }
 }
 
@@ -152,6 +179,8 @@ async function migrate(db: SQLiteDatabase) {
   await disableForeignKeys(db);
   try {
     await runVersionedMigrations(db, version);
+    // Re-run repairs now that `jobs` / `business_profile` exist on fresh installs.
+    await ensureDocumentsSchema(db);
   } finally {
     await enableForeignKeys(db);
   }
@@ -457,12 +486,12 @@ async function runVersionedMigrations(db: SQLiteDatabase, startVersion: number) 
     for (const row of reportRows) {
       const reportId = row.id as string;
       const jobId = row.jobId as string;
-      const jobExists = await db.getFirstAsync<{ id: string }>('SELECT id FROM jobs WHERE id = ?', jobId);
+      const jobExists = await db.getFirstAsync<{ id: string }>('SELECT id FROM jobs WHERE id = ?', [jobId]);
       if (!jobExists) continue;
 
       const existing = await db.getFirstAsync<{ id: string }>(
         'SELECT id FROM documents WHERE reportId = ?',
-        reportId
+        [reportId]
       );
       if (existing) continue;
 
@@ -519,13 +548,12 @@ async function runVersionedMigrations(db: SQLiteDatabase, startVersion: number) 
     for (const row of summaryRows) {
       const jobId = row.jobId as string;
       const kind = row.documentType as 'quote' | 'invoice';
-      const jobExists = await db.getFirstAsync<{ id: string }>('SELECT id FROM jobs WHERE id = ?', jobId);
+      const jobExists = await db.getFirstAsync<{ id: string }>('SELECT id FROM jobs WHERE id = ?', [jobId]);
       if (!jobExists) continue;
 
       const dup = await db.getFirstAsync<{ id: string }>(
         'SELECT id FROM documents WHERE jobId = ? AND kind = ?',
-        jobId,
-        kind
+        [jobId, kind]
       );
       if (dup) continue;
 
@@ -608,7 +636,11 @@ async function runVersionedMigrations(db: SQLiteDatabase, startVersion: number) 
       CREATE INDEX IF NOT EXISTS idx_customers_updatedAt ON customers(updatedAt);
     `);
 
-    // customerId / customers table ensured by ensureDocumentsSchema (no ALTER FK).
+    const jobColumnsV15 = await db.getAllAsync<{ name: string }>('PRAGMA table_info(jobs)');
+    if (!jobColumnsV15.some((column) => column.name === 'customerId')) {
+      // No inline REFERENCES — SQLite can't reliably add FK constraints via ALTER.
+      await db.execAsync('ALTER TABLE jobs ADD COLUMN customerId TEXT');
+    }
     await db.execAsync('CREATE INDEX IF NOT EXISTS idx_jobs_customerId ON jobs(customerId)');
 
     const now = new Date().toISOString();
@@ -639,7 +671,7 @@ async function runVersionedMigrations(db: SQLiteDatabase, startVersion: number) 
           }
         );
       }
-      await db.runAsync('UPDATE jobs SET customerId = ? WHERE id = ?', customerId, jobId);
+      await db.runAsync('UPDATE jobs SET customerId = ? WHERE id = ?', [customerId, jobId]);
     }
 
     const profileColumnsV15 = await db.getAllAsync<{ name: string }>('PRAGMA table_info(business_profile)');

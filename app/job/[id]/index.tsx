@@ -22,10 +22,8 @@ import {
 import {
   ConvertQuoteSheet,
   JobDocumentsCard,
-  JobWorkGrid,
   MarkPaidSheet,
   NewDocumentSheet,
-  type JobWorkTileId,
 } from '@/features/documents';
 import { BottomSheetMenu } from '@/features/jobs/BottomSheetMenu';
 import {
@@ -34,6 +32,7 @@ import {
   ctaForGuidedState,
   GuidedFooter,
   GuidedJobHeader,
+  GuidedStepList,
   JobDetailsSheet,
   ReportReadyView,
   type GuidedStepId,
@@ -221,6 +220,11 @@ export default function JobOverviewScreen() {
   const showReady = guided.allComplete;
   const metaAddress = addressForMeta(job.address);
   const dateLabel = formatDateShort(job.jobDate);
+  const statusLabel = guided.allComplete
+    ? t('jobs.statusComplete')
+    : guided.completedCount > 0
+      ? t('jobs.statusInProgress')
+      : t('jobs.statusDraft');
 
   const onPrimary = () => {
     if (cta.stepId === 'report') {
@@ -341,18 +345,6 @@ export default function JobOverviewScreen() {
     }
   };
 
-  const openWorkTile = (tileId: JobWorkTileId) => {
-    const map: Record<JobWorkTileId, GuidedStepId | 'details'> = {
-      photos: 'photos',
-      measure: 'measure',
-      checklist: 'checklist',
-      notes: 'notes',
-      signature: 'signature',
-      details: 'details',
-    };
-    void openStep(map[tileId]);
-  };
-
   const markPaidDoc = markPaidId ? documents.find((d) => d.id === markPaidId) : null;
   const convertQuote = convertQuoteId ? documents.find((d) => d.id === convertQuoteId) ?? null : null;
   const convertLineCount = countPricingLines(convertQuote?.pricingSnapshotJson);
@@ -388,45 +380,22 @@ export default function JobOverviewScreen() {
         }
       />
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingTop: 4,
-          paddingBottom: spacing.xl,
-          gap: 14,
-        }}
-      >
-        <GuidedJobHeader
-          title={job.title}
-          address={metaAddress}
-          customerName={job.customerName}
-          dateLabel={dateLabel}
-          completed={guided.completedCount}
-          total={guided.totalCount}
-          intro={null}
-          documentsLayout
-          statusLabel={
-            guided.allComplete
-              ? t('jobs.statusComplete')
-              : guided.completedCount > 0
-                ? t('jobs.statusInProgress')
-                : t('jobs.statusDraft')
-          }
-        />
-            <JobDocumentsCard
-              documents={documents}
-              isPro={isPro}
-              onNew={() => setNewDocOpen(true)}
-              onOpenDocument={(docId) => router.push(`/document/${docId}`)}
-              onCreateKind={(kind) => void createDocumentOfKind(kind)}
-              onCreateReport={() => router.push(`/job/${job.id}/preview`)}
-              onPreviewReport={() => router.push(`/job/${job.id}/preview`)}
-              onConvertQuote={(quoteId) => setConvertQuoteId(quoteId)}
-              onMarkPaid={(invoiceId) => setMarkPaidId(invoiceId)}
-              onRemind={handleRemind}
-            />
-        {showReady ? (
+      {showReady ? (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, flexGrow: 1, gap: 14 }}
+        >
+          <GuidedJobHeader
+            title={job.title}
+            address={metaAddress}
+            customerName={job.customerName}
+            dateLabel={dateLabel}
+            completed={guided.completedCount}
+            total={guided.totalCount}
+            intro={null}
+            documentsLayout
+            statusLabel={statusLabel}
+          />
           <ReportReadyView
             jobTitle={job.title}
             customerName={job.customerName}
@@ -438,55 +407,70 @@ export default function JobOverviewScreen() {
             onCreatePdf={() => router.push(`/job/${job.id}/preview`)}
             onSend={() => router.push(`/job/${job.id}/send`)}
           />
-        ) : (
-          <JobWorkGrid
-            onPress={openWorkTile}
-            summaries={{
-              photos: t('jobDetail.guided.stats.photos', {
-                count: photoCounts.before + photoCounts.during + photoCounts.after,
-              }),
-              notes: (() => {
-                const lines = summary ? linesForReport(summary.pricing) : [];
-                const total = summary ? pricingTotalPence(lines) : null;
-                if (lines.length === 0) return t('documents.workNotesEmpty');
-                return total != null
-                  ? t('documents.workNotesSummary', { count: lines.length, amount: formatPence(total) })
-                  : t('documents.workNotesCount', { count: lines.length });
-              })(),
-              signature: signature
-                ? t('documents.workSignatureDone', { date: formatDateShort(signature.signedAt) })
-                : t('documents.workSignatureEmpty'),
-              details: t('documents.workDetailsHint'),
-              checklist: checklist
-                ? t('documents.workChecklistProgress', {
-                    done: checklist.items.filter((i) => i.checked).length,
-                    total: checklist.items.length,
-                  })
-                : undefined,
-            }}
+          <JobDocumentsCard
+            documents={documents}
+            isPro={isPro}
+            onNew={() => setNewDocOpen(true)}
+            onOpenDocument={(docId) => router.push(`/document/${docId}`)}
+            onCreateKind={(kind) => void createDocumentOfKind(kind)}
+            onCreateReport={() => router.push(`/job/${job.id}/preview`)}
+            onPreviewReport={() => router.push(`/job/${job.id}/preview`)}
+            onConvertQuote={(quoteId) => setConvertQuoteId(quoteId)}
+            onMarkPaid={(invoiceId) => setMarkPaidId(invoiceId)}
+            onRemind={handleRemind}
           />
-        )}
-      </ScrollView>
+        </ScrollView>
+      ) : (
+        <>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{
+              paddingHorizontal: 20,
+              paddingTop: 4,
+              paddingBottom: spacing.xl,
+              gap: 14,
+            }}
+          >
+            <GuidedJobHeader
+              title={job.title}
+              address={metaAddress}
+              dateLabel={dateLabel}
+              completed={guided.completedCount}
+              total={guided.totalCount}
+              intro={intro}
+            />
+            <GuidedStepList
+              steps={guided.steps}
+              currentId={guided.currentId}
+              isPro={isPro}
+              photoCounts={photoCounts}
+              photoThumbs={photoThumbs}
+              showYourStepsLabel={guided.completedCount === 0}
+              onPressStep={(stepId) => void openStep(stepId)}
+              onAddAfterPhotos={openPhotosTools}
+              onMeasure={() => router.push(`/job/${job.id}/measure`)}
+            />
+          </ScrollView>
 
-      {!showReady ? (
-        <GuidedFooter
-          primaryLabel={primaryLabel}
-          primaryIcon={primaryIcon}
-          onPrimary={onPrimary}
-          showSavedNote={guided.completedCount === 0}
-          onSavedNotePress={() => router.push('/settings/data')}
-          showPreviewRow={guided.completedCount > 0}
-          unlockHint={
-            guided.canCreatePdf
-              ? null
-              : photoCounts.after === 0 && photoCounts.before + photoCounts.during > 0
-                ? t('jobDetail.guided.unlockAfterPhotos')
-                : t('jobDetail.guided.unlockRequired')
-          }
-          canCreatePdf={guided.canCreatePdf}
-          onPreview={() => router.push(`/job/${job.id}/preview`)}
-        />
-      ) : null}
+          <GuidedFooter
+            primaryLabel={primaryLabel}
+            primaryIcon={primaryIcon}
+            onPrimary={onPrimary}
+            showSavedNote={guided.completedCount === 0}
+            onSavedNotePress={() => router.push('/settings/data')}
+            showPreviewRow={guided.completedCount > 0}
+            unlockHint={
+              guided.canCreatePdf
+                ? null
+                : photoCounts.after === 0 && photoCounts.before + photoCounts.during > 0
+                  ? t('jobDetail.guided.unlockAfterPhotos')
+                  : t('jobDetail.guided.unlockRequired')
+            }
+            canCreatePdf={guided.canCreatePdf}
+            onPreview={() => router.push(`/job/${job.id}/preview`)}
+          />
+        </>
+      )}
 
       <JobDetailsSheet
         visible={detailsSheetOpen}
@@ -511,6 +495,11 @@ export default function JobOverviewScreen() {
             icon: 'create-outline',
             label: t('jobDetail.editDetails'),
             onPress: () => setDetailsSheetOpen(true),
+          },
+          {
+            icon: 'document-text-outline',
+            label: t('documents.new'),
+            onPress: () => setNewDocOpen(true),
           },
           {
             icon: 'trash-outline',
@@ -551,6 +540,7 @@ export default function JobOverviewScreen() {
         defaultDueDays={defaultDueDays}
         hasReport={documents.some((d) => d.kind === 'report')}
         showVatNote={profileHasVat && (convertQuote?.vatPence ?? 0) > 0}
+        standalone={Boolean(job?.isQuick)}
         loading={docBusy}
         onClose={() => setConvertQuoteId(null)}
         onSubmit={handleConvertQuote}

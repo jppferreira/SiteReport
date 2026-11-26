@@ -1205,7 +1205,7 @@ const es = deepMerge(enUS, {
     icloudNotReady: 'iCloud Drive aún no está disponible. Activa iCloud Drive para Trade Report en Ajustes y vuelve a intentarlo.',
     icloudWriteFailed: 'No se pudo guardar la copia en iCloud Drive. No se cambió nada en este teléfono.',
     googleDriveAppMissing: 'Instala la app Google Drive y vuelve a intentarlo. Trade Report no inicia sesión en Google.',
-    googleDriveNotSelected: 'Elige una carpeta en Google Drive. La copia no se guardó.',
+    googleDriveNotSelected: 'Elige Google Drive (no Descargas ni Archivos). Abre el menú en la pantalla de guardar, elige Drive y pulsa Guardar. La copia no se guardó.',
     googleDriveWriteFailed: 'No se pudo guardar la copia en Google Drive. No se cambió nada en este teléfono.',
     googleDriveNeedsAndroidApp: 'Guardar en Google Drive necesita la app de Trade Report para Android.',
   },

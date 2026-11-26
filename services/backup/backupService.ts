@@ -92,12 +92,12 @@ export async function saveBackup(
     }
     if (transport === 'icloud') {
       await saveZipToIcloudDrive(path, fileName);
-      logger.debug('Backup saved', { destination });
+      logger.info('Backup saved', { destination, fileName });
       return 'saved';
     }
     if (transport === 'google-drive') {
       const saved = await saveZipToGoogleDrive(path, fileName);
-      if (saved === 'saved') logger.debug('Backup saved', { destination });
+      if (saved === 'saved') logger.info('Backup saved', { destination, fileName });
       return saved;
     }
     const directory = await Directory.pickDirectoryAsync();
@@ -105,7 +105,7 @@ export async function saveBackup(
     const bytes = await readBytes(path);
     if (!bytes) throw new Error(t('backup.couldNotReadFile'));
     destinationFile.write(bytes);
-    logger.debug('Backup saved', { destination });
+    logger.info('Backup saved', { destination, fileName });
     return 'saved';
   } catch (error) {
     if (isCancel(error)) return 'cancelled';
@@ -117,8 +117,17 @@ export async function saveBackup(
 
 export async function pickBackupFile(): Promise<RestorePickResult> {
   try {
+    // Drive often stores uploaded zips as application/octet-stream (or other
+    // vendor types). A narrow zip-only filter shows “No matches in Drive”.
     const picked = await File.pickFileAsync({
-      mimeTypes: ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'],
+      mimeTypes: [
+        'application/zip',
+        'application/x-zip',
+        'application/x-zip-compressed',
+        'application/octet-stream',
+        'application/*',
+        '*/*',
+      ],
     });
     if (picked.canceled || !picked.result) return { kind: 'cancelled' };
     const bytes = await picked.result.bytes();
@@ -202,8 +211,8 @@ async function buildBackup(): Promise<Uint8Array> {
   const signatures = [];
   const reports = [];
   const checklists = [];
-  const events = await reportEventsRepository.listAllEvents();
   const uriByPath = new Map<string, string>();
+  const jobIds = new Set(jobs.map((job) => job.id));
 
   const claim = (uri: string | null | undefined): string | null => {
     if (!uri) return null;
@@ -252,9 +261,17 @@ async function buildBackup(): Promise<Uint8Array> {
     if (checklist) checklists.push(checklist);
   }
 
+  const reportIds = new Set(reports.map((report) => report.id));
+  const events = (await reportEventsRepository.listAllEvents()).filter(
+    (event) => jobIds.has(event.jobId) && reportIds.has(event.reportId)
+  );
+
   const business = relativizeProfile(await businessProfileRepository.getBusinessProfile(), claim);
   const tradeDocuments = [];
   for (const doc of await documentsRepository.listAllDocuments()) {
+    // Skip rows left behind after a job was removed — packing them makes restore
+    // reject the whole zip as an invalid Trade Report backup.
+    if (!jobIds.has(doc.jobId)) continue;
     let localPdfUri = doc.localPdfUri;
     if (localPdfUri) {
       localPdfUri = claim(localPdfUri);

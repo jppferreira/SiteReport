@@ -23,11 +23,16 @@ export function Modal({ visible, onRequestClose, children, dismissOnBackdropPres
       navigationBarTranslucent
     >
       <Pressable
+        accessible={false}
         style={[styles.backdrop, { backgroundColor: colors.overlay }]}
         onPress={dismissOnBackdropPress ? onRequestClose : undefined}
       >
-        <Pressable onPress={() => undefined} style={{ width: '100%', paddingHorizontal: spacing.lg }}>
-          <View>{children}</View>
+        <Pressable
+          accessible={false}
+          onPress={() => undefined}
+          style={{ width: '100%', paddingHorizontal: spacing.lg }}
+        >
+          <View accessible={false}>{children}</View>
         </Pressable>
       </Pressable>
     </RNModal>

@@ -71,7 +71,7 @@ export default function NewJobScreen() {
           <TextButton
             label={t('newJob.cancel')}
             align="left"
-            onPress={() => goBack(forReport ? '/(tabs)/documents' : '/(tabs)/jobs')}
+            onPress={() => goBack('/(tabs)/jobs')}
           />
         }
         right={<TextButton label={t('newJob.save')} tone="accent" onPress={handleCreate} />}

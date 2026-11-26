@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTheme } from '@/theme';
 
@@ -10,6 +10,8 @@ type Segment = {
   key: string;
   label: string;
   icon?: keyof typeof Ionicons.glyphMap;
+  /** Optional leading mark (e.g. presence tick on Jobs). */
+  leading?: React.ReactNode;
 };
 
 type SegmentedControlProps = {
@@ -23,6 +25,7 @@ type SegmentedControlProps = {
    * `surface` — white active pill on sunken track (Figma Documents tabs).
    */
   tone?: 'accent' | 'surface';
+  style?: StyleProp<ViewStyle>;
 };
 
 export function SegmentedControl({
@@ -31,17 +34,26 @@ export function SegmentedControl({
   onChange,
   iconsOnly = false,
   tone = 'accent',
+  style,
 }: SegmentedControlProps) {
   const { colors, radius, shadows } = useTheme();
   const activeBg = tone === 'surface' ? colors.surface : colors.accent;
   const activeFg = tone === 'surface' ? colors.textPrimary : colors.accentOnAccent;
+
+  const trackBg = tone === 'accent' ? colors.accentSoft : colors.surfaceSunken;
 
   return (
     <View
       style={[
         styles.container,
         iconsOnly ? styles.containerIcons : null,
-        { backgroundColor: colors.surfaceSunken, borderRadius: radius.pill },
+        {
+          backgroundColor: trackBg,
+          borderRadius: radius.pill,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        style,
       ]}
     >
       {segments.map((segment) => {
@@ -60,9 +72,10 @@ export function SegmentedControl({
                 borderRadius: radius.pill,
                 backgroundColor: active ? activeBg : 'transparent',
               },
-              active && tone === 'surface' ? shadows.subtle : null,
+              active && tone === 'surface' ? shadows.card : active ? shadows.subtle : null,
             ]}
           >
+            {segment.leading ?? null}
             {segment.icon ? (
               <Ionicons
                 name={segment.icon}
@@ -74,7 +87,7 @@ export function SegmentedControl({
               <Text
                 variant="bodyMedium"
                 color={active ? activeFg : colors.textSecondary}
-                style={active && tone === 'surface' ? { fontFamily: 'Lexend_600SemiBold' } : undefined}
+                style={active ? styles.activeLabel : undefined}
               >
                 {segment.label}
               </Text>
@@ -98,11 +111,17 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
   },
   segmentIcon: {
     flex: 0,
     width: 40,
+    gap: 0,
+  },
+  activeLabel: {
+    fontFamily: 'Lexend_600SemiBold',
   },
 });

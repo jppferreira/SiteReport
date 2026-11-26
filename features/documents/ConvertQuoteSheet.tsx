@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, View } from 'react-native';
 
-import { BottomSheet, Button, Input, Text, ToggleRow } from '@/components';
+import { BottomSheet, Button, Input, Text } from '@/components';
 import { formatPence } from '@/models';
 import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
@@ -20,6 +20,8 @@ type ConvertQuoteSheetProps = {
   defaultDueDays: number;
   hasReport: boolean;
   showVatNote?: boolean;
+  /** Prefer standalone/quick-job copy (Figma S4). */
+  standalone?: boolean;
   loading?: boolean;
   onClose: () => void;
   onSubmit: (opts: { copyPricing: boolean; attachReport: boolean; dueDays: number }) => void;
@@ -35,6 +37,7 @@ export function ConvertQuoteSheet({
   defaultDueDays,
   hasReport,
   showVatNote = false,
+  standalone = false,
   loading,
   onClose,
   onSubmit,
@@ -60,60 +63,71 @@ export function ConvertQuoteSheet({
     onSubmit({ copyPricing, attachReport: hasReport && attachReport, dueDays: days });
   };
 
-  const quoteAmountLabel = quoteTotalPence != null ? formatPence(quoteTotalPence) : '—';
   const invoiceAmountLabel =
     invoiceTotalPence != null
       ? showVatNote
         ? t('documents.convertAmountIncVat', { amount: formatPence(invoiceTotalPence) })
         : formatPence(invoiceTotalPence)
-      : '—';
+      : quoteTotalPence != null
+        ? showVatNote
+          ? t('documents.convertAmountIncVat', { amount: formatPence(quoteTotalPence) })
+          : formatPence(quoteTotalPence)
+        : '—';
 
   return (
     <BottomSheet visible={visible} onClose={onClose} dragHandleOnly>
       <Text variant="h3">{t('documents.convertTitle')}</Text>
       <Text variant="bodySmall" color={colors.textSecondary} style={{ marginTop: 6, marginBottom: spacing.md }}>
-        {t('documents.convertSubtitlePreview', {
-          quote: quoteNumber ?? '—',
-          invoice: invoicePreviewNumber,
-        })}
+        {standalone
+          ? t('documents.convertSubtitleStandalone')
+          : t('documents.convertSubtitlePreview', {
+              quote: quoteNumber ?? '—',
+              invoice: invoicePreviewNumber,
+            })}
       </Text>
 
       <View style={styles.previewRow}>
         <ConvertKindCard
           kind="quote"
           number={quoteNumber ?? '—'}
-          amount={quoteAmountLabel}
+          amount={t('documents.convertQuoteAccepted')}
         />
         <Ionicons name="arrow-forward" size={18} color={colors.textTertiary} style={{ marginTop: 28 }} />
-        <ConvertKindCard
-          kind="invoice"
-          number={invoicePreviewNumber}
-          amount={invoiceAmountLabel}
-        />
+        <ConvertKindCard kind="invoice" number={invoicePreviewNumber} amount={invoiceAmountLabel} />
       </View>
 
-      <View style={[styles.optionList, { borderColor: colors.border, borderRadius: radius.lg, marginTop: spacing.md }]}>
-        <OptionToggleRow
+      <View
+        style={[
+          styles.optionList,
+          { borderColor: colors.border, borderRadius: radius.lg, marginTop: spacing.md },
+        ]}
+      >
+        <OptionCheckRow
           label={
             lineCount > 0
               ? t('documents.convertCopyLinesCount', { count: lineCount })
               : t('documents.convertCopyLines')
           }
+          hint={t('documents.convertCopyLinesHint')}
           checked={copyPricing}
           onPress={() => setCopyPricing((v) => !v)}
         />
-        {hasReport ? (
-          <View style={[styles.optionDivider, { backgroundColor: colors.border }]} />
-        ) : null}
-        {hasReport ? (
-          <View style={{ paddingHorizontal: spacing.md }}>
-            <ToggleRow
-              label={t('documents.convertAttachReport')}
-              value={attachReport}
-              onValueChange={setAttachReport}
-            />
+        <View style={[styles.optionDivider, { backgroundColor: colors.border }]} />
+        <View style={[styles.attachRow, { paddingHorizontal: spacing.md }]}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text variant="body">{t('documents.convertAttachReport')}</Text>
+            <Text variant="caption" color={colors.textSecondary}>
+              {hasReport ? t('documents.convertAttachReportReady') : t('documents.convertAttachReportHint')}
+            </Text>
           </View>
-        ) : null}
+          <Switch
+            value={hasReport && attachReport}
+            onValueChange={setAttachReport}
+            disabled={!hasReport}
+            trackColor={{ false: colors.border, true: colors.accent }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
         <View style={[styles.optionDivider, { backgroundColor: colors.border }]} />
         <Pressable
           onPress={() => setDueEditing((v) => !v)}
@@ -145,7 +159,7 @@ export function ConvertQuoteSheet({
           loading={loading}
           disabled={loading}
           variant="accent"
-          icon={<Ionicons name="checkmark" size={18} color={colors.accentOnAccent} />}
+          icon={<Ionicons name="checkmark" size={18} color={colors.textInverse} />}
         />
       </View>
     </BottomSheet>
@@ -175,17 +189,32 @@ function ConvertKindCard({
       ]}
     >
       <DocTypeTile kind={kind} size={44} />
-      <Text variant="bodyMedium" numberOfLines={1} style={{ marginTop: spacing.sm, fontFamily: 'Lexend_600SemiBold' }}>
+      <Text variant="bodyMedium" numberOfLines={1} style={{ marginTop: spacing.sm }}>
         {number}
       </Text>
-      <Text variant="bodySmall" color="rgba(16,19,16,0.65)" numberOfLines={2} style={{ marginTop: 2, textAlign: 'center' }}>
+      <Text
+        variant="bodySmall"
+        color="rgba(16,19,16,0.65)"
+        numberOfLines={2}
+        style={{ marginTop: 2, textAlign: 'center' }}
+      >
         {amount}
       </Text>
     </View>
   );
 }
 
-function OptionToggleRow({ label, checked, onPress }: { label: string; checked: boolean; onPress: () => void }) {
+function OptionCheckRow({
+  label,
+  hint,
+  checked,
+  onPress,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onPress: () => void;
+}) {
   const { colors, spacing } = useTheme();
 
   return (
@@ -201,11 +230,16 @@ function OptionToggleRow({ label, checked, onPress }: { label: string; checked: 
       {checked ? (
         <Ionicons name="checkmark-circle" size={22} color={colors.accent} />
       ) : (
-        <View style={[styles.emptyCheck, { borderColor: colors.borderStrong }]} />
+        <View style={[styles.emptyCheck, { borderColor: colors.borderStrong ?? colors.border }]} />
       )}
-      <Text variant="body" style={styles.flex}>
-        {label}
-      </Text>
+      <View style={styles.flex}>
+        <Text variant="body">{label}</Text>
+        {hint ? (
+          <Text variant="caption" color={colors.textSecondary} style={{ marginTop: 2 }}>
+            {hint}
+          </Text>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
@@ -229,8 +263,16 @@ const styles = StyleSheet.create({
   optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 52,
+    minHeight: 60,
     gap: 12,
+    paddingVertical: 10,
+  },
+  attachRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 76,
+    gap: 12,
+    paddingVertical: 12,
   },
   optionDivider: {
     height: StyleSheet.hairlineWidth,

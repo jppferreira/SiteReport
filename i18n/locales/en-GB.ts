@@ -52,6 +52,7 @@ const enGBOverrides = {
   },
   pricing: {
     includeDescription: 'Add materials, labour and other costs as a reference on this report.',
+    includeDescriptionDocument: 'Add labour, materials, and other line items for this quote or invoice.',
     categoryLabour: 'Labour',
   },
   branding: {

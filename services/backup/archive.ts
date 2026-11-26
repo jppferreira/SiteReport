@@ -28,6 +28,7 @@ import {
 } from '@/models';
 
 import { isSafeRelativePath, zipEntryName } from './paths';
+import { sha256Bytes } from './runtimeCrypto';
 import { t } from '@/i18n';
 
 export const BACKUP_FORMAT = 'tradesreport-backup';
@@ -66,9 +67,8 @@ export type OpenedBackup = {
 export type BackupOpenResult = { ok: true; backup: OpenedBackup } | { ok: false; message: string };
 
 export async function sha256Hex(data: Uint8Array): Promise<string> {
-  const copy = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
-  const digest = await crypto.subtle.digest('SHA-256', copy);
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  const digest = await sha256Bytes(data);
+  return [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 export function packArchive(manifest: BackupManifest, files: { path: string; data: Uint8Array }[]): Uint8Array {

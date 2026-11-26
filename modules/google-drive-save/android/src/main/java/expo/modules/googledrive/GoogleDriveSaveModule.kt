@@ -55,18 +55,15 @@ class GoogleDriveSaveModule : Module() {
 
   private suspend fun saveZip(sourcePath: String, fileName: String): String {
     if (!driveInstalled()) throw DriveAppMissingException()
-    val source = sourceFile(sourcePath)
-    if (!source.isFile || source.length() <= 0L) throw DriveWriteException()
+    val source = waitForSourceFile(sourcePath) ?: throw DriveWriteException()
 
     val initial = withContext(Dispatchers.IO) { driveInitialUri()?.toString() }
-    val picked = withContext(Dispatchers.Main) {
-      if (pickerOpen) return@withContext CreateDocumentResult.Cancelled
-      pickerOpen = true
-      try {
-        createDocumentLauncher.launch(CreateDocumentOptions(safeFileName(fileName), initial))
-      } finally {
-        pickerOpen = false
-      }
+    // Try with Drive's root first so the save UI opens in My Drive. If the OEM
+    // cancels immediately (common when EXTRA_INITIAL_URI is rejected), retry
+    // without it so DocumentsUI still opens and the user can switch to Drive.
+    var picked = launchCreateDocument(safeFileName(fileName), initial)
+    if (picked is CreateDocumentResult.Cancelled && !initial.isNullOrBlank()) {
+      picked = launchCreateDocument(safeFileName(fileName), null)
     }
 
     return when (picked) {
@@ -87,6 +84,18 @@ class GoogleDriveSaveModule : Module() {
           throw DriveWriteException(error)
         }
         "saved"
+      }
+    }
+  }
+
+  private suspend fun launchCreateDocument(fileName: String, initialUri: String?): CreateDocumentResult {
+    return withContext(Dispatchers.Main) {
+      if (pickerOpen) return@withContext CreateDocumentResult.Cancelled
+      pickerOpen = true
+      try {
+        createDocumentLauncher.launch(CreateDocumentOptions(fileName, initialUri))
+      } finally {
+        pickerOpen = false
       }
     }
   }
@@ -132,8 +141,10 @@ class GoogleDriveSaveModule : Module() {
   private fun isGoogleDrive(uri: Uri): Boolean {
     val authority = uri.authority.orEmpty()
     if (authority.contains("com.google.android.apps.docs")) return true
+    if (authority.contains("com.google.android.apps.docs.storage")) return true
     return try {
-      DocumentsContract.getDocumentId(uri).startsWith("acc=")
+      val documentId = DocumentsContract.getDocumentId(uri)
+      documentId.startsWith("acc=") || documentId.contains("google")
     } catch (_: Exception) {
       false
     }
@@ -141,35 +152,40 @@ class GoogleDriveSaveModule : Module() {
 
   private fun copyToDrive(source: File, destination: Uri) {
     val expected = source.length()
+    if (expected <= 0L) throw DriveWriteException()
     val resolver = context.contentResolver
+    // Prefer the stream path first — Samsung Drive often rejects "wt" file descriptors.
     try {
-      val descriptor = resolver.openFileDescriptor(destination, "wt")
-      if (descriptor != null) {
-        descriptor.use { parcel ->
-          FileOutputStream(parcel.fileDescriptor).use { output ->
-            val copied = source.inputStream().use { input -> input.copyTo(output, COPY_BUFFER) }
-            if (copied != expected) throw DriveWriteException()
-            output.flush()
-            try {
-              parcel.fileDescriptor.sync()
-            } catch (_: SyncFailedException) {
-              // The provider still receives the bytes when the descriptor closes.
-            }
-          }
+      val stream = resolver.openOutputStream(destination, "wt")
+        ?: resolver.openOutputStream(destination)
+      if (stream != null) {
+        stream.use { output ->
+          val copied = source.inputStream().use { input -> input.copyTo(output, COPY_BUFFER) }
+          if (copied != expected) throw DriveWriteException()
+          output.flush()
         }
         return
       }
     } catch (error: DriveWriteException) {
       throw error
     } catch (_: Exception) {
-      // Some Drive versions only accept a stream.
+      // Fall through to the file-descriptor path.
     }
 
-    val stream = resolver.openOutputStream(destination) ?: throw DriveWriteException()
-    stream.use { output ->
-      val copied = source.inputStream().use { input -> input.copyTo(output, COPY_BUFFER) }
-      if (copied != expected) throw DriveWriteException()
-      output.flush()
+    val descriptor = resolver.openFileDescriptor(destination, "wt")
+      ?: resolver.openFileDescriptor(destination, "w")
+      ?: throw DriveWriteException()
+    descriptor.use { parcel ->
+      FileOutputStream(parcel.fileDescriptor).use { output ->
+        val copied = source.inputStream().use { input -> input.copyTo(output, COPY_BUFFER) }
+        if (copied != expected) throw DriveWriteException()
+        output.flush()
+        try {
+          parcel.fileDescriptor.sync()
+        } catch (_: SyncFailedException) {
+          // The provider still receives the bytes when the descriptor closes.
+        }
+      }
     }
   }
 
@@ -193,6 +209,16 @@ class GoogleDriveSaveModule : Module() {
 private fun sourceFile(path: String): File {
   val raw = if (path.startsWith("file:")) Uri.parse(path).path ?: path else path
   return File(raw)
+}
+
+/** Expo may finish File.write before java.io.File sees non-zero length. */
+private suspend fun waitForSourceFile(path: String): File? {
+  val file = sourceFile(path)
+  repeat(40) {
+    if (file.isFile && file.length() > 0L) return file
+    withContext(Dispatchers.IO) { Thread.sleep(50) }
+  }
+  return if (file.isFile && file.length() > 0L) file else null
 }
 
 private fun safeFileName(fileName: String): String {
@@ -227,6 +253,9 @@ internal class CreateDocumentContract :
       addCategory(Intent.CATEGORY_OPENABLE)
       type = "application/zip"
       putExtra(Intent.EXTRA_TITLE, input.fileName)
+      // Prefer opening already inside Drive when the root URI is healthy. A stale
+      // or permission-denied EXTRA_INITIAL_URI makes some OEMs (Samsung) cancel
+      // the save screen immediately — callers may retry with initialUri = null.
       val initial = input.initialUri
       if (!initial.isNullOrBlank() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         putExtra(DocumentsContract.EXTRA_INITIAL_URI, Uri.parse(initial))

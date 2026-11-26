@@ -1205,7 +1205,7 @@ const sv = deepMerge(enUS, {
     icloudNotReady: 'iCloud Drive är inte tillgängligt ännu. Slå på iCloud Drive för Trade Report i Inställningar och försök igen.',
     icloudWriteFailed: 'Säkerhetskopian kunde inte sparas till iCloud Drive. Ingenting på den här telefonen ändrades.',
     googleDriveAppMissing: 'Installera Google Drive-appen och försök igen. Trade Report loggar inte in på Google.',
-    googleDriveNotSelected: 'Välj en mapp i Google Drive. Säkerhetskopian sparades inte.',
+    googleDriveNotSelected: 'Välj Google Drive (inte Hämtade eller Filer). Öppna menyn på sparskärmen, välj Drive, tryck sedan Spara. Säkerhetskopian sparades inte.',
     googleDriveWriteFailed: 'Säkerhetskopian kunde inte sparas till Google Drive. Ingenting på den här telefonen ändrades.',
     googleDriveNeedsAndroidApp: 'Spara till Google Drive kräver Trade Report-appen för Android.',
   },

@@ -4,14 +4,17 @@
 
 ## What’s new
 
+- **Jobs home + documents** — Quote / Report / Invoice segments, money summary, and job cards with document badges.
+- **Quotes & invoices** — create, send, track status, mark accepted/paid; Pro document PDFs.
 - **Photo annotations on reports** — pins, notes, pen, arrows, and circles appear in the generated PDF.
 - **On-device voice dictation** — dictate job notes; audio is transcribed on this device and is not uploaded.
 - **Evidence stamps** — optional location and verified-on-device labels on photos (Pro).
 - **Job checklists** — Field Proof checklists for handover-ready reports.
-- **AR measure & spirit level** — measure distances and check surfaces where the device supports them; save measurements into the report.
-- **Quote & invoice layouts** — Pro document types plus review-link QR on PDFs.
+- **AR measure & spirit level** — Toolbox tools to measure distances and check surfaces; save into the report.
 - **Premium report templates** — additional branded PDF looks.
 - **Backups** — manual zip backup; optional iCloud auto-backup on iPhone to your own iCloud Drive.
+
+Store screenshots for every primary feature: `store/screenshots/1.1.0-store-set/` (also copied to `store/ios-headers/` and `store/play/`). Listing copy updated in `store/app-store-connect.md` and `store/google-play.md`.
 
 ## Store / privacy checklist for this release
 

@@ -63,6 +63,12 @@ export default function PaywallScreen() {
         setProducts(result);
         setLoadError(false);
         setLoading(false);
+        // Prefer annual when the store returned it; otherwise first available plan.
+        const preferred =
+          result.find((product) => product.planId === 'annual') ??
+          result.find((product) => product.planId === 'monthly') ??
+          result[0];
+        if (preferred) setSelected(preferred.planId);
       })
       .catch(() => {
         if (cancelled) return;

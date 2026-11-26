@@ -152,6 +152,8 @@ export async function copyIntoJobPhotos(jobId: string, sourceUri: string, fileNa
 }
 
 export async function readBytes(path: string): Promise<Uint8Array | null> {
+  const base64 = await readAsBase64(path);
+  if (base64) return base64ToBytes(base64);
   if (!isWeb()) {
     try {
       for (const candidate of fileUriReadCandidates(path)) {
@@ -163,8 +165,7 @@ export async function readBytes(path: string): Promise<Uint8Array | null> {
       logger.warn('Failed to read file bytes', { error: String(error) });
     }
   }
-  const base64 = await readAsBase64(path);
-  return base64 ? base64ToBytes(base64) : null;
+  return null;
 }
 
 export async function writeBytes(path: string, bytes: Uint8Array): Promise<void> {
@@ -172,15 +173,13 @@ export async function writeBytes(path: string, bytes: Uint8Array): Promise<void>
     await getWebFileStore().writeString(path, bytesToBase64(bytes), 'base64');
     return;
   }
-  const file = new File(path);
-  const parent = path.slice(0, path.lastIndexOf('/') + 1);
-  if (parent) {
-    const directory = new Directory(parent);
-    if (!directory.exists) directory.create({ intermediates: true, idempotent: true });
-  }
-  if (file.exists) file.delete();
-  file.create();
-  file.write(bytes);
+  // Prefer the legacy FileSystem write on native — the new File API can report
+  // exists/bytes incorrectly right after create() on Android, which breaks
+  // backup restore’s read-back check.
+  await ensureDirectory(path.slice(0, path.lastIndexOf('/') + 1));
+  await FileSystem.writeAsStringAsync(path, bytesToBase64(bytes), {
+    encoding: FileSystem.EncodingType.Base64,
+  });
 }
 
 export async function writeTextFile(path: string, contents: string): Promise<void> {

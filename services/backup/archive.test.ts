@@ -152,6 +152,162 @@ describe('openBackup', () => {
     const opened = await openBackup(zip);
     expect(opened.ok).toBe(true);
   });
+
+  it('round-trips quote documents and photo annotations through backup restore', async () => {
+    const annotations = {
+      version: 1 as const,
+      shapes: [
+        {
+          kind: 'arrow' as const,
+          color: '#FF5A36' as const,
+          width: 0.009,
+          from: { x: 0.2, y: 0.3 },
+          to: { x: 0.7, y: 0.55 },
+        },
+        {
+          kind: 'callout' as const,
+          color: '#1FA84A' as const,
+          at: { x: 0.4, y: 0.2 },
+          note: 'Replace valve',
+          anchor: { x: 0.45, y: 0.35 },
+        },
+        {
+          kind: 'dimension' as const,
+          color: '#FFB020' as const,
+          width: 0.009,
+          from: { x: 0.1, y: 0.8 },
+          to: { x: 0.9, y: 0.8 },
+          label: '2.4 m',
+        },
+      ],
+    };
+    const source = await manifest();
+    const photo0 = source.photos[0];
+    const job0 = source.jobs[0];
+    if (!photo0 || !job0) throw new Error('expected seed photo and job');
+    source.photos[0] = { ...photo0, annotations };
+    source.customers = [
+      {
+        id: 'cust-1',
+        name: 'Sarah Thompson',
+        phone: '07700900123',
+        email: 'sarah@example.com',
+        address: '12 Oak Road',
+        postcode: 'SW1A 1AA',
+        createdAt: '2026-10-04T00:00:00.000Z',
+        updatedAt: '2026-10-04T00:00:00.000Z',
+      },
+    ];
+    source.jobs[0] = { ...job0, customerId: 'cust-1' };
+    source.documents = [
+      {
+        id: 'doc-quote-1',
+        jobId: 'job-1',
+        kind: 'quote',
+        number: 'QUO-1001',
+        status: 'accepted',
+        title: 'Bathroom quote',
+        totalPence: 120000,
+        netPence: 100000,
+        vatPence: 20000,
+        dueDate: null,
+        validUntil: '2026-11-04',
+        sentAt: '2026-10-05T10:00:00.000Z',
+        paidAt: null,
+        acceptedAt: '2026-10-06T12:00:00.000Z',
+        declinedAt: null,
+        paidMethod: null,
+        paidAmountPence: null,
+        sourceDocumentId: null,
+        attachedReportId: null,
+        pricingSnapshotJson: JSON.stringify({
+          enabled: true,
+          lines: [{ id: 'line-1', label: 'Labour', amountPence: 100000 }],
+        }),
+        reportId: null,
+        localPdfUri: null,
+        fileName: null,
+        createdAt: '2026-10-04T16:00:00.000Z',
+        updatedAt: '2026-10-06T12:00:00.000Z',
+      },
+    ];
+
+    const zip = packArchive(source, [
+      { path: 'jobs/job-1/photos/full.jpg', data: photo },
+      { path: 'jobs/job-1/photos/thumb.jpg', data: photo },
+      { path: 'jobs/job-1/signature.svg', data: signature },
+    ]);
+
+    const opened = await restoreIfValid(zip, async (backup) => {
+      expect(backup.manifest.documents).toHaveLength(1);
+      expect(backup.manifest.documents[0]).toMatchObject({
+        kind: 'quote',
+        number: 'QUO-1001',
+        status: 'accepted',
+        title: 'Bathroom quote',
+        totalPence: 120000,
+        pricingSnapshotJson: expect.stringContaining('Labour'),
+      });
+      expect(backup.manifest.customers[0]?.email).toBe('sarah@example.com');
+      expect(backup.manifest.photos[0]?.annotations?.shapes).toHaveLength(3);
+      expect(backup.manifest.photos[0]?.annotations?.shapes[1]).toMatchObject({
+        kind: 'callout',
+        note: 'Replace valve',
+      });
+      expect(backup.manifest.photos[0]?.annotations?.shapes[2]).toMatchObject({
+        kind: 'dimension',
+        label: '2.4 m',
+      });
+    });
+    expect(opened.ok).toBe(true);
+  });
+
+  it('preserves legacy annotation colors when opening an older backup', async () => {
+    const source = await manifest();
+    const photo0 = source.photos[0];
+    if (!photo0) throw new Error('expected seed photo');
+    source.photos[0] = {
+      ...photo0,
+      annotations: {
+        version: 1,
+        shapes: [
+          {
+            kind: 'circle',
+            color: '#FF3B30' as unknown as '#FF5A36',
+            width: 0.009,
+            from: { x: 0.2, y: 0.2 },
+            to: { x: 0.4, y: 0.4 },
+          },
+        ],
+      },
+    };
+    // Bypass typed annotations so the zip carries the legacy color string.
+    (source.photos[0] as { annotations: unknown }).annotations = {
+      version: 1,
+      shapes: [
+        {
+          kind: 'circle',
+          color: '#FF3B30',
+          width: 0.009,
+          from: { x: 0.2, y: 0.2 },
+          to: { x: 0.4, y: 0.4 },
+        },
+      ],
+    };
+
+    const zip = packArchive(source, [
+      { path: 'jobs/job-1/photos/full.jpg', data: photo },
+      { path: 'jobs/job-1/photos/thumb.jpg', data: photo },
+      { path: 'jobs/job-1/signature.svg', data: signature },
+    ]);
+    const opened = await openBackup(zip);
+    expect(opened.ok).toBe(true);
+    if (!opened.ok) return;
+    expect(opened.backup.manifest.photos[0]?.annotations?.shapes[0]).toMatchObject({
+      kind: 'circle',
+      color: '#FF5A36',
+    });
+  });
 });
 
 function findBytes(haystack: Uint8Array, needle: Uint8Array): number {

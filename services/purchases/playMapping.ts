@@ -6,6 +6,7 @@ type PricingPhase = {
   formattedPrice?: string;
   priceAmountMicros?: string;
   priceCurrencyCode?: string;
+  billingPeriod?: string;
 };
 
 export type PlayOfferDetails = {
@@ -51,8 +52,29 @@ function paidPhases(phases: PricingPhase[] | undefined): PricingPhase[] {
   return (phases ?? []).filter((phase) => Number(phase.priceAmountMicros ?? '0') > 0);
 }
 
+function billingPeriodsForBasePlan(basePlanId: string): string[] {
+  if (basePlanId === 'monthly') return ['P1M'];
+  if (basePlanId === 'annual') return ['P1Y', 'P12M'];
+  return [];
+}
+
+function phaseMatchesBasePlan(phase: PricingPhase | undefined, basePlanId: string): boolean {
+  const period = (phase as PricingPhase & { billingPeriod?: string })?.billingPeriod;
+  if (!period) return false;
+  return billingPeriodsForBasePlan(basePlanId).includes(period);
+}
+
 function detailsForBasePlan(product: PlayProductSnapshot, basePlanId: string): PlayOfferDetails | undefined {
-  const offers = (product.subscriptionOfferDetailsAndroid ?? []).filter((offer) => !offer.basePlanId || offer.basePlanId === basePlanId);
+  const all = product.subscriptionOfferDetailsAndroid ?? [];
+  const byId = all.filter((offer) => !offer.basePlanId || offer.basePlanId === basePlanId);
+  const offers =
+    byId.length > 0
+      ? byId
+      : all.filter((offer) => {
+          const phases = offer.pricingPhases?.pricingPhaseList ?? [];
+          const recurring = paidPhases(phases).at(-1) ?? phases.at(-1);
+          return phaseMatchesBasePlan(recurring, basePlanId);
+        });
   if (offers.length === 0) return undefined;
   return (
     offers.find((offer) => offer.basePlanId === basePlanId && !offer.offerId) ??
@@ -63,15 +85,40 @@ function detailsForBasePlan(product: PlayProductSnapshot, basePlanId: string): P
 }
 
 function normalizedForBasePlan(product: PlayProductSnapshot, basePlanId: string): PlaySubscriptionOffer | undefined {
-  const offers = (product.subscriptionOffers ?? []).filter((offer) => offer.basePlanIdAndroid === basePlanId);
-  return offers.find((offer) => offer.paymentMode !== 'free-trial') ?? offers[0];
+  const all = product.subscriptionOffers ?? [];
+  const byId = all.filter(
+    (offer) => offer.basePlanIdAndroid === basePlanId || offer.id === basePlanId
+  );
+  const offers =
+    byId.length > 0
+      ? byId
+      : all.filter((offer) => {
+          const phases = offer.pricingPhasesAndroid?.pricingPhaseList ?? [];
+          const recurring = paidPhases(phases).at(-1) ?? phases.at(-1);
+          return phaseMatchesBasePlan(recurring, basePlanId);
+        });
+  // Prefer the paid base offer over free-trial / intro rows.
+  return (
+    offers.find((offer) => !offer.id || offer.id === basePlanId || offer.paymentMode == null) ??
+    offers.find((offer) => offer.paymentMode !== 'free-trial') ??
+    offers[0]
+  );
 }
 
 /** Offer token for one base plan. Play requires this when starting a subscription purchase. */
 export function offerTokenFor(product: PlayProductSnapshot, basePlanId: string): string | undefined {
   const fromDetails = detailsForBasePlan(product, basePlanId)?.offerToken;
   if (fromDetails) return fromDetails;
-  return normalizedForBasePlan(product, basePlanId)?.offerTokenAndroid ?? undefined;
+  const normalized = normalizedForBasePlan(product, basePlanId)?.offerTokenAndroid;
+  if (normalized) return normalized;
+  if (product.id === basePlanId) {
+    return (
+      product.subscriptionOffers?.[0]?.offerTokenAndroid ??
+      product.subscriptionOfferDetailsAndroid?.[0]?.offerToken ??
+      undefined
+    );
+  }
+  return undefined;
 }
 
 export function productInfoFromPlay(item: CatalogItem, product: PlayProductSnapshot): ProductInfo | null {
@@ -90,7 +137,13 @@ export function productInfoFromPlay(item: CatalogItem, product: PlayProductSnaps
   const details = detailsForBasePlan(product, item.basePlanId);
   const phases = details?.pricingPhases?.pricingPhaseList;
   const recurring = paidPhases(phases).at(-1) ?? phases?.at(-1);
-  const normalized = normalizedForBasePlan(product, item.basePlanId);
+  let normalized = normalizedForBasePlan(product, item.basePlanId);
+  // Legacy Play SKUs (`monthly` / `annual`) are one product → one base plan. If Play
+  // omits basePlanId on the offer row, still use the sole available offer.
+  if (!details && !normalized && product.id === item.basePlanId) {
+    const sole = product.subscriptionOffers?.[0];
+    if (sole) normalized = sole;
+  }
   if (!details && !normalized) return null;
 
   const priceFormatted = recurring?.formattedPrice || normalized?.displayPrice || product.displayPrice;

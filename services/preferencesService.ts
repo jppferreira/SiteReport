@@ -2,12 +2,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { getLocale } from '@/i18n';
 import {
+  CommercialTemplateId,
   CoverDesignId,
+  type CrewAvatarComposition,
+  type CrewAvatarId,
+  DEFAULT_COMMERCIAL_TEMPLATE,
   DEFAULT_COVER_DESIGN,
+  DEFAULT_CREW_AVATAR_COMPOSITION,
+  DEFAULT_CREW_AVATAR_ID,
   DEFAULT_REPORT_SECTION_ORDER,
   DEFAULT_REPORT_SECTIONS,
   DEFAULT_REPORT_TEMPLATE,
+  normalizeCommercialTemplateId,
   normalizeCoverDesignId,
+  normalizeCrewAvatarComposition,
+  normalizeCrewAvatarId,
   normalizePhotoAnnotationLayout,
   normalizePhotoBrowseLayout,
   normalizeReportSectionOrder,
@@ -35,6 +44,8 @@ export type AppPreferences = {
   defaultPhotoQuality: PhotoQuality;
   includeSignatureByDefault: boolean;
   reportTemplate: ReportTemplateId;
+  /** Quote / invoice PDF layout (Classic, Bold, Minimal). */
+  commercialTemplate: CommercialTemplateId;
   coverDesign: CoverDesignId;
   /** Annotated photo cards: stacked full width, or image beside the note cards. */
   photoAnnotationLayout: PhotoAnnotationLayout;
@@ -63,6 +74,14 @@ export type AppPreferences = {
   lastJobTrade: string | null;
   /** Follow system appearance, or force light / dark. */
   appearance: AppearancePreference;
+  /** Local overdue invoice chase notifications (3 / 7 / 14 days after due). */
+  overdueRemindersEnabled: boolean;
+  /** Local quote-expiry nudge a few days before validUntil. */
+  quoteExpiryRemindersEnabled: boolean;
+  /** @deprecated Flat preset id — migrated into crewAvatarComposition. */
+  crewAvatarId: CrewAvatarId;
+  /** DIY clay avatar (skin, hair, beard, top, glasses, bg). */
+  crewAvatarComposition: CrewAvatarComposition | null;
 };
 
 export function defaultMeasureUnit(): MeasureUnit {
@@ -86,6 +105,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   defaultPhotoQuality: 'standard',
   includeSignatureByDefault: true,
   reportTemplate: DEFAULT_REPORT_TEMPLATE,
+  commercialTemplate: DEFAULT_COMMERCIAL_TEMPLATE,
   coverDesign: DEFAULT_COVER_DESIGN,
   photoAnnotationLayout: 'fullWidth',
   photoBrowseLayout: 'fullWidth',
@@ -101,6 +121,10 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   measureUnit: 'm',
   lastJobTrade: null,
   appearance: 'system',
+  overdueRemindersEnabled: true,
+  quoteExpiryRemindersEnabled: true,
+  crewAvatarId: DEFAULT_CREW_AVATAR_ID,
+  crewAvatarComposition: DEFAULT_CREW_AVATAR_COMPOSITION,
 };
 
 export async function hasCompletedOnboarding(): Promise<boolean> {
@@ -125,6 +149,7 @@ export async function getPreferences(): Promise<AppPreferences> {
     const stored = JSON.parse(raw) as Partial<AppPreferences>;
     const parsed = { ...DEFAULT_PREFERENCES, ...stored } as AppPreferences;
     parsed.reportTemplate = normalizeReportTemplateId(parsed.reportTemplate);
+    parsed.commercialTemplate = normalizeCommercialTemplateId(parsed.commercialTemplate);
     parsed.coverDesign = normalizeCoverDesignId(parsed.coverDesign);
     parsed.photoAnnotationLayout = normalizePhotoAnnotationLayout(parsed.photoAnnotationLayout);
     parsed.photoBrowseLayout = normalizePhotoBrowseLayout(parsed.photoBrowseLayout);
@@ -145,6 +170,16 @@ export async function getPreferences(): Promise<AppPreferences> {
     parsed.measureUnit = normalizeMeasureUnit(parsed.measureUnit);
     if (typeof parsed.lastJobTrade !== 'string') parsed.lastJobTrade = null;
     parsed.appearance = normalizeAppearancePreference(parsed.appearance);
+    if (typeof parsed.overdueRemindersEnabled !== 'boolean') parsed.overdueRemindersEnabled = true;
+    if (typeof parsed.quoteExpiryRemindersEnabled !== 'boolean') {
+      parsed.quoteExpiryRemindersEnabled = true;
+    }
+    parsed.crewAvatarId = normalizeCrewAvatarId(parsed.crewAvatarId);
+    if (stored.crewAvatarComposition == null) {
+      parsed.crewAvatarComposition = null;
+    } else {
+      parsed.crewAvatarComposition = normalizeCrewAvatarComposition(stored.crewAvatarComposition);
+    }
     return parsed;
   } catch {
     return { ...DEFAULT_PREFERENCES, measureUnit: defaultMeasureUnit() };

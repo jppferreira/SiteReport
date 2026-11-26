@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { documentsRepository, jobsRepository, photosRepository } from '@/database';
 import type { JobDocumentSummary } from '@/database/repositories/documentsRepository';
 import { JobPhotoSummary } from '@/database/repositories/photosRepository';
+import { summarizeMoney } from '@/hooks/useDocuments';
 import { DocumentKind, Job, effectiveStatus } from '@/models';
 import { logger } from '@/utils/logger';
+
+const EMPTY_MONEY = summarizeMoney([]);
 
 export type JobsDocKindFilter = 'all' | DocumentKind;
 
@@ -94,43 +97,64 @@ export function useJobs() {
     report: false,
     invoice: false,
   });
-  const [docKind, setDocKindState] = useState<JobsDocKindFilter>('all');
+  const [docKind, setDocKindState] = useState<JobsDocKindFilter>('quote');
   const [sheetFilters, setSheetFilters] = useState<JobsSheetFilters>(EMPTY_SHEET_FILTERS);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [money, setMoney] = useState(EMPTY_MONEY);
+  // Keep search in a ref so `refresh` stays identity-stable. Otherwise every
+  // keystroke recreates `refresh`, and Jobs' `useFocusEffect([refresh])`
+  // re-fires a non-silent load → LoadingPage unmounts the TextInput → keyboard flickers.
+  const searchRef = useRef(search);
+  searchRef.current = search;
 
-  const refresh = useCallback(async (nextSearch?: string) => {
-    setLoading(true);
+  const refresh = useCallback(async (nextSearch?: string, opts?: { silent?: boolean }) => {
+    // Search keystrokes must not flip `loading` — that remounts the list and
+    // dismisses the keyboard (flicker).
+    if (!opts?.silent) setLoading(true);
     setError(null);
     try {
-      const result = await jobsRepository.listJobs('all', nextSearch ?? search);
+      const result = await jobsRepository.listJobs('all', nextSearch ?? searchRef.current);
       setAllJobs(result);
-      const [photos, docs, presence] = await Promise.all([
+      const [photos, docs, presence, allDocuments] = await Promise.all([
         photosRepository.getJobPhotoSummaries(result.map((j) => j.id)),
         documentsRepository.getJobDocumentSummaries(result.map((j) => j.id)),
         documentsRepository.getDocumentKindPresence(),
+        documentsRepository.listAllDocuments(),
       ]);
       setPhotoSummaries(photos);
       setDocumentSummaries(docs);
       setKindPresence(presence);
+      setMoney(summarizeMoney(allDocuments.map((document) => ({ document, job: null }))));
     } catch (err) {
       logger.error('Failed to load jobs', err);
       setError("We couldn't load your jobs. Try again.");
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
-  }, [search]);
+  }, []);
 
+  const searchReady = useRef(false);
   useEffect(() => {
-    refresh(search);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+    // First paint: show the loading skeleton. Later search edits stay silent so
+    // the TextInput keeps focus and the keyboard does not flicker.
+    if (!searchReady.current) {
+      searchReady.current = true;
+      void refresh(search);
+      return;
+    }
+    const handle = setTimeout(() => {
+      void refresh(search, { silent: true });
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [search, refresh]);
 
   const refreshCurrent = useCallback(() => refresh(), [refresh]);
 
   const setDocKind = useCallback((next: JobsDocKindFilter) => {
-    setDocKindState((prev) => (prev === next ? 'all' : next));
+    // Always keep one segment selected — tapping the active pill does not clear it.
+    setDocKindState(next);
   }, []);
 
   const jobs = useMemo(() => {
@@ -164,5 +188,29 @@ export function useJobs() {
     loading,
     error,
     refresh: refreshCurrent,
+    outstandingInvoicePence: money.outstandingInvoicePence,
+    unpaidInvoiceCount: money.unpaidInvoiceCount,
+    overdueInvoiceCount: money.overdueInvoiceCount,
+    overdueInvoicePence: money.overdueInvoicePence,
+    paidMonthPence: money.paidMonthPence,
+    waitingQuoteCount: money.waitingQuoteCount,
+    waitingQuotePence: money.waitingQuotePence,
+    sentQuoteCount: money.sentQuoteCount,
+    sentQuotePence: money.sentQuotePence,
+    awaitingQuoteCount: money.awaitingQuoteCount,
+    awaitingQuotePence: money.awaitingQuotePence,
+    declinedQuoteCount: money.declinedQuoteCount,
+    declinedQuotePence: money.declinedQuotePence,
+    sentInvoiceCount: money.sentInvoiceCount,
+    sentInvoicePence: money.sentInvoicePence,
+    awaitingPaymentCount: money.awaitingPaymentCount,
+    awaitingPaymentPence: money.awaitingPaymentPence,
+    draftInvoiceCount: money.draftInvoiceCount,
+    draftInvoicePence: money.draftInvoicePence,
+    draftQuoteCount: money.draftQuoteCount,
+    draftQuotePence: money.draftQuotePence,
+    expiresSoonCount: money.expiresSoonCount,
+    acceptedQuoteCount: money.acceptedQuoteCount,
+    acceptedQuotePence: money.acceptedQuotePence,
   };
 }

@@ -11,6 +11,7 @@ type SearchInputProps = {
   placeholder?: string;
   /** `compact` — 44px white bordered field (Jobs home Figma). Default keeps the taller sunken field. */
   variant?: 'default' | 'compact';
+  autoFocus?: boolean;
   style?: object;
 };
 
@@ -19,6 +20,7 @@ export function SearchInput({
   onChangeText,
   placeholder,
   variant = 'default',
+  autoFocus = false,
   style,
 }: SearchInputProps) {
   const { colors, radius, spacing } = useTheme();
@@ -51,6 +53,10 @@ export function SearchInput({
         placeholderTextColor={colors.textTertiary}
         accessibilityLabel={resolvedPlaceholder}
         returnKeyType="search"
+        autoFocus={autoFocus}
+        autoCorrect={false}
+        autoCapitalize="none"
+        blurOnSubmit={false}
         style={[
           styles.input,
           compact ? styles.inputCompact : null,
@@ -58,16 +64,19 @@ export function SearchInput({
           Platform.OS === 'web' ? webOutline : null,
         ]}
       />
-      {value.length > 0 ? (
-        <Pressable
-          onPress={() => onChangeText('')}
-          accessibilityRole="button"
-          accessibilityLabel={t('components.searchClear')}
-          hitSlop={8}
-        >
-          <Ionicons name="close-circle" size={compact ? 18 : 22} color={colors.textTertiary} />
-        </Pressable>
-      ) : null}
+      {/* Always reserve the clear slot so the first character doesn’t shift layout under the focused input. */}
+      <View style={[styles.clearSlot, compact ? styles.clearSlotCompact : null]}>
+        {value.length > 0 ? (
+          <Pressable
+            onPress={() => onChangeText('')}
+            accessibilityRole="button"
+            accessibilityLabel={t('components.searchClear')}
+            hitSlop={8}
+          >
+            <Ionicons name="close-circle" size={compact ? 18 : 22} color={colors.textTertiary} />
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -93,6 +102,16 @@ const styles = StyleSheet.create({
   },
   inputCompact: {
     fontSize: 14.5,
+  },
+  clearSlot: {
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clearSlotCompact: {
+    width: 18,
+    height: 18,
   },
 });
 

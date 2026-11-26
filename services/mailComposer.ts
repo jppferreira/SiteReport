@@ -6,7 +6,8 @@ import { t } from '@/i18n';
 import { logger } from '@/utils/logger';
 
 export type ComposeReportEmailInput = {
-  recipientEmail: string;
+  /** Optional — empty opens the composer with no To: address. */
+  recipientEmail?: string | null;
   subject: string;
   body: string;
   pdfUri: string;
@@ -26,8 +27,9 @@ export async function composeReportEmail(input: ComposeReportEmailInput): Promis
   try {
     const available = await MailComposer.isAvailableAsync();
     if (available) {
+      const to = input.recipientEmail?.trim();
       const result = await MailComposer.composeAsync({
-        recipients: [input.recipientEmail],
+        recipients: to ? [to] : [],
         subject: input.subject,
         body: input.body,
         attachments: [input.pdfUri],

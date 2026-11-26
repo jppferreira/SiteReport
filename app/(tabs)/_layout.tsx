@@ -24,10 +24,9 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="documents"
         options={{
+          // Merged into Jobs; kept as a redirect for deep links.
+          href: null,
           title: t('tabs.documents'),
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'documents' : 'documents-outline'} size={22} color={typeof color === 'string' ? color : undefined} />
-          ),
         }}
       />
       <Tabs.Screen

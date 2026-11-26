@@ -32,6 +32,7 @@ import {
 } from '@/models';
 import { formatDate, formatDateTime } from '@/utils/format';
 
+import { buildCommercialDocumentHtml, isCommercialDocumentType } from './commercialDocumentHtml';
 import { DEFAULT_COVER_SCENE, DEFAULT_THANKS_SCENE } from './defaultScenes';
 import { premiumFontLinks, premiumStylesheet, renderPremiumTemplate } from './premium';
 import { premiumTheme } from './premium/shared';
@@ -318,13 +319,16 @@ function invoiceDetailsBlock(input: ReportHtmlInput): string {
     (inv.accountNumber
       ? `Payment due within ${inv.dueDays} days to account ${inv.accountNumber}. Please use ${inv.invoiceNumber} as your reference.`
       : `Payment due within ${inv.dueDays} days. Please use ${inv.invoiceNumber} as your reference.`);
+  const lines = linesForReport(input.pricing);
+  const includeVat = Boolean(input.business.vatNumber?.trim());
+  const breakdown = pricingVatBreakdown(lines, includeVat ? VAT_RATE_PERCENT : 0);
   return `<div class="invoice-details">
     <div class="invoice-head"><span>Invoice details</span><span class="invoice-pill">${escapeHtml(
       DOCUMENT_TYPE_LABELS.invoice.toUpperCase()
     )}</span></div>
     ${rows.join('')}
     <div class="invoice-terms"><div class="eyebrow">Payment terms</div><p>${escapeHtml(terms)}</p></div>
-    ${invoicePayByCardBlock(inv)}
+    ${invoicePayByCardBlock(inv, { totalPence: breakdown?.totalPence ?? null })}
   </div>`;
 }
 
@@ -1706,20 +1710,28 @@ function stylesheet(theme: Theme): string {
   .invoice-terms p { margin: 1mm 0 0; font-size: 9pt; color: ${cssColor(MUTED)}; line-height: 1.4; }
   .invoice-pay-card {
     display: flex; gap: 3mm; align-items: center; justify-content: space-between;
-    margin-top: 3mm; padding: 3mm 2.8mm; border-radius: 2.4mm;
-    background: ${theme.tint}; border: 1px solid ${theme.accent}44;
+    margin-top: 3mm; padding: 3.5mm 3mm; border-radius: 2.6mm;
+    background: #F5F3FF; border: 1px solid #D9CFF7;
     break-inside: avoid; page-break-inside: avoid;
   }
+  .invoice-pay-card-bank { background: ${cssColor(WASH)}; border-color: ${cssColor(LINE)}; }
   .invoice-pay-copy { flex: 1; min-width: 0; }
-  .invoice-pay-title { margin: 0; font-size: 11pt; font-weight: 700; color: ${cssColor(INK)}; }
-  .invoice-pay-lede { margin: 1mm 0 0; font-size: 8.5pt; color: ${cssColor(MUTED)}; line-height: 1.35; }
-  .invoice-pay-link {
-    display: inline-block; margin-top: 2mm; color: ${theme.accent};
-    font-size: 9pt; font-weight: 600; text-decoration: underline;
+  .invoice-pay-btn {
+    display: inline-block; background: #635BFF; color: #fff !important;
+    text-decoration: none; font-size: 10.5pt; font-weight: 700;
+    padding: 1.8mm 3.2mm; border-radius: 2mm; margin-bottom: 1.5mm;
   }
-  .invoice-pay-qr { flex-shrink: 0; text-align: center; }
-  .invoice-pay-qr span { display: block; margin-top: 1mm; font-size: 7pt; color: ${cssColor(MUTED)}; max-width: 24mm; line-height: 1.25; }
-  .invoice-pay-ref { font-weight: 600; }
+  .invoice-pay-link {
+    display: block; color: #635BFF; font-size: 9pt; font-weight: 500;
+    text-decoration: none; word-break: break-all; margin: 1mm 0;
+  }
+  .invoice-pay-enter { margin: 1.5mm 0 0; font-size: 9.5pt; font-weight: 700; color: ${cssColor(INK)}; }
+  .invoice-pay-bank { margin: 1mm 0 0; font-size: 8.5pt; color: ${cssColor(MUTED)}; }
+  .invoice-pay-qr {
+    flex-shrink: 0; width: 22mm; height: 22mm; padding: 1.2mm;
+    background: #fff; border-radius: 1.6mm; text-align: center;
+  }
+  .invoice-pay-qr img { width: 100%; height: auto; display: block; }
   .review-card {
     display: flex; gap: 3mm; align-items: center; justify-content: space-between;
     margin: 4mm 0 0; padding: 3.5mm 3.2mm; border-radius: 2.6mm;
@@ -2169,6 +2181,11 @@ function renderTemplate(template: ReportTemplateId, input: ReportHtmlInput, them
 }
 
 export function buildReportHtml(input: ReportHtmlInput): string {
+  // Quotes and invoices use the dedicated commercial sheet (Figma L7), not a job report layout.
+  if (isCommercialDocumentType(input.documentType)) {
+    return buildCommercialDocumentHtml(input);
+  }
+
   const template = normalizeReportTemplateId(input.template);
   const theme = buildTheme(input.business.accentColor || FALLBACK_ACCENT);
   const premium = isPremiumTradeTemplate(template);
@@ -2202,6 +2219,20 @@ body {
   width: 210mm;
   max-width: 210mm;
   transform-origin: top left;
+}
+body[data-tier="commercial"] {
+  background: #dfe3df;
+  padding: 12px 0;
+}
+body[data-tier="commercial"] .comm-sheet {
+  width: 210mm;
+  min-height: 297mm;
+  box-sizing: border-box;
+  background: #fff;
+  /* Letterhead accents are full-bleed; horizontal padding lives inside sections. */
+  padding: 0;
+  box-shadow: 0 10px 28px rgba(16, 22, 18, 0.12);
+  margin: 0 auto;
 }
 .sheet-cover,
 .sheet-close,

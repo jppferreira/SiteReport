@@ -40,8 +40,10 @@ import { useTheme } from '@/theme';
 import {
   autoPlaceLabel,
   boundsForShape,
+  expandBoundsForMove,
   handlesForShape,
   hitTestHandle,
+  hitTestMoveTarget,
   hitTestShape,
   moveShape,
   type MarkupHandleId,
@@ -54,8 +56,8 @@ type DragSession =
   | { kind: 'move'; index: number; origin: AnnotationPoint; start: AnnotationShape; dirty: boolean }
   | { kind: 'handle'; index: number; handleId: MarkupHandleId; dirty: boolean };
 
-const HANDLE_SIZE = 18;
-const SELECTION_PAD = 10;
+const HANDLE_SIZE = 24;
+const SELECTION_PAD = 12;
 const HANDLE_COLOR = '#1FA84A';
 
 const LAST_TOOL_KEY = 'tradesreport.photoMarkup.lastTool';
@@ -291,52 +293,82 @@ export function PhotoAnnotationEditor({
     [publish]
   );
 
+  /** Enter select/move (or handle) mode for an existing mark; clears the draw tool. */
+  const beginSelectAt = useCallback((point: AnnotationPoint, index: number) => {
+    const shape = shapesRef.current[index];
+    if (!shape) return;
+    if (toolRef.current) {
+      toolRef.current = null;
+      setTool(null);
+    }
+    setSelectedIndex(index);
+    selectedIndexRef.current = index;
+    haptic();
+
+    const handleId = hitTestHandle(shape, point);
+    if (handleId) {
+      dragRef.current = { kind: 'handle', index, handleId, dirty: false };
+      return;
+    }
+    dragRef.current = {
+      kind: 'move',
+      index,
+      origin: point,
+      start: shape,
+      dirty: false,
+    };
+  }, []);
+
   const beginAt = useCallback(
     (pageX: number, pageY: number) => {
       const selected = toolRef.current;
       const point = pointFromTouch(pageX, pageY);
       if (!point) return;
 
-      if (!selected) {
-        const currentSelected = selectedIndexRef.current;
-        if (currentSelected != null) {
-          const selectedShape = shapesRef.current[currentSelected];
-          if (selectedShape) {
-            const handleId = hitTestHandle(selectedShape, point);
-            if (handleId) {
-              dragRef.current = { kind: 'handle', index: currentSelected, handleId, dirty: false };
-              haptic();
-              return;
+      // Already-selected mark: handles and fat move target win over drawing.
+      const currentSelected = selectedIndexRef.current;
+      if (currentSelected != null) {
+        const selectedShape = shapesRef.current[currentSelected];
+        if (selectedShape) {
+          const handleId = hitTestHandle(selectedShape, point);
+          if (handleId) {
+            if (toolRef.current) {
+              toolRef.current = null;
+              setTool(null);
             }
-            if (hitTestShape([selectedShape], point) === 0) {
-              dragRef.current = {
-                kind: 'move',
-                index: currentSelected,
-                origin: point,
-                start: selectedShape,
-                dirty: false,
-              };
-              return;
-            }
+            dragRef.current = { kind: 'handle', index: currentSelected, handleId, dirty: false };
+            haptic();
+            return;
           }
-        }
-        const hit = hitTestShape(shapesRef.current, point);
-        setSelectedIndex(hit);
-        if (hit != null) {
-          haptic();
-          const hitShape = shapesRef.current[hit];
-          if (hitShape) {
+          if (hitTestMoveTarget(selectedShape, point)) {
+            if (toolRef.current) {
+              toolRef.current = null;
+              setTool(null);
+            }
             dragRef.current = {
               kind: 'move',
-              index: hit,
+              index: currentSelected,
               origin: point,
-              start: hitShape,
+              start: selectedShape,
               dirty: false,
             };
+            return;
           }
-        } else {
-          dragRef.current = null;
         }
+      }
+
+      // Prefer tapping an existing mark over drawing a new one on top of it —
+      // otherwise delete / drag is unreachable while a tool stays selected.
+      const hit = hitTestShape(shapesRef.current, point);
+      if (hit != null) {
+        beginSelectAt(point, hit);
+        return;
+      }
+
+      if (!selected) {
+        setSelectedIndex(null);
+        selectedIndexRef.current = null;
+        dragRef.current = null;
         return;
       }
 
@@ -376,8 +408,9 @@ export function PhotoAnnotationEditor({
       draftRef.current = next;
       setDraft(next);
       setSelectedIndex(null);
+      selectedIndexRef.current = null;
     },
-    [placeLabel, pointFromTouch]
+    [beginSelectAt, placeLabel, pointFromTouch]
   );
 
   const moveAt = useCallback(
@@ -555,6 +588,8 @@ export function PhotoAnnotationEditor({
       return value;
     });
     setSelectedIndex(null);
+    selectedIndexRef.current = null;
+    dragRef.current = null;
     if (!seenHints[next]) {
       setHintTool(next);
       setSeenHints((prev) => ({ ...prev, [next]: true }));
@@ -600,7 +635,10 @@ export function PhotoAnnotationEditor({
   const deleteSelected = () => {
     if (selectedIndex == null) return;
     haptic();
-    publish(shapesRef.current.filter((_, i) => i !== selectedIndex));
+    const next = shapesRef.current.filter((_, i) => i !== selectedIndex);
+    publish(next, { keepSelection: null });
+    selectedIndexRef.current = null;
+    dragRef.current = null;
   };
 
   const copySelected = () => {
@@ -682,7 +720,7 @@ export function PhotoAnnotationEditor({
   const selectedShape = selectedIndex != null ? shapes[selectedIndex] : null;
   const selectedBounds =
     selectedShape && labelIndex == null && measureDraftIndex == null
-      ? boundsForShape(selectedShape)
+      ? expandBoundsForMove(boundsForShape(selectedShape))
       : null;
   const selectedHandles =
     selectedShape && labelIndex == null && measureDraftIndex == null

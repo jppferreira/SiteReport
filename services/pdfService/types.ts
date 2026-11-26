@@ -1,4 +1,5 @@
 import {
+  CommercialTemplateId,
   CoverDesignId,
   DocumentType,
   JobStatus,
@@ -46,6 +47,13 @@ export type ReportInvoiceDetails = {
   accountNumber: string | null;
   paymentTerms: string | null;
   stripePaymentLink?: string | null;
+};
+
+/** Quote header fields for the commercial quote PDF (Figma Documents). */
+export type ReportQuoteDetails = {
+  quoteNumber: string;
+  issuedAt: string;
+  validUntil: string | null;
 };
 
 export type ReportHtmlInput = {
@@ -101,6 +109,8 @@ export type ReportHtmlInput = {
   documentType?: DocumentType;
   /** Present when documentType is invoice. */
   invoice?: ReportInvoiceDetails | null;
+  /** Present when documentType is quote (commercial PDF). */
+  quote?: ReportQuoteDetails | null;
   /** Review card on the last page when Pro and a URL are set. */
   review?: ReportReviewLink | null;
   signature: {
@@ -110,6 +120,8 @@ export type ReportHtmlInput = {
   } | null;
   generatedAt: string;
   template: ReportTemplateId;
+  /** Quote / invoice layout. Ignored for job reports. */
+  commercialTemplate?: CommercialTemplateId;
   /** Annotated photo cards: full-width stack, or before/after side by side. */
   photoAnnotationLayout?: PhotoAnnotationLayout;
   /** Which modular blocks print. Applied before HTML assembly. */

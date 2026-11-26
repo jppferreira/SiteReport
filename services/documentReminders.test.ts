@@ -10,11 +10,11 @@ describe('atMorningLocal', () => {
     expect(when.getMinutes()).toBe(0);
   });
 
-  it('schedules quote expiry reminder three days before validUntil', () => {
-    const when = atMorningLocal('2026-12-10', -3);
+  it('schedules quote expiry reminder two days before validUntil', () => {
+    const when = atMorningLocal('2026-12-10', -2);
     expect(when.getFullYear()).toBe(2026);
     expect(when.getMonth()).toBe(11);
-    expect(when.getDate()).toBe(7);
+    expect(when.getDate()).toBe(8);
     expect(when.getHours()).toBe(9);
   });
 });

@@ -17,9 +17,11 @@ import {
   DEFAULT_REPORT_TEMPLATE,
   dueDateFromJob,
   formatInvoiceNumber,
+  formatQuoteNumber,
   normalizeDocumentType,
   normalizeReportImageMask,
   PhotoAnnotations,
+  quoteValidUntilFromCreated,
   Report,
   ReportTemplateId,
   templateAllowedForTier,
@@ -27,6 +29,10 @@ import {
 
 function formatProvisionalInvoice(sequence: number): string {
   return formatInvoiceNumber(sequence);
+}
+
+function formatProvisionalQuote(sequence: number): string {
+  return formatQuoteNumber(sequence);
 }
 import { formatStampCaptionParts } from '@/services/evidenceStamp';
 import { resolveStampAddress } from '@/services/locationStamp';
@@ -251,9 +257,31 @@ export async function loadReportDocument(
 
   const documentType = normalizeDocumentType(summary?.documentType ?? DEFAULT_DOCUMENT_TYPE);
   const effectiveType = isPro || documentType === 'reference' ? documentType : DEFAULT_DOCUMENT_TYPE;
+
+  const jobDocuments =
+    effectiveType === 'quote' || effectiveType === 'invoice'
+      ? await documentsRepository.listDocumentsForJob(jobId)
+      : [];
+  const tradeDoc =
+    jobDocuments.find((doc) => doc.kind === effectiveType) ??
+    jobDocuments.find((doc) => doc.kind === 'invoice' || doc.kind === 'quote') ??
+    null;
+
   const invoiceNumber =
+    (effectiveType === 'invoice' ? tradeDoc?.number : null) ??
     summary?.invoiceNumber ??
     (effectiveType === 'invoice' ? formatProvisionalInvoice(business.nextInvoiceSequence) : null);
+  const quoteNumber =
+    (effectiveType === 'quote' ? tradeDoc?.number : null) ??
+    (effectiveType === 'quote' ? formatProvisionalQuote(business.nextQuoteSequence ?? 1) : null);
+  const invoiceDueDate =
+    (effectiveType === 'invoice' ? tradeDoc?.dueDate : null) ??
+    dueDateFromJob(job.jobDate, business.defaultDueDays);
+  const quoteValidUntil =
+    (effectiveType === 'quote' ? tradeDoc?.validUntil : null) ??
+    (effectiveType === 'quote'
+      ? quoteValidUntilFromCreated(tradeDoc?.createdAt ?? new Date().toISOString(), business.defaultQuoteValidityDays ?? 30)
+      : null);
 
   const reviewUrl = business.reviewUrl?.trim() || null;
   const includeReview = isPro && includeReviewPref && Boolean(reviewUrl);
@@ -314,19 +342,31 @@ export async function loadReportDocument(
         ? checklist!.items.map((item) => ({ label: item.label, checked: item.checked }))
         : null,
       // summary.notes stays on the device. It is not part of the customer PDF.
-      pricing: includeCosts ? summary?.pricing ?? null : null,
+      // Quotes/invoices always include pricing — they use their own commercial template.
+      pricing:
+        effectiveType === 'quote' || effectiveType === 'invoice' || includeCosts
+          ? summary?.pricing ?? null
+          : null,
       documentType: effectiveType,
       invoice:
         effectiveType === 'invoice' && invoiceNumber
           ? {
               invoiceNumber,
               dueDays: business.defaultDueDays,
-              dueDate: dueDateFromJob(job.jobDate, business.defaultDueDays),
+              dueDate: invoiceDueDate,
               bankName: business.bankName,
               sortCode: business.sortCode,
               accountNumber: business.accountNumber,
               paymentTerms: business.paymentTerms,
               stripePaymentLink: business.stripePaymentLink,
+            }
+          : null,
+      quote:
+        effectiveType === 'quote' && quoteNumber
+          ? {
+              quoteNumber,
+              issuedAt: tradeDoc?.createdAt ?? new Date().toISOString(),
+              validUntil: quoteValidUntil,
             }
           : null,
       review: includeReview && reviewUrl ? { url: reviewUrl, provider: business.reviewProvider } : null,
@@ -335,6 +375,7 @@ export async function loadReportDocument(
         : null,
       reportSections: sections,
       reportSectionOrder: sectionOrder,
+      commercialTemplate: preferences.commercialTemplate,
       generatedAt: new Date().toISOString(),
     },
   };

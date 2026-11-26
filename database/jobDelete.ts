@@ -8,8 +8,10 @@ export const JOB_CHILD_TABLES = [
   'photo_areas',
   'work_summaries',
   'signatures',
+  'report_events',
   'reports',
   'documents',
+  'job_checklists',
 ] as const;
 
 export function deleteJobStatements(): string[] {

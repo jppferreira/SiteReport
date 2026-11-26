@@ -2,7 +2,7 @@ import { Entitlement, FREE_ENTITLEMENT, PlanId, ProductInfo, PurchaseResult, Res
 import { logger } from '@/utils/logger';
 import { getSecureItem, setSecureItem } from '@/utils/secureStorage';
 
-import { PRO_CATALOG } from './catalog';
+import { PRO_CATALOG, sortProductsByCatalog } from './catalog';
 import { PurchaseService } from './PurchaseService';
 
 const STORE_STATE_KEY = 'sitereport.mockStore.state';
@@ -114,7 +114,7 @@ export class MockPurchaseService implements PurchaseService {
 
   async getProducts(): Promise<ProductInfo[]> {
     await this.initialize();
-    return PRODUCTS;
+    return sortProductsByCatalog(PRODUCTS);
   }
 
   async purchase(planId: PlanId): Promise<PurchaseResult> {

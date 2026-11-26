@@ -18,12 +18,62 @@ import { getPurchaseService } from './purchases';
 
 const ENTITLEMENT_CACHE_KEY = 'sitereport.entitlement.cache';
 const PRODUCTS_CACHE_KEY = 'sitereport.products.cache';
+/** __DEV__ only — forces a plan so store sandbox/Play Console isn't required. */
+const DEV_OVERRIDE_KEY = 'sitereport.entitlement.devOverride';
+
+export type DevEntitlementOverride = PlanId | 'free';
 
 type Listener = (entitlement: Entitlement) => void;
 const listeners = new Set<Listener>();
 
 let cached: Entitlement | null = null;
 let cachedProducts: ProductInfo[] | null = null;
+
+function entitlementFromDevOverride(override: DevEntitlementOverride): Entitlement {
+  if (override === 'free') return { ...FREE_ENTITLEMENT, lastVerifiedAt: new Date().toISOString() };
+  const expiresAt =
+    override === 'lifetime'
+      ? null
+      : new Date(Date.now() + (override === 'annual' ? 365 : 30) * 24 * 60 * 60 * 1000).toISOString();
+  return {
+    status: 'pro',
+    planId: override,
+    subscriptionState: 'active',
+    expiresAt,
+    isLifetime: override === 'lifetime',
+    lastVerifiedAt: new Date().toISOString(),
+  };
+}
+
+async function readDevOverride(): Promise<DevEntitlementOverride | null> {
+  if (!__DEV__) return null;
+  try {
+    const raw = await getSecureItem(DEV_OVERRIDE_KEY);
+    if (raw === 'free' || raw === 'monthly' || raw === 'annual' || raw === 'lifetime') return raw;
+  } catch {
+    // Ignore — fall through to the real store.
+  }
+  return null;
+}
+
+/** __DEV__ only. Pass `null` to clear and re-read the real store. */
+export async function setDevEntitlementOverride(
+  override: DevEntitlementOverride | null
+): Promise<Entitlement> {
+  if (!__DEV__) return refreshEntitlement();
+  if (override == null) {
+    await setSecureItem(DEV_OVERRIDE_KEY, '');
+    return refreshEntitlement();
+  }
+  await setSecureItem(DEV_OVERRIDE_KEY, override);
+  const entitlement = entitlementFromDevOverride(override);
+  await writeCache(entitlement);
+  return entitlement;
+}
+
+export async function getDevEntitlementOverride(): Promise<DevEntitlementOverride | null> {
+  return readDevOverride();
+}
 
 async function readCache(): Promise<Entitlement> {
   if (cached) return cached;
@@ -48,6 +98,12 @@ async function writeCache(entitlement: Entitlement): Promise<void> {
 /** Call on app start and when the app returns to the foreground. */
 export async function refreshEntitlement(): Promise<Entitlement> {
   try {
+    const override = await readDevOverride();
+    if (override) {
+      const entitlement = entitlementFromDevOverride(override);
+      await writeCache(entitlement);
+      return entitlement;
+    }
     const store = getPurchaseService();
     await store.initialize();
     const fresh = await store.getEntitlement();

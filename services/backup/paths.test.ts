@@ -1,4 +1,24 @@
-import { orphanBackupPath, toBackupPath } from './paths';
+import { orphanBackupPath, resolveSitereportUri, toBackupPath } from './paths';
+
+describe('resolveSitereportUri', () => {
+  const docs = 'file:///var/mobile/Containers/Data/Application/NEW-UUID/Documents/';
+
+  it('rewrites a stale iOS container absolute URI onto the current Documents root', () => {
+    const stale =
+      'file:///var/mobile/Containers/Data/Application/OLD-UUID/Documents/sitereport/jobs/kitchen-demo/photos/before-suite.jpg';
+    expect(resolveSitereportUri(stale, docs)).toBe(
+      `${docs}sitereport/jobs/kitchen-demo/photos/before-suite.jpg`
+    );
+  });
+
+  it('resolves a relative backup path', () => {
+    expect(resolveSitereportUri('jobs/a/photos/b.jpg', docs)).toBe(`${docs}sitereport/jobs/a/photos/b.jpg`);
+  });
+
+  it('leaves unrelated URIs alone', () => {
+    expect(resolveSitereportUri('file:///cache/tmp.jpg', docs)).toBe('file:///cache/tmp.jpg');
+  });
+});
 
 describe('toBackupPath', () => {
   it('reads a normal app file URI', () => {

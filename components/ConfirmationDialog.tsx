@@ -43,7 +43,9 @@ export function ConfirmationDialog({
           { backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.xl },
           shadows.overlay,
         ]}
-        accessibilityViewIsModal
+        // Keep children (Save / Cancel) as separate AX nodes — accessibilityViewIsModal
+        // was collapsing them into one element and blocking VoiceOver + UI automation.
+        accessible={false}
         accessibilityRole="alert"
       >
         <Text variant="h3">{title}</Text>

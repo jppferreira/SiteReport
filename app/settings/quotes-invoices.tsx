@@ -1,13 +1,14 @@
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 
-import { FIELD_STACK_GAP, Input, NavigationHeader, Screen, Text, TextButton } from '@/components';
+import { FIELD_STACK_GAP, Input, NavigationHeader, Screen, Text, TextButton, ToggleRow } from '@/components';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import { useFlushWhenHidden } from '@/hooks/useFlushWhenHidden';
 import { useI18n } from '@/i18n/useI18n';
 import { formatInvoiceNumber, formatQuoteNumber, isStripePaymentLinkUrl, normalizeStripePaymentLink } from '@/models';
+import { getPreferences, savePreferences } from '@/services/preferencesService';
 import { useTheme } from '@/theme';
 import { goBack } from '@/utils/goBack';
 
@@ -34,6 +35,8 @@ export default function QuotesInvoicesSettingsScreen() {
   const [defaultDueDays, setDefaultDueDays] = useState('14');
   const [defaultQuoteValidityDays, setDefaultQuoteValidityDays] = useState('30');
   const [stripePaymentLink, setStripePaymentLink] = useState('');
+  const [overdueRemindersEnabled, setOverdueRemindersEnabled] = useState(true);
+  const [quoteExpiryRemindersEnabled, setQuoteExpiryRemindersEnabled] = useState(true);
   const [savedState, setSavedState] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   const hydrated = useRef(false);
@@ -72,6 +75,20 @@ export default function QuotesInvoicesSettingsScreen() {
     setStripePaymentLink(profile.stripePaymentLink ?? '');
     hydrated.current = true;
   }, [profile]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      getPreferences().then((prefs) => {
+        if (!active) return;
+        setOverdueRemindersEnabled(prefs.overdueRemindersEnabled);
+        setQuoteExpiryRemindersEnabled(prefs.quoteExpiryRemindersEnabled);
+      });
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
 
   const persist = useCallback(async () => {
     if (!hydrated.current) return;
@@ -211,7 +228,7 @@ export default function QuotesInvoicesSettingsScreen() {
           />
 
           <Text variant="label" color={colors.textSecondary} style={{ marginTop: spacing.sm }}>
-            {t('settings.cardPayments')}
+            {t('settings.quotesInvoicesGettingPaid')}
           </Text>
           <Text variant="bodySmall" color={colors.textSecondary}>
             {t('settings.cardPaymentsHint')}
@@ -230,6 +247,28 @@ export default function QuotesInvoicesSettingsScreen() {
               {t('settings.stripePaymentLinkInvalid')}
             </Text>
           ) : null}
+
+          <Text variant="label" color={colors.textSecondary} style={{ marginTop: spacing.sm }}>
+            {t('settings.quotesInvoicesReminders')}
+          </Text>
+          <ToggleRow
+            label={t('settings.overdueReminders')}
+            description={t('settings.overdueRemindersHint')}
+            value={overdueRemindersEnabled}
+            onValueChange={(value) => {
+              setOverdueRemindersEnabled(value);
+              void savePreferences({ overdueRemindersEnabled: value });
+            }}
+          />
+          <ToggleRow
+            label={t('settings.quoteExpiryReminders')}
+            description={t('settings.quoteExpiryRemindersHint')}
+            value={quoteExpiryRemindersEnabled}
+            onValueChange={(value) => {
+              setQuoteExpiryRemindersEnabled(value);
+              void savePreferences({ quoteExpiryRemindersEnabled: value });
+            }}
+          />
 
           <Text variant="caption" color={colors.textSecondary}>
             {savedState === 'saving'

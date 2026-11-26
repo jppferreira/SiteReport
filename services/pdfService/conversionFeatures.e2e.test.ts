@@ -154,12 +154,20 @@ describe('conversion features E2E pipeline', () => {
     const quoteHtml = buildReportHtml(
       baseInput({
         documentType: 'quote',
+        commercialTemplate: 'classic',
+        quote: {
+          quoteNumber: 'QUO-0001',
+          issuedAt: '2026-11-23T10:00:00.000Z',
+          validUntil: '2026-12-23',
+        },
       })
     );
-    expect(quoteHtml).toContain('>Quote<');
+    expect(quoteHtml).toContain('data-tier="commercial"');
+    expect(quoteHtml).toContain('QUOTE');
     expect(quoteHtml).toContain('VAT 20%');
     expect(quoteHtml).toContain('£294.00');
-    expect(quoteHtml).not.toContain('Invoice details');
+    expect(quoteHtml).toContain('HOW TO ACCEPT');
+    expect(quoteHtml).not.toContain('PAYMENT DETAILS');
     expect(quoteHtml).not.toContain('This is not an invoice.');
 
     const invoiceNumber = formatInvoiceNumber(142);
@@ -171,6 +179,7 @@ describe('conversion features E2E pipeline', () => {
     const invoiceHtml = buildReportHtml(
       baseInput({
         documentType: 'invoice',
+        commercialTemplate: 'classic',
         invoice: {
           invoiceNumber,
           dueDate,
@@ -182,9 +191,10 @@ describe('conversion features E2E pipeline', () => {
         },
       })
     );
-    expect(invoiceHtml).toContain('>Invoice<');
+    expect(invoiceHtml).toContain('data-tier="commercial"');
+    expect(invoiceHtml).toContain('INVOICE');
     expect(invoiceHtml).toContain('INV-0142');
-    expect(invoiceHtml).toContain('Invoice details');
+    expect(invoiceHtml).toContain('PAYMENT DETAILS');
     expect(invoiceHtml).toContain('20-45-77');
     expect(invoiceHtml).toContain('41293391');
     expect(invoiceHtml).toContain('VAT 20%');
@@ -206,11 +216,22 @@ describe('conversion features E2E pipeline', () => {
     );
   });
 
-  it('preview HTML keeps edit hooks and still shows the review card', () => {
+  it('preview HTML keeps edit hooks and still shows the review card on reports', () => {
     const preview = buildReportPreviewHtml(
       baseInput({
         review: { url: 'https://g.page/r/hart-plumbing', provider: 'google' },
+        documentType: 'reference',
+      })
+    );
+    expect(preview).toContain('preview-edit');
+    expect(preview).toContain('review-card');
+  });
+
+  it('commercial invoice preview shows the branded sheet', () => {
+    const preview = buildReportPreviewHtml(
+      baseInput({
         documentType: 'invoice',
+        commercialTemplate: 'bold',
         invoice: {
           invoiceNumber: 'INV-0142',
           dueDate: '2026-12-07',
@@ -222,9 +243,9 @@ describe('conversion features E2E pipeline', () => {
         },
       })
     );
-    expect(preview).toContain('preview-edit');
-    expect(preview).toContain('review-card');
+    expect(preview).toContain('data-template="commercial-bold"');
     expect(preview).toContain('INV-0142');
+    expect(preview).toContain('PAYMENT DETAILS');
   });
 
   it('content hash moves when review link or document type changes', async () => {

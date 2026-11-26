@@ -52,6 +52,7 @@ export function Button({
         onPress={handlePress}
         disabled={isDisabled}
         accessibilityRole="button"
+        accessibilityLabel={label}
         accessibilityState={{ disabled: isDisabled, busy: loading }}
         accessibilityHint={accessibilityHint}
         testID={testID}

@@ -1,3 +1,4 @@
+import * as FileSystem from 'expo-file-system/legacy';
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import { Platform } from 'react-native';
 
@@ -47,11 +48,21 @@ export async function saveZipToGoogleDrive(sourcePath: string, fileName: string)
     return 'saved';
   }
   try {
+    // Expo's File.write can return before the inode is visible to java.io.File.
+    // Native saveZip rejects empty/missing sources with ERR_DRIVE_WRITE before the
+    // DocumentsUI picker opens — wait until the zip has a non-zero size.
+    await waitForReadableZip(sourcePath);
+    console.warn('[Trade Report] Google Drive saveZip', { sourcePath, fileName });
     const result = await native.saveZip(sourcePath, fileName);
     if (result === 'cancelled') return 'cancelled';
     if (result === 'saved') return 'saved';
     throw new Error(t('backup.googleDriveWriteFailed'));
   } catch (error) {
+    console.warn('[Trade Report] Google Drive save failed (raw)', {
+      message: error instanceof Error ? error.message : String(error),
+      code: error && typeof error === 'object' && 'code' in error ? (error as { code?: unknown }).code : undefined,
+      name: error instanceof Error ? error.name : typeof error,
+    });
     if (error instanceof Error && isTranslatedDriveError(error)) throw error;
     const kind = classifyDriveError(error);
     if (kind === 'cancelled') return 'cancelled';
@@ -69,4 +80,26 @@ function isTranslatedDriveError(error: Error): boolean {
     error.message === t('backup.googleDriveWriteFailed') ||
     error.message === t('backup.sharingUnavailable')
   );
+}
+
+/**
+ * Native GoogleDriveSave uses java.io.File. Expo's File.write can return before
+ * that view of the cache file has a non-zero length, which makes saveZip throw
+ * ERR_DRIVE_WRITE before DocumentsUI opens.
+ */
+async function waitForReadableZip(sourcePath: string): Promise<void> {
+  const deadline = Date.now() + 3000;
+  while (Date.now() < deadline) {
+    try {
+      const info = await FileSystem.getInfoAsync(sourcePath);
+      if (info.exists && 'size' in info && typeof info.size === 'number' && info.size > 0) {
+        // One extra tick so java.io.File sees the same bytes.
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        return;
+      }
+    } catch {
+      // Retry until the cache file is visible.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
 }

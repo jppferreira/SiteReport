@@ -89,6 +89,65 @@ describe('Play subscription mapping', () => {
     expect(entitlementFromPlay([]).status).toBe('free');
   });
 
+  it('prices a legacy standalone monthly SKU when basePlanId is omitted on the offer', () => {
+    const legacy: PlayProductSnapshot = {
+      id: 'monthly',
+      displayPrice: '£4.99',
+      currency: 'GBP',
+      price: 4.99,
+      subscriptionOffers: [
+        {
+          id: '',
+          displayPrice: '£4.99',
+          price: 4.99,
+          currency: 'GBP',
+          offerTokenAndroid: 'legacy-monthly-token',
+          pricingPhasesAndroid: {
+            pricingPhaseList: [{ formattedPrice: '£4.99', priceAmountMicros: '4990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1M' }],
+          },
+        },
+      ],
+    };
+    const info = productInfoFromPlay(monthly, legacy);
+    expect(info?.priceFormatted).toBe('£4.99');
+    expect(offerTokenFor(legacy, 'monthly')).toBe('legacy-monthly-token');
+  });
+
+  it('matches base plans by billing period when basePlanIdAndroid is missing', () => {
+    const product: PlayProductSnapshot = {
+      id: 'tradesreport.pro',
+      displayPrice: '£4.99',
+      currency: 'GBP',
+      price: 4.99,
+      subscriptionOffers: [
+        {
+          id: '',
+          displayPrice: '£4.99',
+          price: 4.99,
+          currency: 'GBP',
+          offerTokenAndroid: 'period-monthly',
+          pricingPhasesAndroid: {
+            pricingPhaseList: [{ formattedPrice: '£4.99', priceAmountMicros: '4990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1M' }],
+          },
+        },
+        {
+          id: '',
+          displayPrice: '£29.99',
+          price: 29.99,
+          currency: 'GBP',
+          offerTokenAndroid: 'period-annual',
+          pricingPhasesAndroid: {
+            pricingPhaseList: [{ formattedPrice: '£29.99', priceAmountMicros: '29990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' }],
+          },
+        },
+      ],
+    };
+    expect(productInfoFromPlay(monthly, product)?.priceFormatted).toBe('£4.99');
+    expect(productInfoFromPlay(annual, product)?.priceFormatted).toBe('£29.99');
+    expect(offerTokenFor(product, 'monthly')).toBe('period-monthly');
+    expect(offerTokenFor(product, 'annual')).toBe('period-annual');
+  });
+
   it('drops lifetime Pro when Play no longer reports the purchase as owned', () => {
     const entitlement = entitlementFromPlay([
       { productId: 'tradesreport.pro.lifetime', purchaseState: 'unknown', autoRenewing: false },

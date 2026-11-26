@@ -4,13 +4,48 @@ import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ErrorState, IconButton, LoadingState, NavigationHeader, Screen, Text, useToast } from '@/components';
-import { businessProfileRepository, documentsRepository, jobsRepository } from '@/database';
-import { DocPdfThumb, DocStatusBadge, MarkPaidSheet } from '@/features/documents';
+import {
+  Button,
+  ErrorState,
+  IconButton,
+  LoadingState,
+  NavigationHeader,
+  Screen,
+  Text,
+  useToast,
+} from '@/components';
+import {
+  businessProfileRepository,
+  customersRepository,
+  documentsRepository,
+  jobsRepository,
+} from '@/database';
+import {
+  ConvertQuoteSheet,
+  DidYouSendItSheet,
+  DocPdfThumb,
+  DocStatusBadge,
+  MarkPaidSheet,
+  SendReminderSheet,
+  type ReminderChannel,
+} from '@/features/documents';
 import { BottomSheetMenu } from '@/features/jobs/BottomSheetMenu';
 import { useI18n } from '@/i18n/useI18n';
-import { effectiveStatus, formatPence, isOverdue, TradeDocument } from '@/models';
-import { sharePaymentReminder } from '@/services/documentReminders';
+import {
+  effectiveStatus,
+  formatInvoiceNumber,
+  formatPence,
+  isOverdue,
+  pricingTotalsFromSnapshot,
+  TradeDocument,
+} from '@/models';
+import {
+  buildPaymentReminderMessage,
+  cancelDocumentReminders,
+  sharePaymentReminder,
+  syncRemindersForDocument,
+} from '@/services/documentReminders';
+import { composeReportEmail } from '@/services/mailComposer';
 import { openLocalFile, shareFile } from '@/services/shareService';
 import { useTheme } from '@/theme';
 import { formatDateShort } from '@/utils/format';
@@ -21,6 +56,7 @@ type TimelineNodeState = 'done' | 'alert' | 'todo';
 type TimelineEvent = {
   key: string;
   label: string;
+  detail?: string;
   state: TimelineNodeState;
   isLast: boolean;
 };
@@ -38,6 +74,16 @@ export default function DocumentDetailScreen() {
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [markPaidOpen, setMarkPaidOpen] = useState(false);
+  const [didYouSendOpen, setDidYouSendOpen] = useState(false);
+  const [remindOpen, setRemindOpen] = useState(false);
+  const [reminderMessage, setReminderMessage] = useState('');
+  const [customerEmail, setCustomerEmail] = useState<string | null>(null);
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [nextInvoicePreview, setNextInvoicePreview] = useState('INV-0001');
+  const [defaultDueDays, setDefaultDueDays] = useState(14);
+  const [hasReport, setHasReport] = useState(false);
+  const [hasSiblingInvoice, setHasSiblingInvoice] = useState(false);
+  const [profileHasVat, setProfileHasVat] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -46,9 +92,24 @@ export default function DocumentDetailScreen() {
       const result = await documentsRepository.getDocument(id);
       setDoc(result);
       if (result) {
-        const job = await jobsRepository.getJob(result.jobId);
+        const [job, profile, siblings] = await Promise.all([
+          jobsRepository.getJob(result.jobId),
+          businessProfileRepository.getBusinessProfile(),
+          documentsRepository.listDocumentsForJob(result.jobId),
+        ]);
         setJobTitle(job?.title ?? null);
         setCustomerName(job?.customerName ?? null);
+        setNextInvoicePreview(formatInvoiceNumber(profile.nextInvoiceSequence));
+        setDefaultDueDays(profile.defaultDueDays ?? 14);
+        setProfileHasVat(Boolean(profile.vatNumber?.trim()));
+        setHasReport(siblings.some((d) => d.kind === 'report'));
+        setHasSiblingInvoice(siblings.some((d) => d.kind === 'invoice' && d.id !== result.id));
+        if (job?.customerId) {
+          const customer = await customersRepository.getCustomer(job.customerId);
+          setCustomerEmail(customer?.email ?? null);
+        } else {
+          setCustomerEmail(null);
+        }
       }
     } finally {
       setLoading(false);
@@ -76,7 +137,7 @@ export default function DocumentDetailScreen() {
   if (loading && !doc) {
     return (
       <Screen edges={['top', 'left', 'right']}>
-        <NavigationHeader title={t('documents.detailTitle')} onBack={() => goBack('/(tabs)/documents')} />
+        <NavigationHeader title={t('documents.detailTitle')} onBack={() => goBack('/(tabs)/jobs')} />
         <LoadingState />
       </Screen>
     );
@@ -85,7 +146,7 @@ export default function DocumentDetailScreen() {
   if (!doc) {
     return (
       <Screen edges={['top', 'left', 'right']}>
-        <NavigationHeader title={t('documents.detailTitle')} onBack={() => goBack('/(tabs)/documents')} />
+        <NavigationHeader title={t('documents.detailTitle')} onBack={() => goBack('/(tabs)/jobs')} />
         <ErrorState title={t('documents.notFound')} onAction={load} />
       </Screen>
     );
@@ -98,6 +159,16 @@ export default function DocumentDetailScreen() {
         ? t('documents.kindInvoice')
         : t('documents.kindReport');
 
+  const needsSentConfirm = (document: TradeDocument) => {
+    if (document.kind === 'invoice') {
+      return document.status === 'draft' || !document.sentAt;
+    }
+    if (document.kind === 'quote') {
+      return document.status === 'draft' || !document.sentAt;
+    }
+    return document.status === 'draft' || !document.sentAt;
+  };
+
   const handleShare = async () => {
     if (!doc.localPdfUri) {
       showToast({ message: t('documents.toastNoPdf'), tone: 'neutral' });
@@ -105,32 +176,113 @@ export default function DocumentDetailScreen() {
     }
     try {
       const shared = await shareFile(doc.localPdfUri, doc.fileName ?? 'document.pdf');
-      if (!shared) showToast({ message: t('documents.toastShareError'), tone: 'destructive' });
+      if (!shared) {
+        showToast({ message: t('documents.toastShareError'), tone: 'destructive' });
+        return;
+      }
+      if (needsSentConfirm(doc)) {
+        setDidYouSendOpen(true);
+      }
     } catch {
       showToast({ message: t('documents.toastShareError'), tone: 'destructive' });
     }
   };
 
-  const handleRemind = async () => {
+  const handleConfirmSent = async () => {
+    setBusy(true);
+    try {
+      await documentsRepository.markSent(doc.id);
+      setDidYouSendOpen(false);
+      showToast({ message: t('documents.toastMarkedSent'), tone: 'success' });
+      await load();
+    } catch {
+      showToast({ message: t('documents.toastUpdateError'), tone: 'destructive' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openRemindSheet = async () => {
     try {
       const profile = await businessProfileRepository.getBusinessProfile();
-      const result = await sharePaymentReminder({
-        document: doc,
-        customerName,
-        jobTitle,
-        profile,
-      });
-      if (result === 'shared') {
-        showToast({ message: t('reminders.toastShared'), tone: 'success' });
-      } else if (result === 'unavailable') {
-        showToast({ message: t('reminders.toastShareUnavailable'), tone: 'warning' });
-      }
+      setReminderMessage(
+        buildPaymentReminderMessage({
+          document: doc,
+          customerName,
+          jobTitle,
+          profile,
+        })
+      );
+      setRemindOpen(true);
     } catch {
       showToast({ message: t('reminders.toastShareUnavailable'), tone: 'destructive' });
     }
   };
 
+  const handleSendReminder = async (opts: {
+    message: string;
+    channel: ReminderChannel;
+    remindAgain: boolean;
+  }) => {
+    setBusy(true);
+    try {
+      const profile = await businessProfileRepository.getBusinessProfile();
+      const ctx = { document: doc, customerName, jobTitle, profile };
+
+      if (opts.channel === 'email') {
+        if (!doc.localPdfUri) {
+          showToast({ message: t('documents.toastNoPdf'), tone: 'neutral' });
+          return;
+        }
+        const result = await composeReportEmail({
+          recipientEmail: customerEmail,
+          subject: t('reminders.shareInvoiceLine', {
+            number: doc.number ?? '—',
+            amount: doc.totalPence != null ? formatPence(doc.totalPence) : '—',
+            due: doc.dueDate ? formatDateShort(doc.dueDate) : '—',
+          }),
+          body: opts.message,
+          pdfUri: doc.localPdfUri,
+          fileName: doc.fileName ?? 'invoice.pdf',
+        });
+        if (result.outcome === 'cancelled') return;
+        if (result.outcome === 'unavailable') {
+          showToast({ message: result.message, tone: 'warning' });
+          return;
+        }
+        showToast({
+          message:
+            result.outcome === 'shared' ? result.message : t('documents.toastReminderEmailOpened'),
+          tone: 'success',
+        });
+      } else {
+        const result = await sharePaymentReminder(ctx, opts.message);
+        if (result === 'cancelled') return;
+        if (result === 'unavailable') {
+          showToast({ message: t('reminders.toastShareUnavailable'), tone: 'warning' });
+          return;
+        }
+        showToast({ message: t('documents.toastReminderSent'), tone: 'success' });
+      }
+
+      if (opts.remindAgain) {
+        await syncRemindersForDocument(doc, { jobTitle });
+      } else {
+        await cancelDocumentReminders(doc.id);
+      }
+      setRemindOpen(false);
+    } catch {
+      showToast({ message: t('reminders.toastShareUnavailable'), tone: 'destructive' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handlePreview = async () => {
+    if (doc.kind === 'quote' || doc.kind === 'invoice') {
+      router.push({ pathname: '/document/preview', params: { id: doc.id } });
+      return;
+    }
     if (!doc.localPdfUri) return;
     try {
       await openLocalFile(doc.localPdfUri);
@@ -169,12 +321,79 @@ export default function DocumentDetailScreen() {
 
   const showInvoiceActions = doc.kind === 'invoice' && doc.status !== 'paid';
   const showRemind = showInvoiceActions && (doc.status === 'unpaid' || doc.status === 'sent');
+  const quoteAwaitingDecision = doc.kind === 'quote' && doc.status === 'sent';
+  const showQuoteMarkAccepted = quoteAwaitingDecision;
+  const canConvertQuote = doc.kind === 'quote' && doc.status === 'accepted' && !hasSiblingInvoice;
+  const showSendEdit =
+    (doc.kind === 'quote' && !quoteAwaitingDecision && !canConvertQuote) ||
+    doc.kind === 'report' ||
+    (!showInvoiceActions && doc.kind !== 'quote');
+  const stickyBottom =
+    showInvoiceActions || showSendEdit || showQuoteMarkAccepted || canConvertQuote;
+
+  const convertLineCount = (() => {
+    if (!doc.pricingSnapshotJson?.trim()) return 0;
+    try {
+      const raw = JSON.parse(doc.pricingSnapshotJson) as { lines?: unknown[] };
+      return Array.isArray(raw.lines) ? raw.lines.length : 0;
+    } catch {
+      return 0;
+    }
+  })();
+  const convertInvoiceTotal =
+    doc.totalPence ?? pricingTotalsFromSnapshot(doc.pricingSnapshotJson ?? null).totalPence;
+
+  const handleConvertQuote = async (opts: {
+    copyPricing: boolean;
+    attachReport: boolean;
+    dueDays: number;
+  }) => {
+    setBusy(true);
+    try {
+      const siblings = await documentsRepository.listDocumentsForJob(doc.jobId);
+      const reportDoc = siblings.find((d) => d.kind === 'report');
+      const invoice = await documentsRepository.convertQuoteToInvoice(doc.id, {
+        copyPricing: opts.copyPricing,
+        dueDays: opts.dueDays,
+        attachReportId: opts.attachReport ? reportDoc?.reportId ?? reportDoc?.id ?? null : null,
+      });
+      setConvertOpen(false);
+      showToast({ message: t('documents.toastConverted'), tone: 'neutral' });
+      router.replace(`/document/${invoice.id}`);
+    } catch {
+      showToast({ message: t('documents.toastConvertError'), tone: 'destructive' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleEdit = () => {
+    if (doc.kind === 'report') {
+      // Reports are edited through the guided job checklist / work screens.
+      router.push(`/job/${doc.jobId}`);
+      return;
+    }
+    // Quotes and invoices use the dedicated document editor (Figma S3).
+    router.push({ pathname: '/document/edit', params: { id: doc.id } });
+  };
+
+  const handleSend = () => {
+    // Draft quotes/invoices go through the S3a check-before-send preview.
+    if (
+      (doc.kind === 'quote' || doc.kind === 'invoice') &&
+      (doc.status === 'draft' || !doc.sentAt)
+    ) {
+      router.push({ pathname: '/document/preview', params: { id: doc.id } });
+      return;
+    }
+    void handleShare();
+  };
 
   return (
     <Screen edges={['top', 'left', 'right']}>
       <NavigationHeader
         title={kindLabel}
-        onBack={() => goBack('/(tabs)/documents')}
+        onBack={() => goBack('/(tabs)/jobs')}
         right={
           <IconButton
             name="ellipsis-horizontal"
@@ -188,7 +407,7 @@ export default function DocumentDetailScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: spacing.lg,
-          paddingBottom: showInvoiceActions ? 100 + insets.bottom : spacing.xl + insets.bottom,
+          paddingBottom: stickyBottom ? 100 + insets.bottom : spacing.xl + insets.bottom,
           gap: spacing.md,
         }}
       >
@@ -263,23 +482,29 @@ export default function DocumentDetailScreen() {
             {doc.kind === 'quote' ? (
               <>
                 <StatusChip
-                  label={t('documents.actionSent')}
+                  label={t('documents.statusChipSent')}
                   active={doc.status === 'sent' || doc.status === 'accepted' || doc.status === 'declined'}
                   disabled={busy}
                   onPress={() => runAction(() => documentsRepository.markSent(doc.id))}
                 />
                 <StatusChip
-                  label={t('documents.actionAccepted')}
+                  label={t('documents.statusChipAccepted')}
                   active={doc.status === 'accepted'}
                   disabled={busy}
                   onPress={() => runAction(() => documentsRepository.markAccepted(doc.id))}
+                />
+                <StatusChip
+                  label={t('documents.statusChipDeclined')}
+                  active={doc.status === 'declined'}
+                  disabled={busy}
+                  onPress={() => runAction(() => documentsRepository.markDeclined(doc.id))}
                 />
               </>
             ) : null}
             {doc.kind === 'invoice' ? (
               <>
                 <StatusChip
-                  label={t('documents.actionSent')}
+                  label={t('documents.statusChipSent')}
                   active={doc.status === 'sent' || doc.status === 'unpaid' || doc.status === 'paid'}
                   disabled={busy || doc.status === 'paid'}
                   onPress={() => runAction(() => documentsRepository.markSent(doc.id))}
@@ -294,7 +519,7 @@ export default function DocumentDetailScreen() {
             ) : null}
             {doc.kind === 'report' ? (
               <StatusChip
-                label={t('documents.actionSent')}
+                label={t('documents.statusChipSent')}
                 active={doc.status === 'sent'}
                 disabled={busy}
                 onPress={() => runAction(() => documentsRepository.markSent(doc.id))}
@@ -302,7 +527,7 @@ export default function DocumentDetailScreen() {
             ) : null}
           </View>
           <Text variant="caption" color={colors.textSecondary}>
-            {documentStatusHint(doc, eff, t)}
+            {doc.kind === 'quote' ? t('documents.quoteStatusHint') : documentStatusHint(doc, eff, t)}
           </Text>
         </View>
       </ScrollView>
@@ -348,12 +573,20 @@ export default function DocumentDetailScreen() {
               <IconButton
                 name="notifications-outline"
                 accessibilityLabel={t('documents.actionRemind')}
-                onPress={handleRemind}
+                onPress={() => void openRemindSheet()}
                 disabled={busy}
                 variant="filled"
                 style={styles.roundBtn}
               />
             ) : null}
+            <IconButton
+              name="create-outline"
+              accessibilityLabel={t('documents.actionEdit')}
+              onPress={handleEdit}
+              disabled={busy}
+              variant="filled"
+              style={styles.roundBtn}
+            />
             <IconButton
               name="share-outline"
               accessibilityLabel={t('common.share')}
@@ -364,21 +597,183 @@ export default function DocumentDetailScreen() {
             />
           </View>
         </View>
+      ) : canConvertQuote ? (
+        <View
+          style={[
+            styles.stickyBar,
+            shadows.card,
+            {
+              borderTopColor: colors.border,
+              backgroundColor: colors.background,
+              paddingBottom: Math.max(insets.bottom, spacing.sm),
+              paddingHorizontal: spacing.lg,
+              paddingTop: spacing.sm,
+            },
+          ]}
+        >
+          <View style={styles.stickyActions}>
+            <Pressable
+              onPress={() => setConvertOpen(true)}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel={t('documents.actionConvert')}
+              style={({ pressed }) => [
+                styles.markPaidBtn,
+                {
+                  backgroundColor: pressed ? colors.accentPressed : colors.accent,
+                  borderRadius: radius.pill,
+                  opacity: busy ? 0.6 : 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                },
+              ]}
+            >
+              <Ionicons name="swap-horizontal" size={18} color={colors.textInverse} />
+              <Text variant="bodyMedium" color={colors.textInverse} style={styles.markPaidLabel}>
+                {t('documents.actionConvert')}
+              </Text>
+            </Pressable>
+            <IconButton
+              name="create-outline"
+              accessibilityLabel={t('documents.actionEdit')}
+              onPress={handleEdit}
+              disabled={busy}
+              variant="filled"
+              style={styles.roundBtn}
+            />
+            <IconButton
+              name="share-outline"
+              accessibilityLabel={t('common.share')}
+              onPress={handleShare}
+              disabled={busy}
+              variant="filled"
+              style={styles.roundBtn}
+            />
+          </View>
+        </View>
+      ) : showQuoteMarkAccepted ? (
+        <View
+          style={[
+            styles.stickyBar,
+            shadows.card,
+            {
+              borderTopColor: colors.border,
+              backgroundColor: colors.background,
+              paddingBottom: Math.max(insets.bottom, spacing.sm),
+              paddingHorizontal: spacing.lg,
+            },
+          ]}
+        >
+          <View style={styles.stickyActions}>
+            <Pressable
+              onPress={() => runAction(() => documentsRepository.markAccepted(doc.id))}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel={t('documents.actionAccepted')}
+              style={({ pressed }) => [
+                styles.markPaidBtn,
+                {
+                  backgroundColor: pressed ? colors.accentPressed : colors.accent,
+                  borderRadius: radius.pill,
+                  opacity: busy ? 0.6 : 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                },
+              ]}
+            >
+              <Ionicons name="checkmark" size={18} color={colors.textInverse} />
+              <Text variant="bodyMedium" color={colors.textInverse} style={styles.markPaidLabel}>
+                {t('documents.actionAccepted')}
+              </Text>
+            </Pressable>
+            <IconButton
+              name="create-outline"
+              accessibilityLabel={t('documents.actionEdit')}
+              onPress={handleEdit}
+              disabled={busy}
+              variant="filled"
+              style={styles.roundBtn}
+            />
+            <IconButton
+              name="share-outline"
+              accessibilityLabel={t('common.share')}
+              onPress={handleShare}
+              disabled={busy}
+              variant="filled"
+              style={styles.roundBtn}
+            />
+          </View>
+        </View>
+      ) : showSendEdit ? (
+        <View
+          style={[
+            styles.stickyBar,
+            shadows.card,
+            {
+              borderTopColor: colors.border,
+              backgroundColor: colors.background,
+              paddingBottom: Math.max(insets.bottom, spacing.sm),
+              paddingHorizontal: spacing.lg,
+              paddingTop: spacing.sm,
+              gap: spacing.sm,
+            },
+          ]}
+        >
+          <View style={styles.sendEditRow}>
+            <View style={{ flex: 1 }}>
+              <Button
+                label={t('documents.actionSend')}
+                variant="accent"
+                icon={<Ionicons name="paper-plane-outline" size={18} color={colors.textInverse} />}
+                onPress={handleSend}
+                disabled={busy}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button
+                label={t('documents.actionEdit')}
+                variant="secondary"
+                icon={<Ionicons name="create-outline" size={18} color={colors.textPrimary} />}
+                onPress={handleEdit}
+                disabled={busy}
+              />
+            </View>
+          </View>
+        </View>
       ) : null}
 
       <BottomSheetMenu
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
         items={[
-          ...(doc.localPdfUri
+          ...(doc.kind === 'quote' || doc.kind === 'invoice' || doc.localPdfUri
             ? [
                 {
                   icon: 'eye-outline' as const,
                   label: t('common.preview'),
-                  onPress: handlePreview,
+                  onPress: () => void handlePreview(),
                 },
               ]
             : []),
+          ...(canConvertQuote
+            ? [
+                {
+                  icon: 'swap-horizontal' as const,
+                  label: t('documents.actionConvert'),
+                  onPress: () => setConvertOpen(true),
+                },
+              ]
+            : []),
+          {
+            icon: 'create-outline',
+            label:
+              doc.kind === 'report' ? t('documents.actionEditJob') : t('documents.actionEditPrices'),
+            onPress: handleEdit,
+          },
           {
             icon: 'share-outline',
             label: t('common.share'),
@@ -392,12 +787,44 @@ export default function DocumentDetailScreen() {
         ]}
       />
 
+      <ConvertQuoteSheet
+        visible={convertOpen}
+        quoteNumber={doc.number}
+        quoteTotalPence={doc.totalPence}
+        invoicePreviewNumber={nextInvoicePreview}
+        invoiceTotalPence={convertInvoiceTotal}
+        lineCount={convertLineCount}
+        defaultDueDays={defaultDueDays}
+        hasReport={hasReport}
+        showVatNote={profileHasVat && (doc.vatPence ?? 0) > 0}
+        standalone
+        loading={busy}
+        onClose={() => setConvertOpen(false)}
+        onSubmit={(opts) => void handleConvertQuote(opts)}
+      />
+
       <MarkPaidSheet
         visible={markPaidOpen}
         defaultAmountPence={doc.totalPence}
         loading={busy}
         onClose={() => setMarkPaidOpen(false)}
         onSubmit={handleMarkPaid}
+      />
+
+      <DidYouSendItSheet
+        visible={didYouSendOpen}
+        documentNumber={doc.number}
+        loading={busy}
+        onClose={() => setDidYouSendOpen(false)}
+        onConfirmSent={() => void handleConfirmSent()}
+      />
+
+      <SendReminderSheet
+        visible={remindOpen}
+        defaultMessage={reminderMessage}
+        loading={busy}
+        onClose={() => setRemindOpen(false)}
+        onSend={(opts) => void handleSendReminder(opts)}
       />
     </Screen>
   );
@@ -611,6 +1038,11 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   stickyActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  sendEditRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,

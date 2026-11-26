@@ -4,8 +4,13 @@ import type { BusinessProfile, TradeDocument } from '@/models';
 import { formatPence } from '@/models';
 import { formatDate } from '@/utils/format';
 import { t } from '@/i18n';
+import { getPreferences } from '@/services/preferencesService';
 
 const REMINDER_PREFIX = 'doc-reminder:';
+export const INVOICE_OVERDUE_CATEGORY = 'invoice-overdue';
+export const REMINDER_ACTION_SEND = 'send-reminder';
+export const REMINDER_ACTION_MARK_PAID = 'mark-paid';
+export const REMINDER_ACTION_SNOOZE = 'snooze-3d';
 
 export type PaymentReminderContext = {
   document: TradeDocument;
@@ -19,6 +24,7 @@ type ProfileWithStripe = BusinessProfile & { stripePaymentLink?: string | null }
 type NotificationsModule = typeof import('expo-notifications');
 
 let notificationsModule: NotificationsModule | null | undefined;
+let categoriesReady = false;
 
 /**
  * Lazy-load expo-notifications. A top-level import pulls ExpoApplication via
@@ -43,7 +49,7 @@ function stripePaymentLink(profile: BusinessProfile): string | null {
 
 export function configureDocumentReminderHandler(): void {
   if (Platform.OS === 'web') return;
-  void getNotifications().then((Notifications) => {
+  void getNotifications().then(async (Notifications) => {
     if (!Notifications) return;
     try {
       Notifications.setNotificationHandler({
@@ -55,10 +61,70 @@ export function configureDocumentReminderHandler(): void {
           shouldShowList: true,
         }),
       });
+      await ensureReminderCategories(Notifications);
     } catch {
       // Native notification module unavailable — ignore.
     }
   });
+}
+
+async function ensureReminderCategories(Notifications: NotificationsModule): Promise<void> {
+  if (categoriesReady) return;
+  try {
+    await Notifications.setNotificationCategoryAsync(INVOICE_OVERDUE_CATEGORY, [
+      {
+        identifier: REMINDER_ACTION_SEND,
+        buttonTitle: t('reminders.actionSendReminder'),
+        options: { opensAppToForeground: true },
+      },
+      {
+        identifier: REMINDER_ACTION_MARK_PAID,
+        buttonTitle: t('reminders.actionMarkPaid'),
+        options: { opensAppToForeground: true },
+      },
+      {
+        identifier: REMINDER_ACTION_SNOOZE,
+        buttonTitle: t('reminders.actionSnooze3Days'),
+        options: { opensAppToForeground: false },
+      },
+    ]);
+    categoriesReady = true;
+  } catch {
+    // Categories unsupported — notifications still schedule without actions.
+  }
+}
+
+export type ReminderNotificationAction = {
+  documentId: string;
+  action: typeof REMINDER_ACTION_SEND | typeof REMINDER_ACTION_MARK_PAID | typeof REMINDER_ACTION_SNOOZE | 'default';
+};
+
+/** Subscribe to lock-screen / banner notification actions. Returns an unsubscribe fn. */
+export async function subscribeReminderNotificationActions(
+  onAction: (event: ReminderNotificationAction) => void
+): Promise<() => void> {
+  const Notifications = await getNotifications();
+  if (!Notifications) return () => undefined;
+
+  try {
+    await ensureReminderCategories(Notifications);
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as { documentId?: unknown };
+      const documentId = typeof data?.documentId === 'string' ? data.documentId : null;
+      if (!documentId) return;
+
+      const raw = response.actionIdentifier;
+      let action: ReminderNotificationAction['action'] = 'default';
+      if (raw === REMINDER_ACTION_SEND) action = REMINDER_ACTION_SEND;
+      else if (raw === REMINDER_ACTION_MARK_PAID) action = REMINDER_ACTION_MARK_PAID;
+      else if (raw === REMINDER_ACTION_SNOOZE) action = REMINDER_ACTION_SNOOZE;
+
+      onAction({ documentId, action });
+    });
+    return () => subscription.remove();
+  } catch {
+    return () => undefined;
+  }
 }
 
 export async function requestDocumentReminderPermissions(): Promise<boolean> {
@@ -90,12 +156,39 @@ export function atMorningLocal(isoDate: string, dayOffset: number): Date {
 export async function cancelDocumentReminders(documentId: string): Promise<void> {
   const Notifications = await getNotifications();
   if (!Notifications) return;
-  const suffixes = ['inv+3', 'inv+7', 'inv+14', 'quote-expiry'];
+  const suffixes = ['inv+3', 'inv+7', 'inv+14', 'quote-expiry', 'snooze'];
   await Promise.all(
     suffixes.map((suffix) =>
       Notifications.cancelScheduledNotificationAsync(reminderId(documentId, suffix)).catch(() => undefined)
     )
   );
+}
+
+/** Snooze a single overdue chase for 3 days from now (lock-screen action). */
+export async function snoozeInvoiceReminder(documentId: string, meta?: { label?: string }): Promise<void> {
+  const Notifications = await getNotifications();
+  if (!Notifications) return;
+  try {
+    const granted = await requestDocumentReminderPermissions();
+    if (!granted) return;
+    const when = new Date();
+    when.setDate(when.getDate() + 3);
+    when.setHours(9, 0, 0, 0);
+    const label = meta?.label ?? t('documents.kindInvoice');
+    await Notifications.cancelScheduledNotificationAsync(reminderId(documentId, 'snooze')).catch(() => undefined);
+    await Notifications.scheduleNotificationAsync({
+      identifier: reminderId(documentId, 'snooze'),
+      content: {
+        title: t('reminders.invoiceTitle'),
+        body: t('reminders.invoiceBody', { label, job: '', days: 3 }),
+        data: { documentId, actionHint: 'remind' },
+        categoryIdentifier: INVOICE_OVERDUE_CATEGORY,
+      },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when },
+    });
+  } catch {
+    // Ignore scheduling failures.
+  }
 }
 
 export async function syncRemindersForDocument(
@@ -107,10 +200,17 @@ export async function syncRemindersForDocument(
 
   try {
     await cancelDocumentReminders(doc.id);
+    const prefs = await getPreferences();
 
-    if (doc.kind === 'invoice' && (doc.status === 'unpaid' || doc.status === 'sent') && doc.dueDate) {
+    if (
+      prefs.overdueRemindersEnabled &&
+      doc.kind === 'invoice' &&
+      (doc.status === 'unpaid' || doc.status === 'sent') &&
+      doc.dueDate
+    ) {
       const granted = await requestDocumentReminderPermissions();
       if (!granted) return;
+      await ensureReminderCategories(Notifications);
       const label = doc.number ? `Invoice ${doc.number}` : t('documents.kindInvoice');
       const job = meta?.jobTitle ? ` (${meta.jobTitle})` : '';
       const offsets: { days: number; suffix: string }[] = [
@@ -126,7 +226,8 @@ export async function syncRemindersForDocument(
           content: {
             title: t('reminders.invoiceTitle'),
             body: t('reminders.invoiceBody', { label, job, days }),
-            data: { documentId: doc.id },
+            data: { documentId: doc.id, actionHint: 'remind' },
+            categoryIdentifier: INVOICE_OVERDUE_CATEGORY,
           },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when },
         });
@@ -134,10 +235,15 @@ export async function syncRemindersForDocument(
       return;
     }
 
-    if (doc.kind === 'quote' && doc.status === 'sent' && doc.validUntil) {
+    if (
+      prefs.quoteExpiryRemindersEnabled &&
+      doc.kind === 'quote' &&
+      doc.status === 'sent' &&
+      doc.validUntil
+    ) {
       const granted = await requestDocumentReminderPermissions();
       if (!granted) return;
-      const when = atMorningLocal(doc.validUntil, -3);
+      const when = atMorningLocal(doc.validUntil, -2);
       if (when.getTime() <= Date.now()) return;
       const label = doc.number ? `Quote ${doc.number}` : t('documents.kindQuote');
       await Notifications.scheduleNotificationAsync({
@@ -155,10 +261,8 @@ export async function syncRemindersForDocument(
   }
 }
 
-export async function sharePaymentReminder(ctx: PaymentReminderContext): Promise<'shared' | 'cancelled' | 'unavailable'> {
+export function buildPaymentReminderMessage(ctx: PaymentReminderContext): string {
   const { document, customerName, jobTitle, profile } = ctx;
-  if (document.kind !== 'invoice') return 'unavailable';
-
   const who = customerName?.trim() || t('reminders.genericCustomer');
   const business = profile.businessName?.trim() || t('reminders.genericBusiness');
   const lines = [
@@ -174,8 +278,19 @@ export async function sharePaymentReminder(ctx: PaymentReminderContext): Promise
   const stripe = stripePaymentLink(profile);
   if (stripe) lines.push('', t('reminders.sharePayOnline', { url: stripe }));
   lines.push('', business);
+  return lines.join('\n');
+}
 
-  const message = lines.join('\n');
+export async function sharePaymentReminder(
+  ctx: PaymentReminderContext,
+  messageOverride?: string
+): Promise<'shared' | 'cancelled' | 'unavailable'> {
+  const { document } = ctx;
+  if (document.kind !== 'invoice') return 'unavailable';
+
+  const message = (messageOverride?.trim() || buildPaymentReminderMessage(ctx)).trim();
+  if (!message) return 'unavailable';
+
   if (Platform.OS === 'web') {
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {

@@ -305,7 +305,11 @@ export function premPricing(input: ReportHtmlInput, theme: PremiumTheme): string
     <h2 class="block-title prem-section-title">${escapeHtml(title)} ${docBadge}</h2>
     ${lede}
     <table class="prem-price-table price-table"><thead><tr><th>Item</th><th class="num">Amount</th></tr></thead><tbody>${rows.join('')}</tbody>${foot}</table>
-    ${type === 'invoice' && input.invoice ? invoicePayByCardBlock(input.invoice) : ''}
+    ${
+      type === 'invoice' && input.invoice
+        ? invoicePayByCardBlock(input.invoice, { totalPence: breakdown?.totalPence ?? null })
+        : ''
+    }
   </section>`;
 }
 

@@ -1,0 +1,15 @@
+---
+description: Play Store 1.1.0 Figma and screenshot captures must be Android-only
+alwaysApply: true
+---
+
+# Play Store 1.1.0 — Android only
+
+Hard rule for store screenshots and the Figma page **Play Store 1.1.0** (`cx8vbNioHk2dUTGbCMRxAE` / page `185:3`):
+
+- Capture **only** from Android (emulator or physical Galaxy). Prefer the **Android emulator** when the user asks for emulator captures.
+- **Never** upload, push, or leave iOS / iPhone screenshots on that page.
+- Reject any frame that shows: Dynamic Island, iOS status bar (centered time / cellular dots / Safari back), iPhone home indicator style alone without Android chrome, or 1320×2868 App Store iPhone dimensions when the source is an iOS capture.
+- Accept Android markers: Android status icons (WhatsApp/TikTok/5G/battery %), thin Android gesture pill, Galaxy/emulator resolution (e.g. 1440×3120 or AVD size).
+- Before every Figma upload: visually QA the PNG for Android chrome. If unsure, do not upload.
+- Remaining priority shots: annotation (Pro unlocked), proof photo, before-and-after — all Android-only.

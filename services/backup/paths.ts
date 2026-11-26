@@ -1,5 +1,23 @@
 import { fileUriReadCandidates } from '@/services/fileUri';
 
+/**
+ * Turns a stored sitereport path (absolute from an old container, or relative)
+ * into an absolute file:// URI under the current documentDirectory.
+ * Returns null only when `uri` is nullish; unknown paths are returned unchanged.
+ */
+export function resolveSitereportUri(
+  uri: string | null | undefined,
+  documentDirectory: string | null | undefined
+): string | null {
+  if (uri == null) return null;
+  if (!documentDirectory) return uri;
+  const relative = toBackupPath(uri);
+  if (!relative) return uri;
+  const root = documentDirectory.endsWith('/') ? documentDirectory : `${documentDirectory}/`;
+  const absolute = `${root}sitereport/${relative}`;
+  return absolute.startsWith('file://') ? absolute : `file://${absolute}`;
+}
+
 /** Relative path inside the app's sitereport folder, safe to put in a zip. */
 export function isSafeRelativePath(path: string): boolean {
   if (!path || path.length > 500) return false;

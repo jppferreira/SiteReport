@@ -16,6 +16,11 @@ export const logger = {
     if (!isDev) return;
     console.log(`[Trade Report] ${message}`, context ?? '');
   },
+  /** Same as debug — kept for call sites that read as progress/info. */
+  info(message: string, context?: Record<string, unknown>) {
+    if (!isDev) return;
+    console.log(`[Trade Report] ${message}`, context ?? '');
+  },
   warn(message: string, context?: Record<string, unknown>) {
     if (!isDev) return;
     console.warn(`[Trade Report] ${message}`, context ?? '');

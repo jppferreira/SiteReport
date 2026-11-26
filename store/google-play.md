@@ -24,17 +24,27 @@ Open testing needs at least one country selected under **Test and release → Op
 
 **Short description** (80 chars max):
 
-Before-and-after photos, voice notes, and a signature into a branded PDF.
+Quotes, invoices, photos, AR measure, and voice notes into a branded PDF.
 
 **Full description:**
 
-Trade Report is for trades and small service businesses. Photograph the job, dictate or write what you did, collect an optional customer signature, and generate a branded PDF, quote, or invoice.
+Trade Report is for trades and small service businesses. Run the job from quote to invoice: photograph the work, mark up photos, dictate or write what you did, collect an optional customer signature, and generate a branded PDF report, quote, or invoice.
 
-Jobs stay on the device. There is no account. Trade Report does not upload customer photos, names, or addresses. Optional voice dictation is transcribed on this device. Optional evidence stamps can add a location label to photos when you turn that on. AR measure and a spirit level help you capture dimensions and check surfaces where your phone supports them. Job checklists and a review-link QR can appear on reports when you choose.
+Primary features:
 
-A backup is created when you ask, after a confirmation that lists what is in the file. You save it to a folder you pick. Google Drive and other providers can appear in that picker. The app does not sign in to Google or Apple.
+• Jobs home with Quote / Report / Invoice views and a money summary for drafts, awaiting replies, and unpaid invoices
+• Before, during, and after photos by room or section, with optional evidence stamps (date, address, verified on device)
+• Photo markup — arrows, callouts, dimensions, highlights, and freehand notes that appear on the PDF
+• AR measure and spirit level in the Toolbox (where your phone supports them), with readings saved to the job
+• Work notes with optional on-device voice dictation
+• Field Proof job checklists that can print on the report
+• Customer sign-off and premium report templates (Pro)
+• Quotes and invoices with status tracking, send, and mark paid
+• Manual zip backup you save to a folder you pick (Google Drive can appear in that picker)
 
-The free tier includes PDF reports for 3 jobs. Pro unlocks unlimited reports, your logo and colours, customer sign-off, and other Pro tools shown in the app.
+Jobs stay on the device. There is no account. Trade Report does not upload customer photos, names, or addresses. Optional voice dictation is transcribed on this device. The app does not sign in to Google or Apple.
+
+The free tier includes PDF reports for 3 jobs. Pro unlocks unlimited reports, your logo and colours, customer sign-off, photo markup, and other Pro tools shown in the app.
 
 Monthly and annual Pro plans renew until you cancel them in Google Play subscriptions, at least 24 hours before the end of the current period. Google Play charges the renewal within 24 hours before that period ends. A lifetime purchase is charged once and does not renew. The price is the amount shown on the upgrade screen. Deleting the app does not cancel a subscription.
 
@@ -52,9 +62,11 @@ Terms of use: https://tradereportapp.com/terms.html
 | --- | --- | --- |
 | App icon 512×512 | `store/play/icon-512.png` | Required |
 | Feature graphic 1024×500 | `store/play/feature-graphic.png` | Required |
-| Phone screenshots | `store/play/jobs.png`, `photos.png`, `report-preview.png` (also under `store/screenshots/`) | 1320×2868 portrait |
+| Phone screenshots | `store/play/*.png` and `store/screenshots/1.1.0-store-set/play-phone/` | 1320×2868 portrait |
 
-Upload feature graphic + at least 2 phone screenshots in **Grow users → Store listings → Default → Assets** if they are still missing. An app icon (`Logo.png`) was already present in the draft.
+**1.1.0 phone set (all primary features):** `jobs.png`, `job-guided.png`, `photos.png`, `photo-evidence.png`, `annotate.png`, `ar-measure.png`, `level-tool.png`, `work-notes.png`, `checklist.png`, `toolbox.png`, `quote.png`, `invoice.png`, `report-preview.png`, `paywall.png`, `backup.png`.
+
+Upload feature graphic + at least 2 phone screenshots in **Grow users → Store listings → Default → Assets**. Prefer 8–10 shots covering jobs, photos, measure, notes, quote/invoice, PDF preview, and Pro.
 
 ## EAS submit (draft / internal only)
 

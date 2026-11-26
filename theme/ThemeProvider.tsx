@@ -34,14 +34,23 @@ const ThemeContext = createContext<Theme | null>(null);
 const darkShadows: typeof lightShadows = {
   ...lightShadows,
   subtle: {
-    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 2, color: 'rgba(0, 0, 0, 0.35)' }],
+    boxShadow:
+      Platform.OS === 'android'
+        ? [{ offsetX: 0, offsetY: 1, blurRadius: 3, color: 'rgba(0, 0, 0, 0.45)' }]
+        : [{ offsetX: 0, offsetY: 1, blurRadius: 2, color: 'rgba(0, 0, 0, 0.35)' }],
     elevation: 0,
   },
   card: {
-    boxShadow: [
-      { offsetX: 0, offsetY: 1, blurRadius: 1, color: 'rgba(0, 0, 0, 0.4)' },
-      { offsetX: 0, offsetY: 8, blurRadius: 20, spreadDistance: -8, color: 'rgba(0, 0, 0, 0.45)' },
-    ],
+    boxShadow:
+      Platform.OS === 'android'
+        ? [
+            { offsetX: 0, offsetY: 1, blurRadius: 2, color: 'rgba(0, 0, 0, 0.45)' },
+            { offsetX: 0, offsetY: 6, blurRadius: 16, color: 'rgba(0, 0, 0, 0.55)' },
+          ]
+        : [
+            { offsetX: 0, offsetY: 1, blurRadius: 1, color: 'rgba(0, 0, 0, 0.4)' },
+            { offsetX: 0, offsetY: 8, blurRadius: 20, spreadDistance: -8, color: 'rgba(0, 0, 0, 0.45)' },
+          ],
     elevation: 0,
   },
   floating: {

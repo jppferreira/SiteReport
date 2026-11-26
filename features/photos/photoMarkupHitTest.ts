@@ -20,6 +20,14 @@ export type ShapeBounds = {
   maxY: number;
 };
 
+/** Fat enough for a thumb on thin strokes (normalized photo space). */
+const LINE_HIT = 0.065;
+const ENDPOINT_HIT = 0.075;
+const CALLOUT_PIN_HIT = 0.1;
+const HANDLE_HIT = 0.06;
+/** Minimum selection grab box so skinny arrows/dimensions stay draggable. */
+const MIN_MOVE_SPAN = 0.08;
+
 /** Place the label pill away from the pin so it does not cover the spot (Figma 03). */
 export function autoPlaceLabel(anchor: AnnotationPoint): AnnotationPoint {
   const left = anchor.x > 0.45;
@@ -49,54 +57,100 @@ function nearSegment(
   return Math.hypot(point.x - px, point.y - py) <= threshold;
 }
 
+function nearPoint(a: AnnotationPoint, b: AnnotationPoint, threshold: number): boolean {
+  return Math.hypot(a.x - b.x, a.y - b.y) <= threshold;
+}
+
+function strokeThreshold(width: number | undefined, base: number): number {
+  // Wider strokes get a proportionally fatter hit strip; never thinner than base.
+  return Math.max(base, (width ?? 0.01) * 4);
+}
+
+function hitsShape(shape: AnnotationShape, point: AnnotationPoint): boolean {
+  if (shape.kind === 'callout') {
+    if (nearPoint(point, shape.at, CALLOUT_PIN_HIT)) return true;
+    if (shape.anchor && nearPoint(point, shape.anchor, ENDPOINT_HIT)) return true;
+    // Leader line between pin and label.
+    if (shape.anchor && nearSegment(point, shape.anchor, shape.at, LINE_HIT)) return true;
+    return false;
+  }
+  if (shape.kind === 'pen') {
+    const threshold = strokeThreshold(shape.width, LINE_HIT);
+    for (let p = 1; p < shape.points.length; p += 1) {
+      if (nearSegment(point, shape.points[p - 1]!, shape.points[p]!, threshold)) return true;
+    }
+    if (shape.points[0] && nearPoint(point, shape.points[0], threshold)) return true;
+    return false;
+  }
+  if (shape.kind === 'arrow' || shape.kind === 'dimension') {
+    const threshold = strokeThreshold(shape.width, LINE_HIT);
+    if (nearPoint(point, shape.from, ENDPOINT_HIT) || nearPoint(point, shape.to, ENDPOINT_HIT)) {
+      return true;
+    }
+    return nearSegment(point, shape.from, shape.to, threshold);
+  }
+  if (shape.kind === 'circle') {
+    const ellipse = ellipseGeometry(shape.from, shape.to, 1, 1);
+    const nx = (point.x - ellipse.cx) / Math.max(ellipse.rx, 0.001);
+    const ny = (point.y - ellipse.cy) / Math.max(ellipse.ry, 0.001);
+    const d = Math.hypot(nx, ny);
+    return Math.abs(d - 1) <= 0.28 || d < 1;
+  }
+  if (shape.kind === 'rect' || shape.kind === 'highlight') {
+    const box = rectGeometry(shape.from, shape.to, 1, 1);
+    const pad = 0.03;
+    return (
+      point.x >= box.x - pad &&
+      point.x <= box.x + box.width + pad &&
+      point.y >= box.y - pad &&
+      point.y <= box.y + box.height + pad
+    );
+  }
+  return false;
+}
+
 /** Top-most shape under a normalized photo point, or null. */
 export function hitTestShape(shapes: AnnotationShape[], point: AnnotationPoint): number | null {
-  const threshold = 0.04;
   for (let i = shapes.length - 1; i >= 0; i -= 1) {
-    const shape = shapes[i]!;
-    if (shape.kind === 'callout') {
-      const atHit = Math.hypot(point.x - shape.at.x, point.y - shape.at.y) <= 0.08;
-      const anchorHit =
-        shape.anchor != null &&
-        Math.hypot(point.x - shape.anchor.x, point.y - shape.anchor.y) <= threshold;
-      if (atHit || anchorHit) return i;
-      continue;
-    }
-    if (shape.kind === 'pen') {
-      for (let p = 1; p < shape.points.length; p += 1) {
-        if (nearSegment(point, shape.points[p - 1]!, shape.points[p]!, threshold)) return i;
-      }
-      if (shape.points[0] && Math.hypot(point.x - shape.points[0].x, point.y - shape.points[0].y) <= threshold) {
-        return i;
-      }
-      continue;
-    }
-    if (shape.kind === 'arrow' || shape.kind === 'dimension') {
-      if (nearSegment(point, shape.from, shape.to, threshold)) return i;
-      continue;
-    }
-    if (shape.kind === 'circle') {
-      const ellipse = ellipseGeometry(shape.from, shape.to, 1, 1);
-      const nx = (point.x - ellipse.cx) / Math.max(ellipse.rx, 0.001);
-      const ny = (point.y - ellipse.cy) / Math.max(ellipse.ry, 0.001);
-      const d = Math.hypot(nx, ny);
-      if (Math.abs(d - 1) <= 0.25 || d < 1) return i;
-      continue;
-    }
-    if (shape.kind === 'rect' || shape.kind === 'highlight') {
-      const box = rectGeometry(shape.from, shape.to, 1, 1);
-      const pad = 0.02;
-      if (
-        point.x >= box.x - pad &&
-        point.x <= box.x + box.width + pad &&
-        point.y >= box.y - pad &&
-        point.y <= box.y + box.height + pad
-      ) {
-        return i;
-      }
-    }
+    if (hitsShape(shapes[i]!, point)) return i;
   }
   return null;
+}
+
+/**
+ * Grab area for moving an already-selected mark — includes a padded AABB so
+ * thin arrows / dimensions stay easy to drag after selection.
+ */
+export function hitTestMoveTarget(shape: AnnotationShape, point: AnnotationPoint): boolean {
+  if (hitsShape(shape, point)) return true;
+  const bounds = expandBoundsForMove(boundsForShape(shape));
+  return (
+    point.x >= bounds.minX &&
+    point.x <= bounds.maxX &&
+    point.y >= bounds.minY &&
+    point.y <= bounds.maxY
+  );
+}
+
+export function expandBoundsForMove(bounds: ShapeBounds, minSpan = MIN_MOVE_SPAN): ShapeBounds {
+  let { minX, minY, maxX, maxY } = bounds;
+  if (maxX - minX < minSpan) {
+    const mid = (minX + maxX) / 2;
+    minX = mid - minSpan / 2;
+    maxX = mid + minSpan / 2;
+  }
+  if (maxY - minY < minSpan) {
+    const mid = (minY + maxY) / 2;
+    minY = mid - minSpan / 2;
+    maxY = mid + minSpan / 2;
+  }
+  const pad = 0.02;
+  return {
+    minX: minX - pad,
+    minY: minY - pad,
+    maxX: maxX + pad,
+    maxY: maxY + pad,
+  };
 }
 
 /** Green drag handles for the selected mark (Figma 02 / 04 / 05 / 08). */
@@ -128,7 +182,7 @@ export function handlesForShape(shape: AnnotationShape): MarkupHandle[] {
 export function hitTestHandle(
   shape: AnnotationShape,
   point: AnnotationPoint,
-  threshold = 0.045
+  threshold = HANDLE_HIT
 ): MarkupHandleId | null {
   for (const handle of handlesForShape(shape)) {
     if (Math.hypot(point.x - handle.point.x, point.y - handle.point.y) <= threshold) {

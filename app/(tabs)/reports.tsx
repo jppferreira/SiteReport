@@ -1,6 +1,6 @@
 import { Redirect } from 'expo-router';
 
-/** Legacy tab path — Documents tab replaced Reports in the nav. */
+/** Legacy tab path — Reports → Documents → Jobs. */
 export default function ReportsRedirect() {
-  return <Redirect href="/(tabs)/documents" />;
+  return <Redirect href="/(tabs)/jobs" />;
 }

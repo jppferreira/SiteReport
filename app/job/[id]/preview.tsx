@@ -1,8 +1,11 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  Button,
   ErrorState,
   IconButton,
   LoadingState,
@@ -11,6 +14,7 @@ import {
   useToast,
 } from '@/components';
 import { jobChecklistsRepository, jobsRepository, photosRepository, reportsRepository } from '@/database';
+import { CommercialTemplatePicker } from '@/features/documents/CommercialTemplatePicker';
 import { BottomSheetMenu } from '@/features/jobs/BottomSheetMenu';
 import { CoverPickerSheet } from '@/features/reports/CoverPickerSheet';
 import { HtmlReportPreview } from '@/features/reports/HtmlReportPreview';
@@ -27,7 +31,9 @@ import { useEntitlement } from '@/hooks/useEntitlement';
 import { useWorkSummary } from '@/hooks/useWorkSummary';
 import { useI18n } from '@/i18n/useI18n';
 import {
+  CommercialTemplateId,
   CoverDesignId,
+  DEFAULT_COMMERCIAL_TEMPLATE,
   DEFAULT_COVER_DESIGN,
   DEFAULT_REPORT_SECTION_ORDER,
   DEFAULT_REPORT_SECTIONS,
@@ -35,6 +41,7 @@ import {
   DocumentType,
   isFreeReportTemplate,
   isReportTemplateId,
+  normalizeCommercialTemplateId,
   normalizeCoverDesignId,
   normalizePhotoAnnotationLayout,
   normalizeReportSectionOrder,
@@ -68,7 +75,8 @@ function paramId(value: string | string[] | undefined): string {
 export default function ReportPreviewScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const id = paramId(params.id);
-  const { colors } = useTheme();
+  const { colors, spacing } = useTheme();
+  const insets = useSafeAreaInsets();
   const { t } = useI18n();
   const { showToast } = useToast();
   const { isPro } = useEntitlement();
@@ -76,6 +84,8 @@ export default function ReportPreviewScreen() {
   const { summary } = useWorkSummary(id);
 
   const [template, setTemplate] = useState<ReportTemplateId>(DEFAULT_REPORT_TEMPLATE);
+  const [commercialTemplate, setCommercialTemplate] =
+    useState<CommercialTemplateId>(DEFAULT_COMMERCIAL_TEMPLATE);
   const [pendingProTemplate, setPendingProTemplate] = useState<ReportTemplateId | null>(null);
   const [photoLayout, setPhotoLayout] = useState<PhotoAnnotationLayout>('fullWidth');
   const [coverDesign, setCoverDesign] = useState<CoverDesignId>(DEFAULT_COVER_DESIGN);
@@ -140,6 +150,7 @@ export default function ReportPreviewScreen() {
       setLatestPdfUri(latest?.localPdfUri ?? null);
       setLatestPdfName(latest?.fileName ?? null);
       setTemplate(templateAllowedForTier(preferences.reportTemplate, pro));
+      setCommercialTemplate(normalizeCommercialTemplateId(preferences.commercialTemplate));
       setPendingProTemplate(null);
       setPhotoLayout(normalizePhotoAnnotationLayout(preferences.photoAnnotationLayout));
       setCoverDesign(normalizeCoverDesignId(preferences.coverDesign));
@@ -186,6 +197,7 @@ export default function ReportPreviewScreen() {
     return buildReportPreviewHtml({
       ...gated,
       template: previewTemplate,
+      commercialTemplate,
       photoAnnotationLayout: photoLayout,
       coverDesign,
       reportSections: sections,
@@ -198,6 +210,7 @@ export default function ReportPreviewScreen() {
   }, [
     document,
     previewTemplate,
+    commercialTemplate,
     photoLayout,
     coverDesign,
     sections,
@@ -219,6 +232,11 @@ export default function ReportPreviewScreen() {
     if (key === template) return;
     setTemplate(key);
     void savePreferences({ reportTemplate: key });
+  };
+
+  const chooseCommercialTemplate = (key: CommercialTemplateId) => {
+    setCommercialTemplate(key);
+    void savePreferences({ commercialTemplate: key });
   };
 
   const handleGenerate = async () => {
@@ -294,10 +312,16 @@ export default function ReportPreviewScreen() {
     [document, summary]
   );
 
-  const documentType = (summary?.documentType ?? 'reference') as DocumentType;
+  const documentType = (summary?.documentType ?? document?.htmlInput.documentType ?? 'reference') as DocumentType;
+  const isCommercial = documentType === 'quote' || documentType === 'invoice';
+  const previewTitle = (() => {
+    if (documentType === 'quote') return t('preview.quoteTitle');
+    if (documentType === 'invoice') return t('preview.invoiceTitle');
+    return t('preview.title');
+  })();
   const ctaLabel = (() => {
-    if (documentType === 'quote') return t('preview.exportQuote');
-    if (documentType === 'invoice') return t('preview.exportInvoice');
+    if (documentType === 'quote') return t('preview.sendQuote');
+    if (documentType === 'invoice') return t('preview.sendInvoice');
     if (reportState === 'none') return t('preview.createPdf');
     if (reportState === 'stale' || templateMismatch) return t('preview.updateReport');
     return t('preview.regenerateReport');
@@ -355,18 +379,25 @@ export default function ReportPreviewScreen() {
   return (
     <Screen edges={['top', 'left', 'right']}>
       <NavigationHeader
-        title={t('preview.title')}
+        title={previewTitle}
         onBack={() => router.back()}
         right={
-          document && !loading && !errorMessage ? (
-            <IconButton
-              name="color-palette-outline"
-              accessibilityLabel={t('preview.changeStyleA11y')}
-              onPress={() => {
-                setTrayTab('colour');
-                setTrayExpanded(true);
-              }}
-            />
+          document && !loading && !errorMessage && !isCommercial ? (
+            <View style={styles.headerActions}>
+              <IconButton
+                name="create-outline"
+                accessibilityLabel={t('documents.actionEditJob')}
+                onPress={() => router.push(`/job/${id}`)}
+              />
+              <IconButton
+                name="color-palette-outline"
+                accessibilityLabel={t('preview.changeStyleA11y')}
+                onPress={() => {
+                  setTrayTab('colour');
+                  setTrayExpanded(true);
+                }}
+              />
+            </View>
           ) : null
         }
       />
@@ -384,51 +415,96 @@ export default function ReportPreviewScreen() {
             <HtmlReportPreview html={html} onEdit={handlePreviewEdit} />
           </View>
 
-          <PreviewStyleTray
-            expanded={trayExpanded}
-            onExpand={() => setTrayExpanded(true)}
-            onCollapse={() => setTrayExpanded(false)}
-            tab={trayTab}
-            onTabChange={setTrayTab}
-            template={template}
-            pendingProTemplate={pendingProTemplate}
-            onSelectTemplate={chooseTemplate}
-            onUnlockPro={() => router.push({ pathname: '/paywall', params: { trigger: 'template' } })}
-            onColourLocked={() => router.push({ pathname: '/paywall', params: { trigger: 'colour' } })}
-            onReviewLocked={() => router.push({ pathname: '/paywall', params: { trigger: 'review_link' } })}
-            onUseFreeLayout={() => {
-              setPendingProTemplate(null);
-              if (!isFreeReportTemplate(template)) {
-                setTemplate(DEFAULT_REPORT_TEMPLATE);
-                void savePreferences({ reportTemplate: DEFAULT_REPORT_TEMPLATE });
-              }
-            }}
-            isPro={isPro}
-            coverDesign={coverDesign}
-            onCoverDesign={chooseCoverDesign}
-            accentColor={accentColor}
-            usingBrandColour={usingBrandColour}
-            onBrandColour={applyBrandColour}
-            onAccentSwatch={applyAccentSwatch}
-            onCustomAccent={openCustomAccent}
-            sections={sections}
-            sectionOrder={sectionOrder}
-            onToggleSection={toggleSection}
-            onMoveSection={moveSection}
-            sectionMeta={{
-              photoCount,
-              checklistChecked: checklistProgress.checked,
-              checklistTotal: checklistProgress.total,
-              reviewProvider: profile?.reviewProvider ?? 'google',
-              hasReviewUrl: Boolean(profile?.reviewUrl?.trim()),
-              businessInitial: businessInitialFromName(profile?.businessName),
-            }}
-            ctaLabel={ctaLabel}
-            onCreatePdf={() => void handleGenerate()}
-            onShare={() => void handleShare()}
-            tradeFilter={tradeFilter}
-            onTradeFilter={setTradeFilter}
-          />
+          {isCommercial ? (
+            <View
+              style={[
+                styles.commercialBar,
+                {
+                  paddingBottom: Math.max(insets.bottom, spacing.md),
+                  paddingHorizontal: spacing.lg,
+                  paddingTop: spacing.sm,
+                  backgroundColor: colors.background,
+                  borderTopColor: colors.border,
+                  gap: spacing.sm,
+                },
+              ]}
+            >
+              <CommercialTemplatePicker
+                value={commercialTemplate}
+                onChange={chooseCommercialTemplate}
+                accentColor={accentColor}
+              />
+              <View style={[styles.commercialActions, { gap: spacing.sm }]}>
+                <Button
+                  label={ctaLabel}
+                  icon={<Ionicons name="paper-plane-outline" size={20} color={colors.textInverse} />}
+                  onPress={() => void handleGenerate()}
+                  style={{ flex: 1 }}
+                  fullWidth={false}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('common.share')}
+                  onPress={() => void handleShare()}
+                  style={[
+                    styles.shareRound,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: colors.surface,
+                    },
+                  ]}
+                >
+                  <Ionicons name="share-outline" size={22} color={colors.textPrimary} />
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <PreviewStyleTray
+              expanded={trayExpanded}
+              onExpand={() => setTrayExpanded(true)}
+              onCollapse={() => setTrayExpanded(false)}
+              tab={trayTab}
+              onTabChange={setTrayTab}
+              template={template}
+              pendingProTemplate={pendingProTemplate}
+              onSelectTemplate={chooseTemplate}
+              onUnlockPro={() => router.push({ pathname: '/paywall', params: { trigger: 'template' } })}
+              onColourLocked={() => router.push({ pathname: '/paywall', params: { trigger: 'colour' } })}
+              onReviewLocked={() => router.push({ pathname: '/paywall', params: { trigger: 'review_link' } })}
+              onUseFreeLayout={() => {
+                setPendingProTemplate(null);
+                if (!isFreeReportTemplate(template)) {
+                  setTemplate(DEFAULT_REPORT_TEMPLATE);
+                  void savePreferences({ reportTemplate: DEFAULT_REPORT_TEMPLATE });
+                }
+              }}
+              isPro={isPro}
+              coverDesign={coverDesign}
+              onCoverDesign={chooseCoverDesign}
+              accentColor={accentColor}
+              usingBrandColour={usingBrandColour}
+              onBrandColour={applyBrandColour}
+              onAccentSwatch={applyAccentSwatch}
+              onCustomAccent={openCustomAccent}
+              sections={sections}
+              sectionOrder={sectionOrder}
+              onToggleSection={toggleSection}
+              onMoveSection={moveSection}
+              sectionMeta={{
+                photoCount,
+                checklistChecked: checklistProgress.checked,
+                checklistTotal: checklistProgress.total,
+                reviewProvider: profile?.reviewProvider ?? 'google',
+                hasReviewUrl: Boolean(profile?.reviewUrl?.trim()),
+                businessInitial: businessInitialFromName(profile?.businessName),
+              }}
+              ctaLabel={ctaLabel}
+              onCreatePdf={() => void handleGenerate()}
+              onShare={() => void handleShare()}
+              tradeFilter={tradeFilter}
+              onTradeFilter={setTradeFilter}
+            />
+          )}
 
           <CoverPickerSheet
             visible={coverPickerOpen}
@@ -489,6 +565,15 @@ function applyLocalSectionGates(
   sections: ReportSections,
   order: ReportSectionId[]
 ): ReportDocument['htmlInput'] {
+  const commercial = input.documentType === 'quote' || input.documentType === 'invoice';
+  // Quotes/invoices use their own template — never strip pricing for tray section toggles.
+  if (commercial) {
+    return {
+      ...input,
+      reportSections: sections,
+      reportSectionOrder: order,
+    };
+  }
   return {
     ...input,
     before: sections.photos ? input.before : [],
@@ -509,11 +594,37 @@ function applyLocalSectionGates(
 }
 
 const styles = StyleSheet.create({
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   body: {
     flex: 1,
   },
   preview: {
     ...StyleSheet.absoluteFill,
     overflow: 'hidden',
+  },
+  commercialBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  commercialActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  shareRound: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

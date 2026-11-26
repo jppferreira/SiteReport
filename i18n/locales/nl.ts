@@ -1205,7 +1205,7 @@ const nl = deepMerge(enUS, {
     icloudNotReady: 'iCloud Drive is nog niet beschikbaar. Zet iCloud Drive voor Trade Report aan in Instellingen en probeer het opnieuw.',
     icloudWriteFailed: 'De back-up kon niet in iCloud Drive worden opgeslagen. Er is niets op deze telefoon gewijzigd.',
     googleDriveAppMissing: 'Installeer de Google Drive-app en probeer het opnieuw. Trade Report meldt zich niet aan bij Google.',
-    googleDriveNotSelected: 'Kies een map in Google Drive. De back-up is niet opgeslagen.',
+    googleDriveNotSelected: 'Kies Google Drive (niet Downloads of Bestanden). Open het menu op het opslaan-scherm, kies Drive, tik dan op Opslaan. De back-up is niet opgeslagen.',
     googleDriveWriteFailed: 'De back-up kon niet in Google Drive worden opgeslagen. Er is niets op deze telefoon gewijzigd.',
     googleDriveNeedsAndroidApp: 'Opslaan in Google Drive heeft de Trade Report-app voor Android nodig.',
   },

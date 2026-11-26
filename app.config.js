@@ -33,37 +33,66 @@ function pickerColor(value) {
 
 const brand = loadBrandColors();
 
+/**
+ * Separate DEV app (side-by-side with store/prod) when:
+ *   APP_VARIANT=development   — local Metro / expo run:*
+ *   EAS_BUILD_PROFILE=development — EAS development profile
+ */
+const isDevBuild =
+  process.env.APP_VARIANT === 'development' ||
+  process.env.EAS_BUILD_PROFILE === 'development';
+
 /** @param {{ config: import('expo/config').ExpoConfig }} ctx */
-module.exports = ({ config }) => ({
-  ...config,
-  name: config.name ?? 'TradeReport',
-  slug: config.slug ?? 'tradesreport',
-  extra: {
-    ...(config.extra ?? {}),
-    // Fine-grained PAT with Issues: Write on jppferreira/SiteReport. Set via
-    // EAS secret / env GITHUB_BUG_REPORT_TOKEN before store builds.
-    githubBugReportToken:
-      process.env.GITHUB_BUG_REPORT_TOKEN || process.env.EXPO_PUBLIC_GITHUB_BUG_TOKEN || '',
-  },
-  plugins: (config.plugins ?? []).map((plugin) => {
-    const name = typeof plugin === 'string' ? plugin : plugin[0];
-    if (name !== '@react-native-community/datetimepicker') return plugin;
-    return [
-      '@react-native-community/datetimepicker',
-      {
-        android: {
-          datePicker: {
-            colorAccent: pickerColor(brand.accent),
-            colorControlActivated: pickerColor(brand.accent),
-            colorControlHighlight: pickerColor(brand.accentSoft),
-            textColorPrimary: pickerColor(brand.textPrimary),
-            textColorSecondary: pickerColor(brand.textSecondary),
-            textColorPrimaryInverse: pickerColor(brand.accentOnAccent),
-            textColorSecondaryInverse: pickerColor(brand.accentOnAccent),
-            windowBackground: pickerColor(brand.surface),
+module.exports = ({ config }) => {
+  const ios = { ...(config.ios ?? {}) };
+  const android = { ...(config.android ?? {}) };
+
+  if (isDevBuild) {
+    ios.bundleIdentifier = 'com.tradesreport.app.dev';
+    android.package = 'com.tradesreport.app.dev';
+    android.adaptiveIcon = {
+      ...(android.adaptiveIcon ?? {}),
+      foregroundImage: './assets/images/android-icon-foreground-dev.png',
+      monochromeImage: './assets/images/android-icon-monochrome-dev.png',
+    };
+  }
+
+  return {
+    ...config,
+    name: isDevBuild ? 'TradeReport Dev' : (config.name ?? 'TradeReport'),
+    slug: config.slug ?? 'tradesreport',
+    scheme: isDevBuild ? 'tradesreport-dev' : (config.scheme ?? 'tradesreport'),
+    icon: isDevBuild ? './assets/images/icon-dev.png' : (config.icon ?? './assets/images/icon.png'),
+    ios,
+    android,
+    extra: {
+      ...(config.extra ?? {}),
+      appVariant: isDevBuild ? 'development' : 'production',
+      // Fine-grained PAT with Issues: Write on jppferreira/SiteReport. Set via
+      // EAS secret / env GITHUB_BUG_REPORT_TOKEN before store builds.
+      githubBugReportToken:
+        process.env.GITHUB_BUG_REPORT_TOKEN || process.env.EXPO_PUBLIC_GITHUB_BUG_TOKEN || '',
+    },
+    plugins: (config.plugins ?? []).map((plugin) => {
+      const name = typeof plugin === 'string' ? plugin : plugin[0];
+      if (name !== '@react-native-community/datetimepicker') return plugin;
+      return [
+        '@react-native-community/datetimepicker',
+        {
+          android: {
+            datePicker: {
+              colorAccent: pickerColor(brand.accent),
+              colorControlActivated: pickerColor(brand.accent),
+              colorControlHighlight: pickerColor(brand.accentSoft),
+              textColorPrimary: pickerColor(brand.textPrimary),
+              textColorSecondary: pickerColor(brand.textSecondary),
+              textColorPrimaryInverse: pickerColor(brand.accentOnAccent),
+              textColorSecondaryInverse: pickerColor(brand.accentOnAccent),
+              windowBackground: pickerColor(brand.surface),
+            },
           },
         },
-      },
-    ];
-  }),
-});
+      ];
+    }),
+  };
+};

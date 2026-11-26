@@ -63,7 +63,14 @@ export const PRO_CATALOG: CatalogItem[] = [
   },
 ];
 
-export const SUBSCRIPTION_PRODUCT_IDS = [PLAY_SUBSCRIPTION_ID];
+/**
+ * Play also has older standalone subscription products (`monthly` / `annual`) from
+ * an earlier Console setup. Query them as a fallback when `tradesreport.pro`
+ * returns without base-plan offers (common on some license-test devices).
+ */
+export const LEGACY_PLAY_SUBSCRIPTION_IDS = ['monthly', 'annual'] as const;
+
+export const SUBSCRIPTION_PRODUCT_IDS = [PLAY_SUBSCRIPTION_ID, ...LEGACY_PLAY_SUBSCRIPTION_IDS];
 
 export const LIFETIME_PRODUCT_ID = PRO_CATALOG.find((item) => item.planId === 'lifetime')!.productId;
 
@@ -74,7 +81,8 @@ export function catalogItemForPlan(planId: PlanId): CatalogItem {
 }
 
 export function isPlayProduct(productId: string): boolean {
-  return PRO_CATALOG.some((item) => item.productId === productId);
+  if (PRO_CATALOG.some((item) => item.productId === productId)) return true;
+  return (LEGACY_PLAY_SUBSCRIPTION_IDS as readonly string[]).includes(productId);
 }
 
 export function catalogItemForApple(productId: string): CatalogItem | undefined {
@@ -87,6 +95,9 @@ export function isAppleProduct(productId: string): boolean {
 
 /** Resolves a Play product, and a base plan when several plans share that product. */
 export function catalogItemForOwned(productId: string, basePlanId?: string | null): CatalogItem | undefined {
+  if (productId === 'monthly' || productId === 'annual') {
+    return catalogItemForPlan(productId);
+  }
   const matches = PRO_CATALOG.filter((item) => item.productId === productId);
   if (matches.length === 0) return undefined;
   if (matches.length === 1) return matches[0];
@@ -96,4 +107,10 @@ export function catalogItemForOwned(productId: string, basePlanId?: string | nul
 
 export function productIdForPlan(planId: PlanId): string {
   return catalogItemForPlan(planId).productId;
+}
+
+/** Catalog order for the upgrade modal: monthly → annual → lifetime. */
+export function sortProductsByCatalog(products: ProductInfo[]): ProductInfo[] {
+  const order = PRO_CATALOG.map((item) => item.planId);
+  return [...products].sort((a, b) => order.indexOf(a.planId) - order.indexOf(b.planId));
 }

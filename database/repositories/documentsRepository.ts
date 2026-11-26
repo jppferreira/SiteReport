@@ -158,7 +158,7 @@ export async function createStandaloneDocument(input: StandaloneDocumentInput): 
         throw new Error('Customer not found');
       }
       customerName = customer.name;
-      address = customer.address;
+      address = [customer.address, customer.postcode].filter(Boolean).join(', ') || null;
       title = title ?? customer.name;
     }
     const quickJob = await jobsRepository.createQuickJob({
@@ -171,11 +171,65 @@ export async function createStandaloneDocument(input: StandaloneDocumentInput): 
     title = title ?? quickJob.title;
   }
 
-  return createDocument({
+  if (!jobId) {
+    throw new Error('Job required for standalone document');
+  }
+
+  const document = await createDocument({
     jobId,
     kind: input.kind,
     title,
   });
+
+  // Standalone quotes/invoices land in the document editor with pricing mode ready.
+  if (input.kind === 'quote' || input.kind === 'invoice') {
+    const documentType: DocumentType = input.kind;
+    await workSummaryRepository.saveWorkSummary(jobId, {
+      documentType,
+      pricing: { enabled: true, lines: [] },
+    });
+  }
+
+  return document;
+}
+
+export type DocumentDraftPatch = {
+  title?: string | null;
+  totalPence?: number | null;
+  netPence?: number | null;
+  vatPence?: number | null;
+  pricingSnapshotJson?: string | null;
+};
+
+/** Persists draft fields from the quote/invoice editor without changing status. */
+export async function updateDocumentDraft(id: string, patch: DocumentDraftPatch): Promise<void> {
+  const existing = await getDocument(id);
+  if (!existing) return;
+
+  const now = new Date().toISOString();
+  const next: TradeDocument = {
+    ...existing,
+    title: patch.title !== undefined ? patch.title : existing.title,
+    totalPence: patch.totalPence !== undefined ? patch.totalPence : existing.totalPence,
+    netPence: patch.netPence !== undefined ? patch.netPence : existing.netPence,
+    vatPence: patch.vatPence !== undefined ? patch.vatPence : existing.vatPence,
+    pricingSnapshotJson:
+      patch.pricingSnapshotJson !== undefined ? patch.pricingSnapshotJson : existing.pricingSnapshotJson,
+    updatedAt: now,
+  };
+
+  const db = await getDatabase();
+  await db.runAsync(
+    `UPDATE documents SET title = ?, totalPence = ?, netPence = ?, vatPence = ?,
+       pricingSnapshotJson = ?, updatedAt = ? WHERE id = ?`,
+    next.title,
+    next.totalPence,
+    next.netPence,
+    next.vatPence,
+    next.pricingSnapshotJson,
+    next.updatedAt,
+    id
+  );
 }
 
 export async function createDocument(input: NewTradeDocument): Promise<TradeDocument> {

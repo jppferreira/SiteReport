@@ -87,18 +87,20 @@ export function JobCard({
             </Text>
           ) : null}
 
-          <View style={styles.metaRow}>
-            <View style={styles.pips}>
-              {DOCUMENT_KINDS.map((kind) => (
-                <JobPip key={kind} kind={kind} on={Boolean(documentSummary?.[kind])} />
-              ))}
+          {DOCUMENT_KINDS.some((kind) => documentSummary?.[kind]) || status ? (
+            <View style={styles.metaRow}>
+              <View style={styles.pips}>
+                {DOCUMENT_KINDS.filter((kind) => documentSummary?.[kind]).map((kind) => (
+                  <JobPip key={kind} kind={kind} on />
+                ))}
+              </View>
+              {status ? (
+                <Text variant="caption" color={colors.textPrimary} numberOfLines={1} style={styles.status}>
+                  {status}
+                </Text>
+              ) : null}
             </View>
-            {status ? (
-              <Text variant="caption" color={colors.textPrimary} numberOfLines={1} style={styles.status}>
-                {status}
-              </Text>
-            ) : null}
-          </View>
+          ) : null}
         </View>
       </View>
     </Card>

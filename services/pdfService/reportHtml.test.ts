@@ -475,6 +475,84 @@ describe('buildReportHtml', () => {
     expect(buildReportHtml(sample('image'))).not.toContain('id="preview-screen"');
   });
 
+  it('bakes kitchen-demo callouts, arrow and dimension into print HTML', () => {
+    // Mirrors shapes saved on photo-kit-before during device E2E.
+    const annotated = {
+      ...photo('photo-kit-before', 'Before suite'),
+      width: 1200,
+      height: 900,
+      annotations: {
+        version: 1 as const,
+        shapes: [
+          {
+            kind: 'callout' as const,
+            color: '#FF5A36' as const,
+            at: { x: 0.28, y: 0.35 },
+            note: 'Damaged unit',
+          },
+          {
+            kind: 'callout' as const,
+            color: '#FF5A36' as const,
+            at: { x: 0.62, y: 0.55 },
+            note: 'Worn worktop',
+          },
+          {
+            kind: 'arrow' as const,
+            color: '#1FA84A' as const,
+            width: 0.008,
+            from: { x: 0.2, y: 0.7 },
+            to: { x: 0.4, y: 0.55 },
+          },
+          {
+            kind: 'dimension' as const,
+            color: '#FF5A36' as const,
+            width: 0.009,
+            from: { x: 0.1571, y: 0.6045 },
+            to: { x: 0.5012, y: 0.6045 },
+            label: '900 mm',
+            outline: true,
+          },
+        ],
+      },
+    };
+    const html = buildReportHtml(sample('modern', { before: [annotated], after: [] }));
+    expect(html).toContain('class="photo-with-marks"');
+    expect(html).toContain('<image href="data:image/jpeg;base64,photo-kit-before"');
+    expect(html).toContain('Damaged unit');
+    expect(html).toContain('Worn worktop');
+    expect(html).toContain('900 mm');
+    expect(html).toContain('annotation-cards');
+    // Print HTML normalizes marker colors to rgb() for WKWebView print.
+    expect(html).toContain('fill="rgb(31, 168, 74)"');
+    expect(html).toContain('stroke="rgb(255, 90, 54)"');
+
+    const quoteHtml = buildReportHtml(
+      sample('modern', {
+        documentType: 'quote',
+        commercialTemplate: 'classic',
+        pricing: {
+          enabled: true,
+          lines: [
+            { id: '1', description: 'Labour', category: 'labour', amount: '850' },
+            { id: '2', description: 'Materials', category: 'materials', amount: '320' },
+          ],
+        },
+        quote: {
+          quoteNumber: 'QUO-0001',
+          issuedAt: '2026-11-25T15:24:47.776Z',
+          validUntil: '2026-12-25',
+        },
+        business: { ...sample('modern').business, vatNumber: 'GB123456789' },
+      })
+    );
+    expect(quoteHtml).toContain('data-doc="quote"');
+    expect(quoteHtml).toContain('QUO-0001');
+    expect(quoteHtml).toContain('Labour');
+    expect(quoteHtml).toContain('Materials');
+    expect(quoteHtml).toContain('Quote total');
+    expect(quoteHtml).toContain('£1,404.00');
+  });
+
   it('keeps baked photo markup and note cards when photos are under a named section', () => {
     const annotated = {
       ...photo('before-1', 'Old boiler'),
@@ -676,7 +754,7 @@ describe('buildReportHtml', () => {
     expect(html).toContain('Scan to review');
   });
 
-  it('titles pricing as a quote or invoice and adds VAT when a VAT number is present', () => {
+  it('routes quote/invoice pricing through the commercial sheet with VAT', () => {
     const pricing = {
       enabled: true,
       lines: [
@@ -687,20 +765,32 @@ describe('buildReportHtml', () => {
       sample('modern', {
         pricing,
         documentType: 'quote',
+        commercialTemplate: 'classic',
+        quote: {
+          quoteNumber: 'QUO-0142',
+          issuedAt: '2026-10-04T12:00:00.000Z',
+          validUntil: '2026-11-04',
+        },
         business: {
           ...sample('modern').business,
           vatNumber: 'GB123',
         },
       })
     );
-    expect(quote).toContain('>Quote<');
+    // Quotes no longer use the report pricing block — they print as commercial PDFs.
+    expect(quote).toContain('data-tier="commercial"');
+    expect(quote).toContain('data-doc="quote"');
+    expect(quote).toContain('>QUOTE<');
     expect(quote).toContain('VAT 20%');
     expect(quote).toContain('£120.00');
+    expect(quote).toContain('Quote total');
+    expect(quote).toContain('Copper pipe');
 
     const invoice = buildReportHtml(
       sample('modern', {
         pricing,
         documentType: 'invoice',
+        commercialTemplate: 'classic',
         business: {
           ...sample('modern').business,
           vatNumber: 'GB123',
@@ -716,9 +806,11 @@ describe('buildReportHtml', () => {
         },
       })
     );
-    expect(invoice).toContain('>Invoice<');
+    expect(invoice).toContain('data-tier="commercial"');
+    expect(invoice).toContain('data-doc="invoice"');
+    expect(invoice).toContain('>INVOICE<');
     expect(invoice).toContain('INV-0142');
-    expect(invoice).toContain('Invoice details');
+    expect(invoice).toContain('PAYMENT DETAILS');
     expect(invoice).toContain('20-45-77');
   });
 

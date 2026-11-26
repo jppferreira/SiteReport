@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 
-import { BottomSheet, Button, Input, SegmentedControl, Text, ToggleRow } from '@/components';
+import { BottomSheet, Button, Input, SegmentedControl, Text } from '@/components';
 import { formatPence } from '@/models';
 import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
@@ -24,14 +24,14 @@ export function MarkPaidSheet({ visible, defaultAmountPence, loading, onClose, o
   const [amount, setAmount] = useState(defaultAmount);
   const [paidDate, setPaidDate] = useState(new Date().toISOString().slice(0, 10));
   const [method, setMethod] = useState<PaymentMethod>('bank');
-  const [thankYou, setThankYou] = useState(true);
 
   const handleSubmit = () => {
     const cleaned = amount.replace(/[£,\s]/g, '');
     const [whole = '0', frac = ''] = cleaned.split('.');
     const pence = Number(whole) * 100 + Number((frac + '00').slice(0, 2));
     const amountPence = Number.isFinite(pence) ? pence : defaultAmountPence ?? 0;
-    onSubmit({ amountPence, paidAt: paidDate, method, thankYou });
+    // Thank-you email is not shipped yet — never offer it in the sheet.
+    onSubmit({ amountPence, paidAt: paidDate, method, thankYou: false });
   };
 
   return (
@@ -59,9 +59,6 @@ export function MarkPaidSheet({ visible, defaultAmountPence, loading, onClose, o
           value={method}
           onChange={(key) => setMethod(key as PaymentMethod)}
         />
-      </View>
-      <View style={{ marginTop: spacing.md }}>
-        <ToggleRow label={t('documents.markPaidThankYou')} value={thankYou} onValueChange={setThankYou} />
       </View>
       <View style={{ marginTop: spacing.lg }}>
         <Button label={t('documents.markPaidConfirm')} onPress={handleSubmit} loading={loading} disabled={loading} />

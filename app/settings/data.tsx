@@ -103,10 +103,12 @@ export default function DataPrivacyScreen() {
   };
 
   const handleRestore = async () => {
-    setConfirmRestore(false);
+    // Keep the confirm sheet mounted until the system file picker is open —
+    // dismissing first can cancel the pick on Android.
     setBackupBusy(true);
     try {
       const picked = await pickBackupFile();
+      setConfirmRestore(false);
       if (picked.kind === 'cancelled') return;
       if (picked.encrypted) {
         setPendingRestoreBytes(picked.bytes);
@@ -115,6 +117,7 @@ export default function DataPrivacyScreen() {
       }
       await finishRestore(picked.bytes);
     } catch {
+      setConfirmRestore(false);
       showToast({ message: t('backup.couldNotOpen'), tone: 'destructive' });
     } finally {
       setBackupBusy(false);
@@ -249,7 +252,9 @@ export default function DataPrivacyScreen() {
       </ScrollView>
 
       <ConfirmationDialog
-        visible={pendingBackup !== null}
+        // Hide while the password sheet is up — presenting a second modal on top of this
+        // one fails on iOS ("already presenting") and leaves Save stuck.
+        visible={pendingBackup !== null && !backupPasswordOpen}
         title={pendingBackup ? backupPrompt[pendingBackup].title : ''}
         description={pendingBackup ? backupPrompt[pendingBackup].description : undefined}
         confirmLabel={
@@ -280,7 +285,13 @@ export default function DataPrivacyScreen() {
           const destination = pendingBackup;
           setBackupPasswordOpen(false);
           setPendingBackup(null);
-          if (destination) void handleBackup(destination, password ?? undefined);
+          // Wait for the password modal to finish dismissing before opening
+          // ACTION_CREATE_DOCUMENT — launching during dismiss cancels/fails on Android.
+          if (destination) {
+            setTimeout(() => {
+              void handleBackup(destination, password ?? undefined);
+            }, 450);
+          }
         }}
       />
 
