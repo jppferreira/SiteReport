@@ -3,7 +3,7 @@
     "name": "TradeReport",
     "slug": "tradesreport",
     "scheme": "tradesreport",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "automatic",
@@ -11,7 +11,7 @@
     "backgroundColor": "#F7F8F7",
     "ios": {
       "bundleIdentifier": "com.tradesreport.app",
-      "buildNumber": "19",
+      "buildNumber": "21",
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Trade Report uses your camera to take before and after job photos and to measure distances with AR for your reports.",
@@ -23,7 +23,7 @@
     },
     "android": {
       "package": "com.tradesreport.app",
-      "versionCode": 20,
+      "versionCode": 23,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
