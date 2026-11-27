@@ -206,7 +206,12 @@ export default function PaywallScreen() {
             <Button
               label={
                 selectedProduct
-                  ? t('paywall.continueWithPrice', { price: selectedProduct.priceFormatted })
+                  ? t('paywall.continueWithPrice', {
+                      price:
+                        selectedProduct.hasIntroductoryOffer && selectedProduct.introductoryPriceFormatted
+                          ? selectedProduct.introductoryPriceFormatted
+                          : selectedProduct.priceFormatted,
+                    })
                   : t('paywall.continue')
               }
               onPress={handlePurchase}

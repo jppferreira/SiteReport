@@ -254,4 +254,179 @@ describe('Play subscription mapping', () => {
     expect(info?.introductoryPriceFormatted).toBeUndefined();
     expect(info?.hasIntroductoryOffer).toBe(false);
   });
+
+  it('selects the lowest-priced promotional offer when multiple exist (Black Friday before Cyber Monday)', () => {
+    const productWithMultiplePromos: PlayProductSnapshot = {
+      id: 'tradesreport.pro',
+      displayPrice: '£29.99',
+      currency: 'GBP',
+      price: 29.99,
+      subscriptionOfferDetailsAndroid: [
+        {
+          basePlanId: 'annual',
+          offerId: 'black-friday-2026',
+          offerToken: 'bf-token',
+          pricingPhases: {
+            pricingPhaseList: [
+              { formattedPrice: '£19.99', priceAmountMicros: '19990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' },
+              { formattedPrice: '£29.99', priceAmountMicros: '29990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' },
+            ],
+          },
+        },
+        {
+          basePlanId: 'annual',
+          offerId: 'cyber-monday-2026',
+          offerToken: 'cm-token',
+          pricingPhases: {
+            pricingPhaseList: [
+              { formattedPrice: '£14.99', priceAmountMicros: '14990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' },
+              { formattedPrice: '£29.99', priceAmountMicros: '29990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' },
+            ],
+          },
+        },
+        {
+          basePlanId: 'annual',
+          offerId: null,
+          offerToken: 'base-token',
+          pricingPhases: {
+            pricingPhaseList: [{ formattedPrice: '£29.99', priceAmountMicros: '29990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' }],
+          },
+        },
+      ],
+    };
+    
+    const info = productInfoFromPlay(annual, productWithMultiplePromos);
+    expect(info?.introductoryPriceFormatted).toBe('£14.99');
+    expect(info?.introductoryPriceValue).toBe(14.99);
+    expect(info?.hasIntroductoryOffer).toBe(true);
+    expect(offerTokenFor(productWithMultiplePromos, 'annual')).toBe('cm-token');
+  });
+
+  it('selects the lowest-priced promotional offer when multiple exist (Cyber Monday before Black Friday)', () => {
+    const productWithMultiplePromos: PlayProductSnapshot = {
+      id: 'tradesreport.pro',
+      displayPrice: '£29.99',
+      currency: 'GBP',
+      price: 29.99,
+      subscriptionOfferDetailsAndroid: [
+        {
+          basePlanId: 'annual',
+          offerId: 'cyber-monday-2026',
+          offerToken: 'cm-token',
+          pricingPhases: {
+            pricingPhaseList: [
+              { formattedPrice: '£14.99', priceAmountMicros: '14990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' },
+              { formattedPrice: '£29.99', priceAmountMicros: '29990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' },
+            ],
+          },
+        },
+        {
+          basePlanId: 'annual',
+          offerId: 'black-friday-2026',
+          offerToken: 'bf-token',
+          pricingPhases: {
+            pricingPhaseList: [
+              { formattedPrice: '£19.99', priceAmountMicros: '19990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' },
+              { formattedPrice: '£29.99', priceAmountMicros: '29990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' },
+            ],
+          },
+        },
+        {
+          basePlanId: 'annual',
+          offerId: null,
+          offerToken: 'base-token',
+          pricingPhases: {
+            pricingPhaseList: [{ formattedPrice: '£29.99', priceAmountMicros: '29990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' }],
+          },
+        },
+      ],
+    };
+    
+    const info = productInfoFromPlay(annual, productWithMultiplePromos);
+    expect(info?.introductoryPriceFormatted).toBe('£14.99');
+    expect(info?.introductoryPriceValue).toBe(14.99);
+    expect(info?.hasIntroductoryOffer).toBe(true);
+    expect(offerTokenFor(productWithMultiplePromos, 'annual')).toBe('cm-token');
+  });
+
+  it('selects the lowest-priced offer using normalized format when multiple exist', () => {
+    const productNormalized: PlayProductSnapshot = {
+      id: 'tradesreport.pro',
+      displayPrice: '£29.99',
+      currency: 'GBP',
+      price: 29.99,
+      subscriptionOffers: [
+        {
+          id: 'black-friday-2026',
+          displayPrice: '£19.99',
+          price: 19.99,
+          currency: 'GBP',
+          offerTokenAndroid: 'bf-token',
+          basePlanIdAndroid: 'annual',
+          pricingPhasesAndroid: {
+            pricingPhaseList: [
+              { formattedPrice: '£19.99', priceAmountMicros: '19990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' },
+              { formattedPrice: '£29.99', priceAmountMicros: '29990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' },
+            ],
+          },
+        },
+        {
+          id: 'cyber-monday-2026',
+          displayPrice: '£14.99',
+          price: 14.99,
+          currency: 'GBP',
+          offerTokenAndroid: 'cm-token',
+          basePlanIdAndroid: 'annual',
+          pricingPhasesAndroid: {
+            pricingPhaseList: [
+              { formattedPrice: '£14.99', priceAmountMicros: '14990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' },
+              { formattedPrice: '£29.99', priceAmountMicros: '29990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' },
+            ],
+          },
+        },
+        {
+          id: 'annual',
+          displayPrice: '£29.99',
+          price: 29.99,
+          currency: 'GBP',
+          offerTokenAndroid: 'base-token',
+          basePlanIdAndroid: 'annual',
+          pricingPhasesAndroid: {
+            pricingPhaseList: [{ formattedPrice: '£29.99', priceAmountMicros: '29990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' }],
+          },
+        },
+      ],
+    };
+    
+    const info = productInfoFromPlay(annual, productNormalized);
+    expect(info?.introductoryPriceFormatted).toBe('£14.99');
+    expect(info?.introductoryPriceValue).toBe(14.99);
+    expect(info?.hasIntroductoryOffer).toBe(true);
+    expect(offerTokenFor(productNormalized, 'annual')).toBe('cm-token');
+  });
+
+  it('falls back to base plan when no promotional offers exist', () => {
+    const productNoBF: PlayProductSnapshot = {
+      id: 'tradesreport.pro',
+      displayPrice: '£29.99',
+      currency: 'GBP',
+      price: 29.99,
+      subscriptionOfferDetailsAndroid: [
+        {
+          basePlanId: 'annual',
+          offerId: null,
+          offerToken: 'base-token',
+          pricingPhases: {
+            pricingPhaseList: [{ formattedPrice: '£29.99', priceAmountMicros: '29990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' }],
+          },
+        },
+      ],
+    };
+    
+    const info = productInfoFromPlay(annual, productNoBF);
+    expect(info?.priceFormatted).toBe('£29.99');
+    expect(info?.introductoryPriceFormatted).toBeUndefined();
+    expect(info?.hasIntroductoryOffer).toBe(false);
+    expect(offerTokenFor(productNoBF, 'annual')).toBe('base-token');
+  });
 });
