@@ -78,11 +78,24 @@ function detailsForBasePlan(product: PlayProductSnapshot, basePlanId: string): P
           return phaseMatchesBasePlan(recurring, basePlanId);
         });
   if (offers.length === 0) return undefined;
-  // Prefer promotional/introductory offers (those with an offerId) over bare base plans.
-  // When Black Friday promo is active, `offerId: 'black-friday-2026'` should be selected.
+
+  // When multiple promotional offers exist (e.g., Black Friday 33% off and Cyber Monday 50% off),
+  // select the one with the lowest initial/introductory price.
+  const promotionalOffers = offers.filter((offer) => offer.offerId);
+  if (promotionalOffers.length > 0) {
+    // Find the promotional offer with the lowest initial price
+    const lowestPriceOffer = promotionalOffers.reduce((best, current) => {
+      const bestPhases = paidPhases(best.pricingPhases?.pricingPhaseList);
+      const currentPhases = paidPhases(current.pricingPhases?.pricingPhaseList);
+      const bestPrice = Number(bestPhases[0]?.priceAmountMicros ?? '0');
+      const currentPrice = Number(currentPhases[0]?.priceAmountMicros ?? '0');
+      return currentPrice < bestPrice ? current : best;
+    });
+    return lowestPriceOffer;
+  }
+
+  // Fall back to base plan when no promotional offers exist
   return (
-    offers.find((offer) => offer.basePlanId === basePlanId && offer.offerId) ??
-    offers.find((offer) => offer.offerId) ??
     offers.find((offer) => offer.basePlanId === basePlanId && !offer.offerId) ??
     offers.find((offer) => !offer.offerId) ??
     offers.find((offer) => paidPhases(offer.pricingPhases?.pricingPhaseList).length > 0) ??
@@ -103,10 +116,22 @@ function normalizedForBasePlan(product: PlayProductSnapshot, basePlanId: string)
           const recurring = paidPhases(phases).at(-1) ?? phases.at(-1);
           return phaseMatchesBasePlan(recurring, basePlanId);
         });
-  // Prefer promotional/introductory offers (those with an id different from basePlanId) over bare base plans.
+
+  // When multiple promotional offers exist, select the one with the lowest initial price.
+  const promotionalOffers = offers.filter((offer) => offer.id && offer.id !== basePlanId);
+  if (promotionalOffers.length > 0) {
+    const lowestPriceOffer = promotionalOffers.reduce((best, current) => {
+      const bestPhases = paidPhases(best.pricingPhasesAndroid?.pricingPhaseList);
+      const currentPhases = paidPhases(current.pricingPhasesAndroid?.pricingPhaseList);
+      const bestPrice = Number(bestPhases[0]?.priceAmountMicros ?? '0');
+      const currentPrice = Number(currentPhases[0]?.priceAmountMicros ?? '0');
+      return currentPrice < bestPrice ? current : best;
+    });
+    return lowestPriceOffer;
+  }
+
+  // Fall back to base plan when no promotional offers exist
   return (
-    offers.find((offer) => offer.id && offer.id !== basePlanId && offer.basePlanIdAndroid === basePlanId) ??
-    offers.find((offer) => offer.id && offer.id !== basePlanId) ??
     offers.find((offer) => !offer.id || offer.id === basePlanId || offer.paymentMode == null) ??
     offers.find((offer) => offer.paymentMode !== 'free-trial') ??
     offers[0]
@@ -167,15 +192,28 @@ export function productInfoFromPlay(item: CatalogItem, product: PlayProductSnaps
 
   // Extract introductory offer pricing (first paid phase before recurring, or first phase if single-phase promo)
   const allPhases = paidPhases(phases);
+  const normalizedPhases = paidPhases(normalized?.pricingPhasesAndroid?.pricingPhaseList);
   const hasIntroductoryOffer = details?.offerId != null || (normalized?.id != null && normalized.id !== item.basePlanId);
   let introductoryPriceFormatted: string | undefined;
   let introductoryPriceValue: number | undefined;
   
-  if (hasIntroductoryOffer && allPhases.length > 0) {
-    const introPhase = allPhases.length > 1 ? allPhases[0] : (allPhases[0] !== recurring ? allPhases[0] : undefined);
-    if (introPhase) {
-      introductoryPriceFormatted = introPhase.formattedPrice;
-      introductoryPriceValue = introPhase.priceAmountMicros ? Number(introPhase.priceAmountMicros) / 1_000_000 : undefined;
+  if (hasIntroductoryOffer) {
+    // Try to extract from details first (subscriptionOfferDetailsAndroid format)
+    if (allPhases.length > 0) {
+      const introPhase = allPhases.length > 1 ? allPhases[0] : (allPhases[0] !== recurring ? allPhases[0] : undefined);
+      if (introPhase) {
+        introductoryPriceFormatted = introPhase.formattedPrice;
+        introductoryPriceValue = introPhase.priceAmountMicros ? Number(introPhase.priceAmountMicros) / 1_000_000 : undefined;
+      }
+    }
+    // Fall back to normalized format (subscriptionOffers format)
+    else if (normalizedPhases.length > 0) {
+      const normalizedRecurring = normalizedPhases.at(-1);
+      const introPhase = normalizedPhases.length > 1 ? normalizedPhases[0] : (normalizedPhases[0] !== normalizedRecurring ? normalizedPhases[0] : undefined);
+      if (introPhase) {
+        introductoryPriceFormatted = introPhase.formattedPrice;
+        introductoryPriceValue = introPhase.priceAmountMicros ? Number(introPhase.priceAmountMicros) / 1_000_000 : undefined;
+      }
     }
   }
 
