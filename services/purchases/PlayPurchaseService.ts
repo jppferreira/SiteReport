@@ -160,6 +160,10 @@ export class PlayPurchaseService implements PurchaseService {
 
     return new Promise<PurchaseResult>((resolve) => {
       this.waiters.set(planId, resolve);
+      const snapshot = asSnapshot(product);
+      // For one-time products, check if a discount offer is active (expo-iap 5.8+, Play Billing 8.0+).
+      // The first discount offer's offerToken should be passed to apply the Black Friday discount.
+      const inAppOfferToken = item.kind === 'in-app' ? (snapshot.discountOffers?.[0] as any)?.offerTokenAndroid : undefined;
       const request =
         item.kind === 'subs'
           ? requestPurchase({
@@ -172,7 +176,7 @@ export class PlayPurchaseService implements PurchaseService {
               type: 'subs',
             })
           : requestPurchase({
-              request: { google: { skus: [sku] } },
+              request: { google: { skus: [sku], offerToken: inAppOfferToken } },
               type: 'in-app',
             });
 

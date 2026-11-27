@@ -151,8 +151,8 @@ describe('Play catalog resolution for upgrade modal', () => {
       [lifetime.id, lifetime],
     ]));
     expect(infos.map((p) => p.planId)).toEqual(['monthly', 'annual', 'lifetime']);
-    expect(infos[0].priceFormatted).toBe('£4.99');
-    expect(infos[1].priceFormatted).toBe('£29.99');
+    expect(infos[0]!.priceFormatted).toBe('£4.99');
+    expect(infos[1]!.priceFormatted).toBe('£29.99');
     expect(catalogItemForPlan('monthly').basePlanId).toBe('monthly');
   });
 });

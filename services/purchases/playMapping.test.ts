@@ -54,8 +54,10 @@ describe('Play subscription mapping', () => {
     expect(year?.priceValue).toBe(29.99);
   });
 
-  it('purchases the offer token for the selected base plan', () => {
-    expect(offerTokenFor(product, 'monthly')).toBe('monthly-token');
+  it('purchases the offer token for the selected base plan, preferring promotional offers', () => {
+    // With the new logic, promotional offers (those with an offerId) are preferred.
+    // The test data has a 'trial' offer for monthly, which is correctly selected.
+    expect(offerTokenFor(product, 'monthly')).toBe('trial-token');
     expect(offerTokenFor(product, 'annual')).toBe('annual-token');
   });
 
@@ -154,5 +156,102 @@ describe('Play subscription mapping', () => {
     ]);
     expect(entitlement.status).toBe('free');
     expect(entitlement.isLifetime).toBe(false);
+  });
+
+  it('prefers a promotional offer (Black Friday) over the base plan for annual subscription', () => {
+    const productWithPromo: PlayProductSnapshot = {
+      id: 'tradesreport.pro',
+      displayPrice: '£29.99',
+      currency: 'GBP',
+      price: 29.99,
+      subscriptionOfferDetailsAndroid: [
+        {
+          basePlanId: 'annual',
+          offerId: 'black-friday-2026',
+          offerToken: 'promo-token',
+          pricingPhases: {
+            pricingPhaseList: [
+              { formattedPrice: '£19.99', priceAmountMicros: '19990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' },
+              { formattedPrice: '£29.99', priceAmountMicros: '29990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' },
+            ],
+          },
+        },
+        {
+          basePlanId: 'annual',
+          offerId: null,
+          offerToken: 'base-token',
+          pricingPhases: {
+            pricingPhaseList: [{ formattedPrice: '£29.99', priceAmountMicros: '29990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' }],
+          },
+        },
+      ],
+    };
+    
+    const info = productInfoFromPlay(annual, productWithPromo);
+    expect(info?.priceFormatted).toBe('£29.99');
+    expect(info?.introductoryPriceFormatted).toBe('£19.99');
+    expect(info?.introductoryPriceValue).toBe(19.99);
+    expect(info?.hasIntroductoryOffer).toBe(true);
+    expect(offerTokenFor(productWithPromo, 'annual')).toBe('promo-token');
+  });
+
+  it('shows no introductory offer when only the base plan is available', () => {
+    const productNoBF: PlayProductSnapshot = {
+      id: 'tradesreport.pro',
+      displayPrice: '£29.99',
+      currency: 'GBP',
+      price: 29.99,
+      subscriptionOfferDetailsAndroid: [
+        {
+          basePlanId: 'annual',
+          offerId: null,
+          offerToken: 'base-token',
+          pricingPhases: {
+            pricingPhaseList: [{ formattedPrice: '£29.99', priceAmountMicros: '29990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' }],
+          },
+        },
+      ],
+    };
+    
+    const info = productInfoFromPlay(annual, productNoBF);
+    expect(info?.priceFormatted).toBe('£29.99');
+    expect(info?.introductoryPriceFormatted).toBeUndefined();
+    expect(info?.hasIntroductoryOffer).toBe(false);
+    expect(offerTokenFor(productNoBF, 'annual')).toBe('base-token');
+  });
+
+  it('extracts one-time product discount offer (Black Friday lifetime)', () => {
+    const lifetimeItem = catalogItemForPlan('lifetime');
+    const lifetimeWithDiscount: PlayProductSnapshot = {
+      id: 'tradesreport.pro.lifetime',
+      displayPrice: '£79.99',
+      currency: 'GBP',
+      price: 79.99,
+      discountOffers: [
+        { displayPrice: '£49.99', price: 49.99 },
+      ],
+    };
+    
+    const info = productInfoFromPlay(lifetimeItem, lifetimeWithDiscount);
+    expect(info?.priceFormatted).toBe('£79.99');
+    expect(info?.introductoryPriceFormatted).toBe('£49.99');
+    expect(info?.introductoryPriceValue).toBe(49.99);
+    expect(info?.hasIntroductoryOffer).toBe(true);
+  });
+
+  it('shows no discount when one-time product has no active offer', () => {
+    const lifetimeItem = catalogItemForPlan('lifetime');
+    const lifetimeNoDiscount: PlayProductSnapshot = {
+      id: 'tradesreport.pro.lifetime',
+      displayPrice: '£79.99',
+      currency: 'GBP',
+      price: 79.99,
+      discountOffers: [],
+    };
+    
+    const info = productInfoFromPlay(lifetimeItem, lifetimeNoDiscount);
+    expect(info?.priceFormatted).toBe('£79.99');
+    expect(info?.introductoryPriceFormatted).toBeUndefined();
+    expect(info?.hasIntroductoryOffer).toBe(false);
   });
 });

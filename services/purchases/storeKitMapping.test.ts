@@ -112,4 +112,51 @@ describe('StoreKit entitlement mapping', () => {
     expect(entitlement.status).toBe('free');
     expect(entitlement.subscriptionState).toBe('pending');
   });
+
+  it('extracts introductory offer pricing (Black Friday annual)', () => {
+    const annualWithIntro = productInfoFromStoreKit(catalogItemForPlan('annual'), {
+      id: 'tradesreport.pro.annual',
+      displayPrice: '£29.99',
+      currency: 'GBP',
+      price: 29.99,
+      introductoryPriceIOS: '£19.99',
+      introductoryPriceAsAmountIOS: '19.99',
+      introductoryPricePaymentModeIOS: 'pay-up-front',
+    });
+    
+    expect(annualWithIntro.priceFormatted).toBe('£29.99');
+    expect(annualWithIntro.introductoryPriceFormatted).toBe('£19.99');
+    expect(annualWithIntro.introductoryPriceValue).toBe(19.99);
+    expect(annualWithIntro.hasIntroductoryOffer).toBe(true);
+  });
+
+  it('shows no introductory offer when none is configured', () => {
+    const annualNoIntro = productInfoFromStoreKit(catalogItemForPlan('annual'), {
+      id: 'tradesreport.pro.annual',
+      displayPrice: '£29.99',
+      currency: 'GBP',
+      price: 29.99,
+      introductoryPriceIOS: null,
+      introductoryPricePaymentModeIOS: 'empty',
+    });
+    
+    expect(annualNoIntro.priceFormatted).toBe('£29.99');
+    expect(annualNoIntro.introductoryPriceFormatted).toBeUndefined();
+    expect(annualNoIntro.hasIntroductoryOffer).toBe(false);
+  });
+
+  it('ignores introductory price when payment mode is empty', () => {
+    const annualEmptyMode = productInfoFromStoreKit(catalogItemForPlan('annual'), {
+      id: 'tradesreport.pro.annual',
+      displayPrice: '£29.99',
+      currency: 'GBP',
+      price: 29.99,
+      introductoryPriceIOS: '£19.99',
+      introductoryPriceAsAmountIOS: '19.99',
+      introductoryPricePaymentModeIOS: 'empty',
+    });
+    
+    expect(annualEmptyMode.introductoryPriceFormatted).toBeUndefined();
+    expect(annualEmptyMode.hasIntroductoryOffer).toBe(false);
+  });
 });
