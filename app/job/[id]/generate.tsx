@@ -13,6 +13,7 @@ import { runIcloudAutoBackup } from '@/services/backup/icloudAutoBackup';
 import { goBack } from '@/utils/goBack';
 import { generateReportPdf, ReportGenerationError, reportTemplateLabel } from '@/services/pdfService';
 import { saveFileCopy, shareFile } from '@/services/shareService';
+import { requestFirstShareReview } from '@/services/appReviewService';
 import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
 import { formatFileSize } from '@/utils/format';
@@ -107,6 +108,9 @@ export default function GenerateReportScreen() {
           kind: 'shared',
           label: t('sendEmail.logShared'),
         });
+        setTimeout(() => {
+          void requestFirstShareReview();
+        }, 1500);
       }
     } catch {
       showToast({ message: t('generate.toastShareError'), tone: 'destructive' });
