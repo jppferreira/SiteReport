@@ -39,6 +39,8 @@ export type PlayProductSnapshot = {
   price?: number | null;
   subscriptionOffers?: PlaySubscriptionOffer[];
   subscriptionOfferDetailsAndroid?: PlayOfferDetails[];
+  /** One-time product discount offers (expo-iap 5.8+, Play Billing 8.0+) */
+  discountOffers?: Array<{ displayPrice: string; price: number }>;
 };
 
 export type PlayOwnedItem = {
@@ -76,7 +78,11 @@ function detailsForBasePlan(product: PlayProductSnapshot, basePlanId: string): P
           return phaseMatchesBasePlan(recurring, basePlanId);
         });
   if (offers.length === 0) return undefined;
+  // Prefer promotional/introductory offers (those with an offerId) over bare base plans.
+  // When Black Friday promo is active, `offerId: 'black-friday-2026'` should be selected.
   return (
+    offers.find((offer) => offer.basePlanId === basePlanId && offer.offerId) ??
+    offers.find((offer) => offer.offerId) ??
     offers.find((offer) => offer.basePlanId === basePlanId && !offer.offerId) ??
     offers.find((offer) => !offer.offerId) ??
     offers.find((offer) => paidPhases(offer.pricingPhases?.pricingPhaseList).length > 0) ??
@@ -97,8 +103,10 @@ function normalizedForBasePlan(product: PlayProductSnapshot, basePlanId: string)
           const recurring = paidPhases(phases).at(-1) ?? phases.at(-1);
           return phaseMatchesBasePlan(recurring, basePlanId);
         });
-  // Prefer the paid base offer over free-trial / intro rows.
+  // Prefer promotional/introductory offers (those with an id different from basePlanId) over bare base plans.
   return (
+    offers.find((offer) => offer.id && offer.id !== basePlanId && offer.basePlanIdAndroid === basePlanId) ??
+    offers.find((offer) => offer.id && offer.id !== basePlanId) ??
     offers.find((offer) => !offer.id || offer.id === basePlanId || offer.paymentMode == null) ??
     offers.find((offer) => offer.paymentMode !== 'free-trial') ??
     offers[0]
@@ -123,6 +131,8 @@ export function offerTokenFor(product: PlayProductSnapshot, basePlanId: string):
 
 export function productInfoFromPlay(item: CatalogItem, product: PlayProductSnapshot): ProductInfo | null {
   if (item.kind === 'in-app') {
+    // Check for one-time product discount offers (expo-iap 5.8+, Play Billing 8.0+)
+    const discountOffer = product.discountOffers?.[0];
     return {
       planId: item.planId,
       productId: item.productId,
@@ -130,6 +140,9 @@ export function productInfoFromPlay(item: CatalogItem, product: PlayProductSnaps
       priceValue: product.price ?? 0,
       currencyCode: product.currency,
       periodLabel: item.periodLabel,
+      introductoryPriceFormatted: discountOffer?.displayPrice,
+      introductoryPriceValue: discountOffer?.price,
+      hasIntroductoryOffer: discountOffer != null,
     };
   }
 
@@ -152,6 +165,20 @@ export function productInfoFromPlay(item: CatalogItem, product: PlayProductSnaps
     : (normalized?.price ?? product.price ?? 0);
   const currencyCode = recurring?.priceCurrencyCode || normalized?.currency || product.currency;
 
+  // Extract introductory offer pricing (first paid phase before recurring, or first phase if single-phase promo)
+  const allPhases = paidPhases(phases);
+  const hasIntroductoryOffer = details?.offerId != null || (normalized?.id != null && normalized.id !== item.basePlanId);
+  let introductoryPriceFormatted: string | undefined;
+  let introductoryPriceValue: number | undefined;
+  
+  if (hasIntroductoryOffer && allPhases.length > 0) {
+    const introPhase = allPhases.length > 1 ? allPhases[0] : (allPhases[0] !== recurring ? allPhases[0] : undefined);
+    if (introPhase) {
+      introductoryPriceFormatted = introPhase.formattedPrice;
+      introductoryPriceValue = introPhase.priceAmountMicros ? Number(introPhase.priceAmountMicros) / 1_000_000 : undefined;
+    }
+  }
+
   return {
     planId: item.planId,
     productId: item.productId,
@@ -159,6 +186,9 @@ export function productInfoFromPlay(item: CatalogItem, product: PlayProductSnaps
     priceValue,
     currencyCode,
     periodLabel: item.periodLabel,
+    introductoryPriceFormatted,
+    introductoryPriceValue,
+    hasIntroductoryOffer,
   };
 }
 

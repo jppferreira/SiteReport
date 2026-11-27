@@ -19,6 +19,11 @@ export function PlanOption({ product, selected, onSelect, badge }: PlanOptionPro
   const label = planLabel(product.planId, t);
   const period = periodLabel(product.planId, t);
 
+  // Display introductory offer pricing when available (Black Friday promo)
+  const showIntroPrice = product.hasIntroductoryOffer && product.introductoryPriceFormatted;
+  const displayPrice = showIntroPrice ? product.introductoryPriceFormatted! : product.priceFormatted;
+  const showRegularPrice = showIntroPrice && product.planId !== 'lifetime';
+
   return (
     <Pressable
       onPress={onSelect}
@@ -26,7 +31,7 @@ export function PlanOption({ product, selected, onSelect, badge }: PlanOptionPro
       accessibilityState={{ selected }}
       accessibilityLabel={t('paywall.planA11y', {
         planLabel: label,
-        price: product.priceFormatted,
+        price: displayPrice,
         period,
       })}
       style={[
@@ -49,9 +54,16 @@ export function PlanOption({ product, selected, onSelect, badge }: PlanOptionPro
             <Text variant="bodyMedium">{label}</Text>
             {badge ? <StatusBadge label={badge} tone="accent" /> : null}
           </View>
-          <Text variant="bodySmall" color={colors.textSecondary} style={{ marginTop: 2 }}>
-            {product.priceFormatted} {period}
-          </Text>
+          <View style={{ marginTop: 2 }}>
+            <Text variant="bodySmall" color={colors.textSecondary}>
+              {displayPrice} {period}
+            </Text>
+            {showRegularPrice ? (
+              <Text variant="caption" color={colors.textTertiary} style={{ marginTop: 2 }}>
+                {t('paywall.thenPrice', { price: product.priceFormatted })}
+              </Text>
+            ) : null}
+          </View>
         </View>
       </View>
     </Pressable>

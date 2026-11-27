@@ -8,6 +8,12 @@ export type StoreKitProductSnapshot = {
   displayPrice: string;
   currency: string;
   price?: number | null;
+  /** Formatted introductory price (e.g. "£19.99") when an intro offer is configured. */
+  introductoryPriceIOS?: string | null;
+  /** Introductory price as numeric amount when an intro offer is configured. */
+  introductoryPriceAsAmountIOS?: string | null;
+  /** Payment mode for the introductory offer (e.g. "pay-up-front", "free-trial"). */
+  introductoryPricePaymentModeIOS?: string;
 };
 
 export type StoreKitOwnedItem = {
@@ -22,6 +28,14 @@ export type StoreKitOwnedItem = {
 const APPLE_LIFETIME_ID = catalogItemForPlan('lifetime').appleProductId;
 
 export function productInfoFromStoreKit(item: CatalogItem, product: StoreKitProductSnapshot): ProductInfo {
+  // Extract introductory offer pricing when available.
+  // For the Black Friday promo, Apple's introductory offer (£19.99 first year) should be surfaced here.
+  const hasIntroOffer = product.introductoryPriceIOS != null && product.introductoryPricePaymentModeIOS !== 'empty';
+  const introductoryPriceFormatted = hasIntroOffer && product.introductoryPriceIOS ? product.introductoryPriceIOS : undefined;
+  const introductoryPriceValue = hasIntroOffer && product.introductoryPriceAsAmountIOS
+    ? parseFloat(product.introductoryPriceAsAmountIOS)
+    : undefined;
+
   return {
     planId: item.planId,
     productId: item.appleProductId,
@@ -29,6 +43,9 @@ export function productInfoFromStoreKit(item: CatalogItem, product: StoreKitProd
     priceValue: product.price ?? 0,
     currencyCode: product.currency,
     periodLabel: item.periodLabel,
+    introductoryPriceFormatted,
+    introductoryPriceValue,
+    hasIntroductoryOffer: hasIntroOffer,
   };
 }
 

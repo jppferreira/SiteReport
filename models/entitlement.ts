@@ -40,6 +40,12 @@ export type ProductInfo = {
   priceValue: number;
   currencyCode: string;
   periodLabel: string;
+  /** Formatted introductory/promotional price when an active offer exists and the user is eligible. */
+  introductoryPriceFormatted?: string;
+  /** Numeric introductory/promotional price value when an active offer exists and the user is eligible. */
+  introductoryPriceValue?: number;
+  /** True when an introductory or promotional offer is available for this product. */
+  hasIntroductoryOffer?: boolean;
 };
 
 export type PurchaseResult =

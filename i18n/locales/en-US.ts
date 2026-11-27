@@ -1763,6 +1763,7 @@ const enUS = {
     triggerBrandedEmail: 'Branded email with PDF attachment is a Pro feature.',
     triggerPhotoMarkup: 'Photo markup is a Pro feature.',
     bestValue: 'BEST VALUE',
+    thenPrice: 'then %{price}',
     legal:
       'Prices include VAT. Monthly and annual plans renew until you cancel them in your App Store or Google Play account settings, at least 24 hours before the period ends. A lifetime purchase is charged once and does not renew. Apple or Google charges the price shown above.',
     continue: 'Continue',
