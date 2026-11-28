@@ -45,6 +45,9 @@ export function ArMeasureSession({ jobId, areaId, capabilities, active, onClose,
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const { width: winW, height: winH } = useWindowDimensions();
+  const isLandscape = winW > winH;
+  const isTablet = winW >= 768;
+  const inspectorWidth = isTablet && isLandscape ? (winW >= 1024 ? 340 : 288) : 0;
   const viewRef = useRef<ArViewHandle | null>(null);
   const [tracking, setTracking] = useState<TrackingState>('initializing');
   const [caps, setCaps] = useState(capabilities);
@@ -305,8 +308,24 @@ export function ArMeasureSession({ jobId, areaId, capabilities, active, onClose,
 
       {toast ? <View style={[styles.toast, { top: insets.top + 110 }]}><Text variant="caption" color="#FFFFFF" style={styles.center}>{toast}</Text></View> : null}
 
-      {/* Bottom: capture controls, or the measured tray */}
-      {trayOpen && hasMeasurements ? (
+      {/* Inspector panel (iPad landscape) or bottom tray */}
+      {inspectorWidth > 0 && hasMeasurements ? (
+        <View style={[styles.inspector, { width: inspectorWidth, right: 0, top: 0, bottom: 0, paddingTop: insets.top + 100, paddingBottom: insets.bottom }]}>
+          <MeasurementsTray
+            measurements={state.measurements}
+            unit={unit}
+            onChangeUnit={setUnit}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onEdit={setEditing}
+            dispatch={dispatch}
+            bottomInset={0}
+            maxListHeight={winH - insets.top - insets.bottom - 220}
+            secondary={{ label: t('arTools.measure.newLine'), icon: 'add', onPress: () => { setSelectedId(null); } }}
+            primary={{ label: t('arTools.measure.saveToReport'), onPress: () => void openSave() }}
+          />
+        </View>
+      ) : trayOpen && hasMeasurements ? (
         <View style={styles.trayWrap}>
           <MeasurementsTray
             measurements={state.measurements}
@@ -323,14 +342,17 @@ export function ArMeasureSession({ jobId, areaId, capabilities, active, onClose,
             primary={{ label: t('arTools.measure.saveToReport'), onPress: () => void openSave() }}
           />
         </View>
-      ) : (
+      ) : null}
+
+      {/* Capture controls (bottom or hidden when inspector shown) */}
+      {(!inspectorWidth || !hasMeasurements) ? (
         <View style={[styles.bottom, { paddingBottom: insets.bottom + 16 }]}>
           <View style={styles.hintPill}><Text variant="caption" color="#FFFFFF">{hint}</Text></View>
           <View style={styles.controls}>
             {placing ? (
               <RoundAction icon="magnet-outline" label={t(snapEnabled ? 'arTools.measure.snapOn' : 'arTools.measure.snapOff')} active={snapEnabled} onPress={() => setSnapEnabled((v) => !v)} />
             ) : (
-              <RoundAction icon="albums-outline" label={t('arTools.measure.saved', { count: state.measurements.length + savedCount })} disabled={!hasMeasurements} onPress={() => setTrayOpen(true)} />
+              <RoundAction icon="albums-outline" label={t('arTools.measure.saved', { count: state.measurements.length + savedCount })} disabled={!hasMeasurements} onPress={() => inspectorWidth ? undefined : setTrayOpen(true)} />
             )}
             <View style={styles.addWrap}>
               <Pressable
@@ -434,6 +456,7 @@ const styles = StyleSheet.create({
   reticleRing: { position: 'absolute', width: 52, height: 52, borderRadius: 26, borderWidth: 2.5 },
   reticleDot: { width: 8, height: 8, borderRadius: 4 },
   snapBadge: { position: 'absolute', left: 58, top: 16, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: AR_COLORS.lightGlass, width: 150 },
+  inspector: { position: 'absolute', backgroundColor: AR_COLORS.sheet, borderTopLeftRadius: 22, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 30, shadowOffset: { width: -6, height: 0 }, elevation: 20 },
   labelPill: { position: 'absolute', width: 120, height: 32, flexDirection: 'row', gap: 4, alignItems: 'center', justifyContent: 'center' },
   labelText: { backgroundColor: AR_COLORS.brand, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, overflow: 'hidden', borderWidth: 1.5, borderColor: '#FFFFFF', fontVariant: ['tabular-nums'] },
   labelTextLight: { backgroundColor: AR_COLORS.iconTile, borderColor: AR_COLORS.brand, paddingLeft: 26 },
