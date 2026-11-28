@@ -119,7 +119,7 @@ export function JobChecklistView({ job, initial }: JobChecklistScreenProps) {
               {progress.percent}%
             </Text>
           </View>
-          <View style={[styles.progressTrack, { backgroundColor: '#E3E7E4' }]}>
+          <View style={[styles.progressTrack, { backgroundColor: colors.checklistTrack }]}>
             <View
               style={[
                 styles.progressFill,

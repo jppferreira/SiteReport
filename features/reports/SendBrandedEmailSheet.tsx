@@ -124,7 +124,7 @@ export function SendBrandedEmailSheet({
             <Text variant="bodySmall" color={colors.textTertiary} style={styles.fieldLabel}>
               {t('sendEmail.to')}
             </Text>
-            <View style={[styles.avatar, { backgroundColor: '#E3E7E4' }]}>
+            <View style={[styles.avatar, { backgroundColor: colors.avatarBg }]}>
               <Text variant="caption" style={{ fontWeight: '600', fontSize: 9 }}>
                 {initials(toName || toEmail || 'SM')}
               </Text>

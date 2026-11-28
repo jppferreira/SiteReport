@@ -4,7 +4,7 @@
     "slug": "tradesreport",
     "scheme": "tradesreport",
     "version": "1.1.2",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "automatic",
     "primaryColor": "#101310",
@@ -13,7 +13,18 @@
       "bundleIdentifier": "com.tradesreport.app",
       "buildNumber": "21",
       "supportsTablet": true,
+      "requireFullScreen": false,
       "infoPlist": {
+        "UISupportedInterfaceOrientations": [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationPortraitUpsideDown"
+        ],
+        "UISupportedInterfaceOrientations~ipad": [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationPortraitUpsideDown",
+          "UIInterfaceOrientationLandscapeLeft",
+          "UIInterfaceOrientationLandscapeRight"
+        ],
         "NSCameraUsageDescription": "Trade Report uses your camera to take before and after job photos and to measure distances with AR for your reports.",
         "NSPhotoLibraryUsageDescription": "Trade Report needs access to your photo library so you can add existing photos to a job report.",
         "NSMicrophoneUsageDescription": "Trade Report uses the microphone so you can dictate job notes. Audio is transcribed on this device and is not uploaded.",

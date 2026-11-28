@@ -14,6 +14,7 @@ import {
   StyleSheet,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
@@ -146,6 +147,11 @@ export function PhotoAnnotationEditor({
   const { colors } = useTheme();
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isLandscape = windowWidth > windowHeight;
+  const isTablet = windowWidth >= 768;
+  const useSideToolbar = isLandscape && isTablet;
+  const toolbarWidth = 88;
 
   const [box, setBox] = useState({ width: 0, height: 0 });
   const [shapes, setShapes] = useState<AnnotationShape[]>(initial?.shapes ?? []);
@@ -759,7 +765,7 @@ export function PhotoAnnotationEditor({
               <Ionicons name="camera-reverse-outline" size={20} color="#121412" />
             </Pressable>
           ) : null}
-          {onSave ? (
+          {!useSideToolbar && onSave ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('photoAnnotate.save')}
@@ -779,6 +785,7 @@ export function PhotoAnnotationEditor({
         </View>
       </View>
 
+      <View style={useSideToolbar ? { flex: 1, flexDirection: 'row' } : { flex: 1 }}>
       <View
         style={styles.canvas}
         onLayout={(event: LayoutChangeEvent) => {
@@ -909,125 +916,222 @@ export function PhotoAnnotationEditor({
           </View>
         ) : null}
 
-        <View style={[styles.floatRow, { bottom: 118 + insets.bottom }]} pointerEvents="box-none">
-          <View style={styles.undoRow}>
+        {!useSideToolbar ? (
+          <View style={[styles.floatRow, { bottom: 118 + insets.bottom }]} pointerEvents="box-none">
+            <View style={styles.undoRow}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('photoAnnotate.undoA11y')}
+                disabled={shapes.length === 0}
+                onPress={undo}
+                style={[styles.glassRound, shapes.length === 0 && styles.disabled]}
+              >
+                <Ionicons name="arrow-undo" size={18} color="#121412" />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('photoAnnotate.redoA11y')}
+                disabled={redoStack.length === 0}
+                onPress={redo}
+                style={[styles.glassRound, redoStack.length === 0 && styles.disabled]}
+              >
+                <Ionicons name="arrow-redo" size={18} color="#121412" />
+              </Pressable>
+            </View>
+            {zoomLabel > 1.05 ? (
+              <View style={styles.zoomChip}>
+                <Text variant="caption" color="#FFFFFF">
+                  {zoomLabel}×
+                </Text>
+              </View>
+            ) : (
+              <View />
+            )}
+          </View>
+        ) : null}
+      </View>
+
+      {useSideToolbar ? (
+        <View style={[styles.sideToolbar, { width: toolbarWidth, paddingTop: Math.max(insets.top, 12) + 56, paddingBottom: insets.bottom }]}>
+          <ScrollView contentContainerStyle={{ padding: 8, gap: 8, alignItems: 'center' }}>
+            {/* Tools */}
+            {ANNOTATION_TOOLS.map((item) => {
+              const selected = tool === item;
+              const meta = TOOL_META[item];
+              return (
+                <Pressable
+                  key={item}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(meta.labelKey)}
+                  accessibilityState={{ selected }}
+                  onPress={() => selectTool(item)}
+                  style={[styles.sideToolBtn, selected ? { backgroundColor: colors.accentSoft } : null]}
+                >
+                  <Ionicons name={meta.icon} size={24} color={selected ? colors.accentPressed : '#5C635C'} />
+                </Pressable>
+              );
+            })}
+            
+            {/* Spacer */}
+            <View style={{ height: 16 }} />
+            
+            {/* Color/Style */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('photoAnnotate.styleChipA11y')}
+              onPress={() => setStyleOpen(true)}
+              style={[styles.sideToolBtn, { flexDirection: 'column', gap: 4, paddingVertical: 10 }]}
+            >
+              <View
+                style={[
+                  styles.styleSwatch,
+                  { backgroundColor: color, borderColor: color === '#FFFFFF' ? '#D0D5D0' : color, width: 24, height: 24 },
+                ]}
+              />
+              <View
+                style={[
+                  styles.styleStroke,
+                  {
+                    height: strokeSize === 'thin' ? 2 : strokeSize === 'thick' ? 6 : 3.5,
+                    backgroundColor: '#121412',
+                    width: 20,
+                  },
+                ]}
+              />
+            </Pressable>
+            
+            {/* Spacer */}
+            <View style={{ height: 16 }} />
+            
+            {/* Undo/Redo */}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('photoAnnotate.undoA11y')}
               disabled={shapes.length === 0}
               onPress={undo}
-              style={[styles.glassRound, shapes.length === 0 && styles.disabled]}
+              style={[styles.sideToolBtn, shapes.length === 0 && styles.disabled]}
             >
-              <Ionicons name="arrow-undo" size={18} color="#121412" />
+              <Ionicons name="arrow-undo" size={20} color="#121412" />
             </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('photoAnnotate.redoA11y')}
               disabled={redoStack.length === 0}
               onPress={redo}
-              style={[styles.glassRound, redoStack.length === 0 && styles.disabled]}
+              style={[styles.sideToolBtn, redoStack.length === 0 && styles.disabled]}
             >
-              <Ionicons name="arrow-redo" size={18} color="#121412" />
+              <Ionicons name="arrow-redo" size={20} color="#121412" />
             </Pressable>
-          </View>
-          {zoomLabel > 1.05 ? (
-            <View style={styles.zoomChip}>
-              <Text variant="caption" color="#FFFFFF">
-                {zoomLabel}×
+            
+            {/* Spacer */}
+            <View style={{ flex: 1, minHeight: 16 }} />
+            
+            {/* Save */}
+            {onSave ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('photoAnnotate.save')}
+                disabled={saveLoading}
+                onPress={() => {
+                  haptic();
+                  onSave();
+                }}
+                style={[styles.sideToolBtn, { backgroundColor: colors.accent, width: toolbarWidth - 16 }]}
+              >
+                <Ionicons name="checkmark" size={24} color="#FFFFFF" />
+              </Pressable>
+            ) : null}
+          </ScrollView>
+        </View>
+      ) : (
+        <View style={[styles.dock, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+          <View style={styles.dockTop}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('photoAnnotate.styleChipA11y')}
+              onPress={() => setStyleOpen(true)}
+              style={styles.styleChip}
+            >
+              <View
+                style={[
+                  styles.styleSwatch,
+                  { backgroundColor: color, borderColor: color === '#FFFFFF' ? '#D0D5D0' : color },
+                ]}
+              />
+              <View
+                style={[
+                  styles.styleStroke,
+                  {
+                    height: strokeSize === 'thin' ? 2 : strokeSize === 'thick' ? 6 : 3.5,
+                    backgroundColor: '#121412',
+                  },
+                ]}
+              />
+              <Text variant="caption" color="#121412" style={styles.styleChipText} numberOfLines={1}>
+                {t('photoAnnotate.styleChip', { color: colorName, size: sizeName })}
               </Text>
-            </View>
-          ) : (
-            <View />
-          )}
-        </View>
-      </View>
-
-      <View style={[styles.dock, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-        <View style={styles.dockTop}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('photoAnnotate.styleChipA11y')}
-            onPress={() => setStyleOpen(true)}
-            style={styles.styleChip}
-          >
-            <View
-              style={[
-                styles.styleSwatch,
-                { backgroundColor: color, borderColor: color === '#FFFFFF' ? '#D0D5D0' : color },
-              ]}
-            />
-            <View
-              style={[
-                styles.styleStroke,
-                {
-                  height: strokeSize === 'thin' ? 2 : strokeSize === 'thick' ? 6 : 3.5,
-                  backgroundColor: '#121412',
-                },
-              ]}
-            />
-            <Text variant="caption" color="#121412" style={styles.styleChipText} numberOfLines={1}>
-              {t('photoAnnotate.styleChip', { color: colorName, size: sizeName })}
+              <Ionicons name="chevron-down" size={14} color="#6B726B" />
+            </Pressable>
+            <Text variant="caption" color="#8A918A">
+              {tool ? t(HINT_KEY[tool] ?? 'photoAnnotate.tapMarkHint') : t('photoAnnotate.tapMarkHint')}
             </Text>
-            <Ionicons name="chevron-down" size={14} color="#6B726B" />
-          </Pressable>
-          <Text variant="caption" color="#8A918A">
-            {tool ? t(HINT_KEY[tool] ?? 'photoAnnotate.tapMarkHint') : t('photoAnnotate.tapMarkHint')}
-          </Text>
-        </View>
+          </View>
 
-        {tool === 'highlight' ? (
-          <View style={styles.highlightModes}>
-            {(['circle', 'box', 'fill'] as HighlightMode[]).map((mode) => {
-              const selected = highlightMode === mode;
-              const label =
-                mode === 'circle'
-                  ? t('photoAnnotate.highlightCircle')
-                  : mode === 'box'
-                    ? t('photoAnnotate.highlightBox')
-                    : t('photoAnnotate.highlightFill');
+          {tool === 'highlight' ? (
+            <View style={styles.highlightModes}>
+              {(['circle', 'box', 'fill'] as HighlightMode[]).map((mode) => {
+                const selected = highlightMode === mode;
+                const label =
+                  mode === 'circle'
+                    ? t('photoAnnotate.highlightCircle')
+                    : mode === 'box'
+                      ? t('photoAnnotate.highlightBox')
+                      : t('photoAnnotate.highlightFill');
+                return (
+                  <Pressable
+                    key={mode}
+                    onPress={() => {
+                      haptic();
+                      setHighlightMode(mode);
+                    }}
+                    style={[styles.highlightMode, selected && { backgroundColor: colors.accentSoft }]}
+                  >
+                    <Text variant="caption" color={selected ? colors.accentPressed : '#5C635C'}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+
+          <View style={styles.tools}>
+            {ANNOTATION_TOOLS.map((item) => {
+              const selected = tool === item;
+              const meta = TOOL_META[item];
               return (
                 <Pressable
-                  key={mode}
-                  onPress={() => {
-                    haptic();
-                    setHighlightMode(mode);
-                  }}
-                  style={[styles.highlightMode, selected && { backgroundColor: colors.accentSoft }]}
+                  key={item}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(meta.labelKey)}
+                  accessibilityState={{ selected }}
+                  onPress={() => selectTool(item)}
+                  style={[styles.tool, selected ? { backgroundColor: colors.accentSoft } : null]}
                 >
-                  <Text variant="caption" color={selected ? colors.accentPressed : '#5C635C'}>
-                    {label}
+                  <Ionicons name={meta.icon} size={22} color={selected ? colors.accentPressed : '#5C635C'} />
+                  <Text
+                    variant="caption"
+                    color={selected ? colors.accentPressed : '#5C635C'}
+                    style={styles.toolLabel}
+                  >
+                    {t(meta.labelKey)}
                   </Text>
                 </Pressable>
               );
             })}
           </View>
-        ) : null}
-
-        <View style={styles.tools}>
-          {ANNOTATION_TOOLS.map((item) => {
-            const selected = tool === item;
-            const meta = TOOL_META[item];
-            return (
-              <Pressable
-                key={item}
-                accessibilityRole="button"
-                accessibilityLabel={t(meta.labelKey)}
-                accessibilityState={{ selected }}
-                onPress={() => selectTool(item)}
-                style={[styles.tool, selected ? { backgroundColor: colors.accentSoft } : null]}
-              >
-                <Ionicons name={meta.icon} size={22} color={selected ? colors.accentPressed : '#5C635C'} />
-                <Text
-                  variant="caption"
-                  color={selected ? colors.accentPressed : '#5C635C'}
-                  style={styles.toolLabel}
-                >
-                  {t(meta.labelKey)}
-                </Text>
-              </Pressable>
-            );
-          })}
         </View>
+      )}
       </View>
 
       {/* Colour & size */}
@@ -1366,6 +1470,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(18,20,18,0.78)',
   },
   disabled: { opacity: 0.4 },
+  sideToolbar: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 22,
+    borderBottomLeftRadius: 22,
+  },
+  sideToolBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F2F4F2',
+  },
   dock: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 22,

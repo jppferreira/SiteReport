@@ -8,10 +8,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CrewAvatar, NavigationHeader, Screen, SettingRow, StatusBadge, Text, ToggleRow } from '@/components';
 import { ContactSheet } from '@/features/settings/ContactSheet';
 import { SettingsGroup } from '@/features/settings/SettingsGroup';
+import { SettingsScreenTablet } from '@/features/settings/SettingsScreenTablet';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { useCrewAvatar } from '@/hooks/useCrewAvatar';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import { useIcloudAutoBackupSetting } from '@/hooks/useIcloudAutoBackupSetting';
+import { useTabletBreakpoint } from '@/hooks/useTabletBreakpoint';
 import { LOCALE_LABELS } from '@/i18n';
 import { useI18n } from '@/i18n/useI18n';
 import type { Entitlement } from '@/models';
@@ -31,6 +33,18 @@ import { goBack } from '@/utils/goBack';
 import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/utils/siteUrls';
 
 export default function SettingsScreen() {
+  const { isTablet } = useTabletBreakpoint();
+
+  // On tablet, use the split view layout
+  if (isTablet) {
+    return <SettingsScreenTablet />;
+  }
+
+  // Phone layout continues below
+  return <SettingsScreenPhone />;
+}
+
+function SettingsScreenPhone() {
   const { colors, spacing, radius, appearance } = useTheme();
   const { t, locale } = useI18n();
   const insets = useSafeAreaInsets();

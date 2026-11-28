@@ -35,10 +35,12 @@ import { FirstReportPromptCard } from '@/features/jobs/FirstReportPromptCard';
 import { JobCard } from '@/features/jobs/JobCard';
 import { JobDocSegments } from '@/features/jobs/JobDocSegments';
 import { JobsFilterSheet } from '@/features/jobs/JobsFilterSheet';
+import { JobsScreenTablet } from '@/features/jobs/JobsScreenTablet';
 import { resolveJobPreviewRoute } from '@/features/jobs/openJobPreview';
 import { useCrewAvatar } from '@/hooks/useCrewAvatar';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import { useJobs, type JobsDocKindFilter } from '@/hooks/useJobs';
+import { useTabletBreakpoint } from '@/hooks/useTabletBreakpoint';
 import { useI18n } from '@/i18n/useI18n';
 import type { DocumentKind } from '@/models';
 import { Job, documentRequiresPro } from '@/models';
@@ -57,6 +59,18 @@ const NO_MATCHING_JOBS = require('../../assets/images/no-matching-jobs.webp');
 const NOTHING_HERE_YET = require('../../assets/images/nothing-here-yet.webp');
 
 export default function JobsScreen() {
+  const { isTablet } = useTabletBreakpoint();
+
+  // On tablet, use the split view layout
+  if (isTablet) {
+    return <JobsScreenTablet />;
+  }
+
+  // Phone layout continues below
+  return <JobsScreenPhone />;
+}
+
+function JobsScreenPhone() {
   const { colors, spacing } = useTheme();
   const { t } = useI18n();
   const { isPro } = useEntitlement();

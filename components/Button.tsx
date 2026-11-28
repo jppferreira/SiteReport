@@ -130,7 +130,7 @@ function getPalette(variant: ButtonVariant, colors: ReturnType<typeof useTheme>[
     case 'accent':
       return {
         bg: colors.accent,
-        fg: colors.textInverse,
+        fg: colors.accentOnAccent,
         border: undefined,
         disabledBg: colors.borderStrong,
         disabledFg: colors.textTertiary,

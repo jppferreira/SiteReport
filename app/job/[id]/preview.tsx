@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -28,6 +28,7 @@ import {
 } from '@/features/reports/PreviewStyleTray';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { useEntitlement } from '@/hooks/useEntitlement';
+import { useTabletBreakpoint } from '@/hooks/useTabletBreakpoint';
 import { useWorkSummary } from '@/hooks/useWorkSummary';
 import { useI18n } from '@/i18n/useI18n';
 import {
@@ -64,6 +65,7 @@ import {
 import { getPreferences, savePreferences } from '@/services/preferencesService';
 import { shareFile } from '@/services/shareService';
 import { useTheme } from '@/theme';
+import { getLayoutTokens } from '@/theme/layoutTokens';
 import { DEFAULT_ACCENT } from '@/utils/accentColor';
 import { logger } from '@/utils/logger';
 
@@ -82,6 +84,8 @@ export default function ReportPreviewScreen() {
   const { isPro } = useEntitlement();
   const { profile, save: saveProfile } = useBusinessProfile();
   const { summary } = useWorkSummary(id);
+  const breakpoint = useTabletBreakpoint();
+  const layout = getLayoutTokens(breakpoint);
 
   const [template, setTemplate] = useState<ReportTemplateId>(DEFAULT_REPORT_TEMPLATE);
   const [commercialTemplate, setCommercialTemplate] =
@@ -409,7 +413,106 @@ export default function ReportPreviewScreen() {
           description={errorMessage ?? undefined}
           onAction={() => void load({ expandTray: false })}
         />
+      ) : breakpoint.isTablet ? (
+        // iPad split layout: PDF canvas left, inspector right
+        <View style={[styles.body, { flexDirection: 'row' }]}>
+          {/* PDF Canvas */}
+          <View style={{ flex: 1, backgroundColor: colors.surfaceSunken }}>
+            <HtmlReportPreview html={html} onEdit={handlePreviewEdit} />
+          </View>
+
+          {/* Inspector Panel */}
+          <ScrollView
+            style={[
+              styles.inspector,
+              {
+                width: layout.inspector,
+                backgroundColor: colors.background,
+                borderLeftWidth: StyleSheet.hairlineWidth,
+                borderLeftColor: colors.border,
+              },
+            ]}
+            contentContainerStyle={{
+              padding: layout.panePadding,
+              paddingBottom: Math.max(insets.bottom, spacing.md),
+              gap: spacing.md,
+            }}
+          >
+            {isCommercial ? (
+              <>
+                <CommercialTemplatePicker
+                  value={commercialTemplate}
+                  onChange={chooseCommercialTemplate}
+                  accentColor={accentColor}
+                />
+                <View style={{ flex: 1 }} />
+                <View style={{ gap: spacing.sm }}>
+                  <Button
+                    label={ctaLabel}
+                    icon={<Ionicons name="paper-plane-outline" size={20} color={colors.textInverse} />}
+                    onPress={() => void handleGenerate()}
+                    fullWidth
+                  />
+                  <Button
+                    variant="secondary"
+                    label={t('common.share')}
+                    icon={<Ionicons name="share-outline" size={20} color={colors.textPrimary} />}
+                    onPress={() => void handleShare()}
+                    fullWidth
+                  />
+                </View>
+              </>
+            ) : (
+              <PreviewStyleTray
+                expanded
+                onExpand={() => {}}
+                onCollapse={() => {}}
+                tab={trayTab}
+                onTabChange={setTrayTab}
+                template={template}
+                pendingProTemplate={pendingProTemplate}
+                onSelectTemplate={chooseTemplate}
+                onUnlockPro={() => router.push({ pathname: '/paywall', params: { trigger: 'template' } })}
+                onColourLocked={() => router.push({ pathname: '/paywall', params: { trigger: 'colour' } })}
+                onReviewLocked={() => router.push({ pathname: '/paywall', params: { trigger: 'review_link' } })}
+                onUseFreeLayout={() => {
+                  setPendingProTemplate(null);
+                  if (!isFreeReportTemplate(template)) {
+                    setTemplate(DEFAULT_REPORT_TEMPLATE);
+                    void savePreferences({ reportTemplate: DEFAULT_REPORT_TEMPLATE });
+                  }
+                }}
+                isPro={isPro}
+                coverDesign={coverDesign}
+                onCoverDesign={chooseCoverDesign}
+                accentColor={accentColor}
+                usingBrandColour={usingBrandColour}
+                onBrandColour={applyBrandColour}
+                onAccentSwatch={applyAccentSwatch}
+                onCustomAccent={openCustomAccent}
+                sections={sections}
+                sectionOrder={sectionOrder}
+                onToggleSection={toggleSection}
+                onMoveSection={moveSection}
+                sectionMeta={{
+                  photoCount,
+                  checklistChecked: checklistProgress.checked,
+                  checklistTotal: checklistProgress.total,
+                  reviewProvider: profile?.reviewProvider ?? 'google',
+                  hasReviewUrl: Boolean(profile?.reviewUrl?.trim()),
+                  businessInitial: businessInitialFromName(profile?.businessName),
+                }}
+                ctaLabel={ctaLabel}
+                onCreatePdf={() => void handleGenerate()}
+                onShare={() => void handleShare()}
+                tradeFilter={tradeFilter}
+                onTradeFilter={setTradeFilter}
+              />
+            )}
+          </ScrollView>
+        </View>
       ) : (
+        // Phone layout: full-screen preview with bottom tray/bar
         <View style={styles.body}>
           <View style={[styles.preview, { backgroundColor: colors.surfaceSunken }]}>
             <HtmlReportPreview html={html} onEdit={handlePreviewEdit} />
@@ -605,6 +708,9 @@ const styles = StyleSheet.create({
   preview: {
     ...StyleSheet.absoluteFill,
     overflow: 'hidden',
+  },
+  inspector: {
+    flexShrink: 0,
   },
   commercialBar: {
     position: 'absolute',

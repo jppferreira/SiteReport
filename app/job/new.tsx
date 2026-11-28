@@ -2,11 +2,13 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 
-import { Button, FIELD_STACK_GAP, Input, NavigationHeader, Screen, Text, TextArea, TextButton } from '@/components';
+import { Button, CenteredCard, FIELD_STACK_GAP, Input, NavigationHeader, Screen, Text, TextArea, TextButton } from '@/components';
 import { DateField } from '@/features/jobs/DateField';
 import { jobsRepository } from '@/database';
+import { useTabletBreakpoint } from '@/hooks/useTabletBreakpoint';
 import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
+import { getLayoutTokens } from '@/theme/layoutTokens';
 import { todayIsoDate } from '@/utils/format';
 import { goBack } from '@/utils/goBack';
 import { validateJobTitle } from '@/utils/validation';
@@ -14,6 +16,8 @@ import { validateJobTitle } from '@/utils/validation';
 export default function NewJobScreen() {
   const { spacing, colors } = useTheme();
   const { t } = useI18n();
+  const breakpoint = useTabletBreakpoint();
+  const layout = getLayoutTokens(breakpoint);
   const params = useLocalSearchParams<{
     intent?: string;
     customerName?: string;
@@ -82,9 +86,11 @@ export default function NewJobScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 16 : 0}
       >
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: FIELD_STACK_GAP }}
+          contentContainerStyle={{ paddingHorizontal: breakpoint.isTablet ? layout.panePadding : spacing.lg, paddingBottom: spacing.xl }}
           keyboardShouldPersistTaps="handled"
         >
+          <CenteredCard maxWidth={breakpoint.isTablet ? 600 : undefined}>
+            <View style={{ gap: FIELD_STACK_GAP }}>
           {forReport ? (
             <Text variant="body" color={colors.textSecondary}>
               {t('newJob.reportIntro')}
@@ -130,15 +136,17 @@ export default function NewJobScreen() {
             value={description}
             onChangeText={setDescription}
           />
-          <View style={{ marginTop: spacing.sm }}>
-            <Button
-              label={forReport ? t('newJob.startReportJob') : t('newJob.save')}
-              onPress={handleCreate}
-              loading={submitting}
-              disabled={submitting}
-              variant="accent"
-            />
-          </View>
+              <View style={{ marginTop: spacing.sm }}>
+                <Button
+                  label={forReport ? t('newJob.startReportJob') : t('newJob.save')}
+                  onPress={handleCreate}
+                  loading={submitting}
+                  disabled={submitting}
+                  variant="accent"
+                />
+              </View>
+            </View>
+          </CenteredCard>
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>

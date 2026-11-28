@@ -48,14 +48,13 @@ import { generateId } from '@/utils/id';
 import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 export default function PhotoDetailScreen() {
   const { id, photoId } = useLocalSearchParams<{ id: string; photoId: string }>();
   const { spacing } = useTheme();
   const { t } = useI18n();
   const { isPro } = useEntitlement();
   const { showToast } = useToast();
+  const [screenWidth, setScreenWidth] = useState(() => Dimensions.get('window').width);
   const [currentPhoto, setCurrentPhoto] = useState<Photo | null>(null);
   const [type, setType] = useState<PhotoType | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -82,6 +81,14 @@ export default function PhotoDetailScreen() {
   useEffect(() => {
     loadPhoto();
   }, [loadPhoto]);
+
+  useEffect(() => {
+    const handleChange = ({ window }: { window: { width: number } }) => {
+      setScreenWidth(window.width);
+    };
+    const subscription = Dimensions.addEventListener('change', handleChange);
+    return () => subscription.remove();
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -282,11 +289,11 @@ export default function PhotoDetailScreen() {
         horizontal
         pagingEnabled
         initialScrollIndex={initialIndex >= 0 ? initialIndex : 0}
-        getItemLayout={(_, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })}
+        getItemLayout={(_, index) => ({ length: screenWidth, offset: screenWidth * index, index })}
         keyExtractor={(item) => item.id}
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={(e) => {
-          const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+          const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
           const next = photos[index];
           if (next && next.id !== currentPhoto.id) {
             router.setParams({ photoId: next.id });
@@ -295,6 +302,7 @@ export default function PhotoDetailScreen() {
         renderItem={({ item }) => (
           <AnnotatedPhotoSlide
             photo={item}
+            screenWidth={screenWidth}
             stampDateTime={stampPrefs.stampDateTime ? formatStampDateTime(item.takenAt ?? item.createdAt) : null}
             stampAddress={isPro && stampPrefs.stampAddress ? stampAddressLabel : null}
             stageLabel={
@@ -481,13 +489,15 @@ function AnnotatedPhotoSlide({
   stampDateTime,
   stampAddress,
   stageLabel,
+  screenWidth,
 }: {
   photo: Photo;
+  screenWidth: number;
   stampDateTime: string | null;
   stampAddress: string | null;
   stageLabel: string;
 }) {
-  const [box, setBox] = useState({ width: SCREEN_WIDTH, height: 0 });
+  const [box, setBox] = useState({ width: screenWidth, height: 0 });
   const rect = fitContainRect(box.width, box.height, photo.width, photo.height);
 
   const onLayout = (event: LayoutChangeEvent) => {
@@ -496,7 +506,7 @@ function AnnotatedPhotoSlide({
   };
 
   return (
-    <View style={{ width: SCREEN_WIDTH, flex: 1 }} onLayout={onLayout}>
+    <View style={{ width: screenWidth, flex: 1 }} onLayout={onLayout}>
       <LocalImage uri={photo.localUri} style={StyleSheet.absoluteFill} contentFit="contain" />
       {rect ? (
         <View

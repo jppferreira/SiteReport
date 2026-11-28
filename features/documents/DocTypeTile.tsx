@@ -3,8 +3,9 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { DocumentKind } from '@/models';
+import { useTheme } from '@/theme';
 
-import { DOC_KIND_TILE_BG } from './documentTokens';
+import { getDocTileBg } from './documentTokens';
 
 const ICONS: Record<DocumentKind, keyof typeof Ionicons.glyphMap> = {
   quote: 'clipboard-outline',
@@ -18,6 +19,7 @@ type DocTypeTileProps = {
 };
 
 export function DocTypeTile({ kind, size = 44 }: DocTypeTileProps) {
+  const { colors, scheme } = useTheme();
   const iconSize = Math.round(size * 0.45);
 
   return (
@@ -28,11 +30,11 @@ export function DocTypeTile({ kind, size = 44 }: DocTypeTileProps) {
           width: size,
           height: size,
           borderRadius: size * 0.32,
-          backgroundColor: DOC_KIND_TILE_BG[kind],
+          backgroundColor: getDocTileBg(kind, scheme),
         },
       ]}
     >
-      <Ionicons name={ICONS[kind]} size={iconSize} color="#121412" />
+      <Ionicons name={ICONS[kind]} size={iconSize} color={colors.docTileIcon} />
     </View>
   );
 }

@@ -17,6 +17,7 @@ import { documentsRepository, workSummaryRepository } from '@/database';
 import { CommercialTemplatePicker } from '@/features/documents/CommercialTemplatePicker';
 import { DidYouSendItSheet } from '@/features/documents/DidYouSendItSheet';
 import { HtmlReportPreview } from '@/features/reports/HtmlReportPreview';
+import { useTabletBreakpoint } from '@/hooks/useTabletBreakpoint';
 import { useI18n } from '@/i18n/useI18n';
 import {
   DEFAULT_COMMERCIAL_TEMPLATE,
@@ -37,6 +38,7 @@ import {
 import { getPreferences, savePreferences } from '@/services/preferencesService';
 import { shareFile } from '@/services/shareService';
 import { useTheme } from '@/theme';
+import { getLayoutTokens } from '@/theme/layoutTokens';
 import { goBack } from '@/utils/goBack';
 import { logger } from '@/utils/logger';
 
@@ -50,6 +52,8 @@ export default function CommercialDocumentPreviewScreen() {
   const { t } = useI18n();
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
+  const breakpoint = useTabletBreakpoint();
+  const layout = getLayoutTokens(breakpoint);
 
   const [doc, setDoc] = useState<TradeDocument | null>(null);
   const [reportDoc, setReportDoc] = useState<ReportDocument | null>(null);
@@ -200,6 +204,89 @@ export default function CommercialDocumentPreviewScreen() {
 
   const footerPad = Math.max(insets.bottom, spacing.md);
 
+  if (breakpoint.isTablet) {
+    // iPad layout: PDF canvas left, inspector panel right
+    return (
+      <Screen edges={['top', 'left', 'right']}>
+        <NavigationHeader title={screenTitle} onBack={() => goBack(`/document/${doc.id}`)} />
+
+        <View style={[styles.body, { backgroundColor: colors.surfaceSunken, flexDirection: 'row' }]}>
+          {/* PDF preview pane */}
+          <View style={styles.pdfPane}>
+            {loading || !reportDoc ? (
+              <LoadingState label={t('preview.preparing')} />
+            ) : (
+              <HtmlReportPreview html={html} />
+            )}
+          </View>
+
+          {/* Inspector panel */}
+          <View
+            style={[
+              styles.inspector,
+              {
+                width: layout.inspector,
+                padding: layout.panePadding,
+                backgroundColor: colors.background,
+                borderLeftWidth: StyleSheet.hairlineWidth,
+                borderLeftColor: colors.border,
+                paddingBottom: Math.max(insets.bottom, spacing.md),
+                gap: spacing.md,
+              },
+            ]}
+          >
+            <Text variant="label" color={colors.textSecondary}>
+              {checkHint}
+            </Text>
+
+            <CommercialTemplatePicker
+              value={commercialTemplate}
+              onChange={handleTemplateChange}
+              accentColor={colors.accentPressed}
+            />
+
+            <Text variant="caption" color={colors.textSecondary}>
+              {reviewHint}
+            </Text>
+
+            <View style={{ flex: 1 }} />
+
+            <View style={{ gap: spacing.sm }}>
+              <Button
+                variant="secondary"
+                label={t('documents.actionEdit')}
+                icon={<Ionicons name="create-outline" size={20} color={colors.textPrimary} />}
+                onPress={handleEdit}
+                disabled={sending}
+                fullWidth
+                style={{ borderRadius: radius.pill, borderWidth: 1.5 }}
+              />
+              <Button
+                variant="accent"
+                label={sendLabel}
+                icon={<Ionicons name="paper-plane-outline" size={20} color={colors.textInverse} />}
+                onPress={() => void handleSend()}
+                loading={sending}
+                disabled={sending}
+                fullWidth
+                style={{ borderRadius: radius.pill, backgroundColor: colors.accentPressed }}
+              />
+            </View>
+          </View>
+        </View>
+
+        <DidYouSendItSheet
+          visible={didYouSendOpen}
+          documentNumber={doc.number}
+          loading={confirmingSent}
+          onClose={() => setDidYouSendOpen(false)}
+          onConfirmSent={() => void handleConfirmSent()}
+        />
+      </Screen>
+    );
+  }
+
+  // Phone layout
   return (
     <Screen edges={['top', 'left', 'right']}>
       <NavigationHeader title={screenTitle} onBack={() => goBack(`/document/${doc.id}`)} />
@@ -301,6 +388,12 @@ const styles = StyleSheet.create({
   preview: {
     flex: 1,
     marginTop: 8,
+  },
+  pdfPane: {
+    flex: 1,
+  },
+  inspector: {
+    flexShrink: 0,
   },
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,

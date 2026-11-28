@@ -30,6 +30,7 @@ import {
   type ReminderChannel,
 } from '@/features/documents';
 import { BottomSheetMenu } from '@/features/jobs/BottomSheetMenu';
+import { useTabletBreakpoint } from '@/hooks/useTabletBreakpoint';
 import { useI18n } from '@/i18n/useI18n';
 import {
   effectiveStatus,
@@ -48,6 +49,7 @@ import {
 import { composeReportEmail } from '@/services/mailComposer';
 import { openLocalFile, shareFile } from '@/services/shareService';
 import { useTheme } from '@/theme';
+import { getLayoutTokens } from '@/theme/layoutTokens';
 import { formatDateShort } from '@/utils/format';
 import { goBack } from '@/utils/goBack';
 
@@ -67,6 +69,8 @@ export default function DocumentDetailScreen() {
   const { t } = useI18n();
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
+  const breakpoint = useTabletBreakpoint();
+  const layout = getLayoutTokens(breakpoint);
   const [doc, setDoc] = useState<TradeDocument | null>(null);
   const [jobTitle, setJobTitle] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState<string | null>(null);
@@ -331,208 +335,9 @@ export default function DocumentDetailScreen() {
   const stickyBottom =
     showInvoiceActions || showSendEdit || showQuoteMarkAccepted || canConvertQuote;
 
-  const convertLineCount = (() => {
-    if (!doc.pricingSnapshotJson?.trim()) return 0;
-    try {
-      const raw = JSON.parse(doc.pricingSnapshotJson) as { lines?: unknown[] };
-      return Array.isArray(raw.lines) ? raw.lines.length : 0;
-    } catch {
-      return 0;
-    }
-  })();
-  const convertInvoiceTotal =
-    doc.totalPence ?? pricingTotalsFromSnapshot(doc.pricingSnapshotJson ?? null).totalPence;
-
-  const handleConvertQuote = async (opts: {
-    copyPricing: boolean;
-    attachReport: boolean;
-    dueDays: number;
-  }) => {
-    setBusy(true);
-    try {
-      const siblings = await documentsRepository.listDocumentsForJob(doc.jobId);
-      const reportDoc = siblings.find((d) => d.kind === 'report');
-      const invoice = await documentsRepository.convertQuoteToInvoice(doc.id, {
-        copyPricing: opts.copyPricing,
-        dueDays: opts.dueDays,
-        attachReportId: opts.attachReport ? reportDoc?.reportId ?? reportDoc?.id ?? null : null,
-      });
-      setConvertOpen(false);
-      showToast({ message: t('documents.toastConverted'), tone: 'neutral' });
-      router.replace(`/document/${invoice.id}`);
-    } catch {
-      showToast({ message: t('documents.toastConvertError'), tone: 'destructive' });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleEdit = () => {
-    if (doc.kind === 'report') {
-      // Reports are edited through the guided job checklist / work screens.
-      router.push(`/job/${doc.jobId}`);
-      return;
-    }
-    // Quotes and invoices use the dedicated document editor (Figma S3).
-    router.push({ pathname: '/document/edit', params: { id: doc.id } });
-  };
-
-  const handleSend = () => {
-    // Draft quotes/invoices go through the S3a check-before-send preview.
-    if (
-      (doc.kind === 'quote' || doc.kind === 'invoice') &&
-      (doc.status === 'draft' || !doc.sentAt)
-    ) {
-      router.push({ pathname: '/document/preview', params: { id: doc.id } });
-      return;
-    }
-    void handleShare();
-  };
-
-  return (
-    <Screen edges={['top', 'left', 'right']}>
-      <NavigationHeader
-        title={kindLabel}
-        onBack={() => goBack('/(tabs)/jobs')}
-        right={
-          <IconButton
-            name="ellipsis-horizontal"
-            accessibilityLabel={t('documents.moreOptionsA11y')}
-            onPress={() => setMenuOpen(true)}
-          />
-        }
-      />
-
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingHorizontal: spacing.lg,
-          paddingBottom: stickyBottom ? 100 + insets.bottom : spacing.xl + insets.bottom,
-          gap: spacing.md,
-        }}
-      >
-        <View style={styles.headerRow}>
-          <DocPdfThumb kind={doc.kind} pdfUri={doc.localPdfUri} onPress={doc.localPdfUri ? handlePreview : undefined} />
-          <View style={styles.headerMain}>
-            {doc.number ? (
-              <Text variant="caption" color={colors.textTertiary} style={styles.docNumber}>
-                {doc.number}
-              </Text>
-            ) : null}
-            {doc.totalPence != null ? (
-              <Text variant="display" style={styles.amount}>
-                {formatPence(doc.totalPence)}
-              </Text>
-            ) : null}
-            <View style={styles.badgeRow}>
-              <DocStatusBadge document={doc} />
-              {dueMeta ? (
-                <Text variant="caption" color={overdue ? colors.destructive : colors.textSecondary}>
-                  {dueMeta}
-                </Text>
-              ) : null}
-            </View>
-            {subtitleMeta ? (
-              <Text variant="bodySmall" color={colors.textSecondary} numberOfLines={2} style={{ marginTop: 6 }}>
-                {subtitleMeta}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-
-        <View
-          style={[
-            styles.card,
-            shadows.card,
-            {
-              backgroundColor: colors.surface,
-              borderRadius: 20,
-              borderColor: colors.border,
-              padding: spacing.md,
-            },
-          ]}
-        >
-          <Text variant="bodyMedium" style={{ marginBottom: spacing.sm }}>
-            {t('documents.detailTimeline')}
-          </Text>
-          {timelineEvents.map((event) => (
-            <DetailTimelineRow key={event.key} event={event} />
-          ))}
-        </View>
-
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: colors.surface,
-              borderRadius: 20,
-              borderColor: colors.border,
-              padding: spacing.md,
-              gap: spacing.sm,
-            },
-          ]}
-        >
-          <View style={styles.statusHeader}>
-            <Text variant="bodyMedium">{t('documents.detailUpdateStatus')}</Text>
-            <Text variant="caption" color={colors.textTertiary}>
-              {t('documents.detailTapToChange')}
-            </Text>
-          </View>
-          <View style={styles.statusActions}>
-            {doc.kind === 'quote' ? (
-              <>
-                <StatusChip
-                  label={t('documents.statusChipSent')}
-                  active={doc.status === 'sent' || doc.status === 'accepted' || doc.status === 'declined'}
-                  disabled={busy}
-                  onPress={() => runAction(() => documentsRepository.markSent(doc.id))}
-                />
-                <StatusChip
-                  label={t('documents.statusChipAccepted')}
-                  active={doc.status === 'accepted'}
-                  disabled={busy}
-                  onPress={() => runAction(() => documentsRepository.markAccepted(doc.id))}
-                />
-                <StatusChip
-                  label={t('documents.statusChipDeclined')}
-                  active={doc.status === 'declined'}
-                  disabled={busy}
-                  onPress={() => runAction(() => documentsRepository.markDeclined(doc.id))}
-                />
-              </>
-            ) : null}
-            {doc.kind === 'invoice' ? (
-              <>
-                <StatusChip
-                  label={t('documents.statusChipSent')}
-                  active={doc.status === 'sent' || doc.status === 'unpaid' || doc.status === 'paid'}
-                  disabled={busy || doc.status === 'paid'}
-                  onPress={() => runAction(() => documentsRepository.markSent(doc.id))}
-                />
-                <StatusChip
-                  label={t('documents.actionPartPaid')}
-                  active={false}
-                  disabled={busy || doc.status === 'paid'}
-                  onPress={() => setMarkPaidOpen(true)}
-                />
-              </>
-            ) : null}
-            {doc.kind === 'report' ? (
-              <StatusChip
-                label={t('documents.statusChipSent')}
-                active={doc.status === 'sent'}
-                disabled={busy}
-                onPress={() => runAction(() => documentsRepository.markSent(doc.id))}
-              />
-            ) : null}
-          </View>
-          <Text variant="caption" color={colors.textSecondary}>
-            {doc.kind === 'quote' ? t('documents.quoteStatusHint') : documentStatusHint(doc, eff, t)}
-          </Text>
-        </View>
-      </ScrollView>
-
-      {showInvoiceActions ? (
+  const renderStickyBar = () => {
+    if (showInvoiceActions) {
+      return (
         <View
           style={[
             styles.stickyBar,
@@ -597,7 +402,11 @@ export default function DocumentDetailScreen() {
             />
           </View>
         </View>
-      ) : canConvertQuote ? (
+      );
+    }
+
+    if (canConvertQuote) {
+      return (
         <View
           style={[
             styles.stickyBar,
@@ -653,7 +462,11 @@ export default function DocumentDetailScreen() {
             />
           </View>
         </View>
-      ) : showQuoteMarkAccepted ? (
+      );
+    }
+
+    if (showQuoteMarkAccepted) {
+      return (
         <View
           style={[
             styles.stickyBar,
@@ -708,7 +521,11 @@ export default function DocumentDetailScreen() {
             />
           </View>
         </View>
-      ) : showSendEdit ? (
+      );
+    }
+
+    if (showSendEdit) {
+      return (
         <View
           style={[
             styles.stickyBar,
@@ -744,8 +561,14 @@ export default function DocumentDetailScreen() {
             </View>
           </View>
         </View>
-      ) : null}
+      );
+    }
 
+    return null;
+  };
+
+  const renderSheets = () => (
+    <>
       <BottomSheetMenu
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
@@ -826,6 +649,281 @@ export default function DocumentDetailScreen() {
         onClose={() => setRemindOpen(false)}
         onSend={(opts) => void handleSendReminder(opts)}
       />
+    </>
+  );
+
+  const convertLineCount = (() => {
+    if (!doc.pricingSnapshotJson?.trim()) return 0;
+    try {
+      const raw = JSON.parse(doc.pricingSnapshotJson) as { lines?: unknown[] };
+      return Array.isArray(raw.lines) ? raw.lines.length : 0;
+    } catch {
+      return 0;
+    }
+  })();
+  const convertInvoiceTotal =
+    doc.totalPence ?? pricingTotalsFromSnapshot(doc.pricingSnapshotJson ?? null).totalPence;
+
+  const handleConvertQuote = async (opts: {
+    copyPricing: boolean;
+    attachReport: boolean;
+    dueDays: number;
+  }) => {
+    setBusy(true);
+    try {
+      const siblings = await documentsRepository.listDocumentsForJob(doc.jobId);
+      const reportDoc = siblings.find((d) => d.kind === 'report');
+      const invoice = await documentsRepository.convertQuoteToInvoice(doc.id, {
+        copyPricing: opts.copyPricing,
+        dueDays: opts.dueDays,
+        attachReportId: opts.attachReport ? reportDoc?.reportId ?? reportDoc?.id ?? null : null,
+      });
+      setConvertOpen(false);
+      showToast({ message: t('documents.toastConverted'), tone: 'neutral' });
+      router.replace(`/document/${invoice.id}`);
+    } catch {
+      showToast({ message: t('documents.toastConvertError'), tone: 'destructive' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleEdit = () => {
+    if (doc.kind === 'report') {
+      // Reports are edited through the guided job checklist / work screens.
+      router.push(`/job/${doc.jobId}`);
+      return;
+    }
+    // Quotes and invoices use the dedicated document editor (Figma S3).
+    router.push({ pathname: '/document/edit', params: { id: doc.id } });
+  };
+
+  const handleSend = () => {
+    // Draft quotes/invoices go through the S3a check-before-send preview.
+    if (
+      (doc.kind === 'quote' || doc.kind === 'invoice') &&
+      (doc.status === 'draft' || !doc.sentAt)
+    ) {
+      router.push({ pathname: '/document/preview', params: { id: doc.id } });
+      return;
+    }
+    void handleShare();
+  };
+
+  const headerContent = (
+    <View style={styles.headerRow}>
+      <DocPdfThumb kind={doc.kind} pdfUri={doc.localPdfUri} onPress={doc.localPdfUri ? handlePreview : undefined} />
+      <View style={styles.headerMain}>
+        {doc.number ? (
+          <Text variant="caption" color={colors.textTertiary} style={styles.docNumber}>
+            {doc.number}
+          </Text>
+        ) : null}
+        {doc.totalPence != null ? (
+          <Text variant="display" style={styles.amount}>
+            {formatPence(doc.totalPence)}
+          </Text>
+        ) : null}
+        <View style={styles.badgeRow}>
+          <DocStatusBadge document={doc} />
+          {dueMeta ? (
+            <Text variant="caption" color={overdue ? colors.destructive : colors.textSecondary}>
+              {dueMeta}
+            </Text>
+          ) : null}
+        </View>
+        {subtitleMeta ? (
+          <Text variant="bodySmall" color={colors.textSecondary} numberOfLines={2} style={{ marginTop: 6 }}>
+            {subtitleMeta}
+          </Text>
+        ) : null}
+      </View>
+    </View>
+  );
+
+  const timelineCard = (
+    <View
+      style={[
+        styles.card,
+        shadows.card,
+        {
+          backgroundColor: colors.surface,
+          borderRadius: 20,
+          borderColor: colors.border,
+          padding: spacing.md,
+        },
+      ]}
+    >
+      <Text variant="bodyMedium" style={{ marginBottom: spacing.sm }}>
+        {t('documents.detailTimeline')}
+      </Text>
+      {timelineEvents.map((event) => (
+        <DetailTimelineRow key={event.key} event={event} />
+      ))}
+    </View>
+  );
+
+  const statusCard = (
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.surface,
+          borderRadius: 20,
+          borderColor: colors.border,
+          padding: spacing.md,
+          gap: spacing.sm,
+        },
+      ]}
+    >
+      <View style={styles.statusHeader}>
+        <Text variant="bodyMedium">{t('documents.detailUpdateStatus')}</Text>
+        <Text variant="caption" color={colors.textTertiary}>
+          {t('documents.detailTapToChange')}
+        </Text>
+      </View>
+      <View style={styles.statusActions}>
+        {doc.kind === 'quote' ? (
+          <>
+            <StatusChip
+              label={t('documents.statusChipSent')}
+              active={doc.status === 'sent' || doc.status === 'accepted' || doc.status === 'declined'}
+              disabled={busy}
+              onPress={() => runAction(() => documentsRepository.markSent(doc.id))}
+            />
+            <StatusChip
+              label={t('documents.statusChipAccepted')}
+              active={doc.status === 'accepted'}
+              disabled={busy}
+              onPress={() => runAction(() => documentsRepository.markAccepted(doc.id))}
+            />
+            <StatusChip
+              label={t('documents.statusChipDeclined')}
+              active={doc.status === 'declined'}
+              disabled={busy}
+              onPress={() => runAction(() => documentsRepository.markDeclined(doc.id))}
+            />
+          </>
+        ) : null}
+        {doc.kind === 'invoice' ? (
+          <>
+            <StatusChip
+              label={t('documents.statusChipSent')}
+              active={doc.status === 'sent' || doc.status === 'unpaid' || doc.status === 'paid'}
+              disabled={busy || doc.status === 'paid'}
+              onPress={() => runAction(() => documentsRepository.markSent(doc.id))}
+            />
+            <StatusChip
+              label={t('documents.actionPartPaid')}
+              active={false}
+              disabled={busy || doc.status === 'paid'}
+              onPress={() => setMarkPaidOpen(true)}
+            />
+          </>
+        ) : null}
+        {doc.kind === 'report' ? (
+          <StatusChip
+            label={t('documents.statusChipSent')}
+            active={doc.status === 'sent'}
+            disabled={busy}
+            onPress={() => runAction(() => documentsRepository.markSent(doc.id))}
+          />
+        ) : null}
+      </View>
+      <Text variant="caption" color={colors.textSecondary}>
+        {doc.kind === 'quote' ? t('documents.quoteStatusHint') : documentStatusHint(doc, eff, t)}
+      </Text>
+    </View>
+  );
+
+  if (breakpoint.isTablet) {
+    return (
+      <Screen edges={['top', 'left', 'right']}>
+        <NavigationHeader
+          title={kindLabel}
+          onBack={() => goBack('/(tabs)/jobs')}
+          right={
+            <IconButton
+              name="ellipsis-horizontal"
+              accessibilityLabel={t('documents.moreOptionsA11y')}
+              onPress={() => setMenuOpen(true)}
+            />
+          }
+        />
+
+        <View style={[styles.splitLayout, { backgroundColor: colors.background }]}>
+          {/* Main content column */}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{
+              paddingHorizontal: layout.panePadding,
+              paddingTop: spacing.md,
+              paddingBottom: stickyBottom ? 100 + insets.bottom : spacing.xl + insets.bottom,
+            }}
+          >
+            {headerContent}
+          </ScrollView>
+
+          {/* Detail panel */}
+          <ScrollView
+            style={[
+              styles.detailPanel,
+              {
+                width: layout.inspector,
+                borderLeftWidth: StyleSheet.hairlineWidth,
+                borderLeftColor: colors.border,
+                backgroundColor: colors.background,
+              },
+            ]}
+            contentContainerStyle={{
+              padding: layout.panePadding,
+              paddingBottom: stickyBottom ? 100 + insets.bottom : spacing.xl + insets.bottom,
+              gap: spacing.md,
+            }}
+          >
+            {timelineCard}
+            {statusCard}
+          </ScrollView>
+        </View>
+
+        {/* Sticky bottom bar (same as phone) */}
+        {renderStickyBar()}
+
+        {renderSheets()}
+      </Screen>
+    );
+  }
+
+  // Phone layout
+  return (
+    <Screen edges={['top', 'left', 'right']}>
+      <NavigationHeader
+        title={kindLabel}
+        onBack={() => goBack('/(tabs)/jobs')}
+        right={
+          <IconButton
+            name="ellipsis-horizontal"
+            accessibilityLabel={t('documents.moreOptionsA11y')}
+            onPress={() => setMenuOpen(true)}
+          />
+        }
+      />
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: spacing.lg,
+          paddingBottom: stickyBottom ? 100 + insets.bottom : spacing.xl + insets.bottom,
+          gap: spacing.md,
+        }}
+      >
+        {headerContent}
+        {timelineCard}
+        {statusCard}
+      </ScrollView>
+
+      {renderStickyBar()}
+      {renderSheets()}
     </Screen>
   );
 }
@@ -1001,6 +1099,13 @@ function StatusChip({
 }
 
 const styles = StyleSheet.create({
+  splitLayout: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  detailPanel: {
+    flexShrink: 0,
+  },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   headerMain: { flex: 1, minWidth: 0, paddingTop: 2 },
   docNumber: { fontWeight: '600', letterSpacing: 0.3 },

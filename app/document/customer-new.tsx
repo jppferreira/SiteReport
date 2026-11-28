@@ -3,12 +3,14 @@ import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { IconButton, NavigationHeader, Screen, useToast } from '@/components';
+import { CenteredCard, IconButton, NavigationHeader, Screen, useToast } from '@/components';
 import { documentsRepository, jobsRepository } from '@/database';
 import { NewCustomerForm } from '@/features/documents/NewCustomerForm';
+import { useTabletBreakpoint } from '@/hooks/useTabletBreakpoint';
 import { useI18n } from '@/i18n/useI18n';
 import { normalizeDocumentKind, type Customer } from '@/models';
 import { useTheme } from '@/theme';
+import { getLayoutTokens } from '@/theme/layoutTokens';
 import { goBack } from '@/utils/goBack';
 import { logger } from '@/utils/logger';
 
@@ -23,6 +25,8 @@ export default function NewCustomerScreen() {
   const { t } = useI18n();
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
+  const breakpoint = useTabletBreakpoint();
+  const layout = getLayoutTokens(breakpoint);
   const [submitting, setSubmitting] = useState(false);
 
   const handleCreated = async (customer: Customer) => {
@@ -92,12 +96,14 @@ export default function NewCustomerScreen() {
         <ScrollView
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{
-            padding: spacing.lg,
+            padding: breakpoint.isTablet ? layout.panePadding : spacing.lg,
             paddingBottom: spacing.xxl + insets.bottom,
             flexGrow: 1,
           }}
         >
-          <NewCustomerForm onCreated={handleCreated} submitting={submitting} />
+          <CenteredCard maxWidth={breakpoint.isTablet ? 600 : undefined}>
+            <NewCustomerForm onCreated={handleCreated} submitting={submitting} />
+          </CenteredCard>
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
