@@ -65,6 +65,7 @@ import {
 import { getPreferences, savePreferences } from '@/services/preferencesService';
 import { shareFile } from '@/services/shareService';
 import { useTheme } from '@/theme';
+import { getLayoutTokens } from '@/theme/layoutTokens';
 import { DEFAULT_ACCENT } from '@/utils/accentColor';
 import { logger } from '@/utils/logger';
 
@@ -83,6 +84,8 @@ export default function ReportPreviewScreen() {
   const { isPro } = useEntitlement();
   const { profile, save: saveProfile } = useBusinessProfile();
   const { summary } = useWorkSummary(id);
+  const breakpoint = useTabletBreakpoint();
+  const layout = getLayoutTokens(breakpoint);
 
   const [template, setTemplate] = useState<ReportTemplateId>(DEFAULT_REPORT_TEMPLATE);
   const [commercialTemplate, setCommercialTemplate] =
