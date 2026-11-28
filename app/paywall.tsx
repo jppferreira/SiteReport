@@ -4,12 +4,14 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { Button, ErrorState, IconButton, LoadingState, PaywallFeature, Screen, Text, TextButton, useToast } from '@/components';
+import { Button, CenteredCard, ErrorState, IconButton, LoadingState, PaywallFeature, Screen, Text, TextButton, TwoColumnCard, useToast } from '@/components';
 import { PlanOption } from '@/features/paywall/PlanOption';
+import { useTabletBreakpoint } from '@/hooks/useTabletBreakpoint';
 import { useI18n } from '@/i18n/useI18n';
 import { PlanId, ProductInfo } from '@/models';
 import { getProducts, purchase, restorePurchases } from '@/services/entitlementService';
 import { useTheme } from '@/theme';
+import { getLayoutTokens } from '@/theme/layoutTokens';
 import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/utils/siteUrls';
 
 /** Convert a hex color to rgba with the given opacity. */
@@ -26,6 +28,8 @@ export default function PaywallScreen() {
   const { colors, radius, spacing } = useTheme();
   const { t } = useI18n();
   const { showToast } = useToast();
+  const breakpoint = useTabletBreakpoint();
+  const layout = getLayoutTokens(breakpoint);
   const [products, setProducts] = useState<ProductInfo[]>([]);
   const [selected, setSelected] = useState<PlanId>('annual');
   const [loading, setLoading] = useState(true);
@@ -163,79 +167,166 @@ export default function PaywallScreen() {
               });
           }}
         />
+      ) : breakpoint.isTablet && breakpoint.isLandscape ? (
+        <ScrollView contentContainerStyle={{ padding: layout.panePadding, paddingBottom: spacing.xl }}>
+          <CenteredCard maxWidth={layout.contentMaxWidth}>
+            <TwoColumnCard
+              left={
+                <View>
+                  <View style={[styles(spacing).hero, { backgroundColor: colors.ctaDark, borderRadius: radius.xl }]}>
+                    <Ionicons name="document-text" size={28} color={colors.accent} />
+                    <View style={{ marginTop: spacing.sm }}>
+                      <Text variant="caption" color={withOpacity(colors.textInverse, 0.6)}>
+                        {t('paywall.previewLabel')}
+                      </Text>
+                      <View style={{ height: 6 }} />
+                      <View style={{ gap: 6 }}>
+                        <View style={{ height: 8, width: '70%', backgroundColor: withOpacity(colors.textInverse, 0.18), borderRadius: 4 }} />
+                        <View style={{ height: 8, width: '45%', backgroundColor: withOpacity(colors.textInverse, 0.18), borderRadius: 4 }} />
+                      </View>
+                    </View>
+                  </View>
+
+                  <Text variant="display" style={{ marginTop: spacing.xl }}>
+                    {t('paywall.headline')}
+                  </Text>
+
+                  {trigger && triggerCopy[trigger] ? (
+                    <Text variant="body" color={colors.textSecondary} style={{ marginTop: spacing.sm }}>
+                      {triggerCopy[trigger]}
+                    </Text>
+                  ) : null}
+
+                  <View style={{ marginTop: spacing.xl, gap: spacing.sm }}>
+                    {benefits.map((benefit) => (
+                      <PaywallFeature key={benefit} label={benefit} />
+                    ))}
+                  </View>
+                </View>
+              }
+              right={
+                <View>
+                  <View style={{ gap: spacing.sm }}>
+                    {products.map((product) => (
+                      <PlanOption
+                        key={product.planId}
+                        product={product}
+                        selected={selected === product.planId}
+                        onSelect={() => setSelected(product.planId)}
+                        badge={product.planId === 'annual' ? t('paywall.bestValue') : undefined}
+                      />
+                    ))}
+                  </View>
+
+                  <Text variant="caption" color={colors.textSecondary} style={{ marginTop: spacing.lg, textAlign: 'center' }}>
+                    {t('paywall.legal')}
+                  </Text>
+
+                  <View style={{ marginTop: spacing.lg }}>
+                    <Button
+                      label={
+                        selectedProduct
+                          ? t('paywall.continueWithPrice', {
+                              price:
+                                selectedProduct.hasIntroductoryOffer && selectedProduct.introductoryPriceFormatted
+                                  ? selectedProduct.introductoryPriceFormatted
+                                  : selectedProduct.priceFormatted,
+                            })
+                          : t('paywall.continue')
+                      }
+                      onPress={handlePurchase}
+                      loading={purchasing}
+                    />
+                  </View>
+
+                  <View style={{ marginTop: spacing.md, alignItems: 'center' }}>
+                    <TextButton label={t('paywall.restore')} onPress={handleRestore} disabled={restoring} />
+                  </View>
+
+                  <View style={{ flexDirection: 'row', justifyContent: 'center', gap: spacing.md, marginTop: spacing.sm }}>
+                    <TextButton label={t('paywall.terms')} onPress={() => void Linking.openURL(TERMS_OF_USE_URL)} />
+                    <TextButton label={t('paywall.privacy')} onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)} />
+                  </View>
+                </View>
+              }
+            />
+          </CenteredCard>
+        </ScrollView>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl }}>
-          <View style={[styles(spacing).hero, { backgroundColor: colors.ctaDark, borderRadius: radius.xl }]}>
-            <Ionicons name="document-text" size={28} color={colors.accent} />
-            <View style={{ marginTop: spacing.sm }}>
-              <Text variant="caption" color={withOpacity(colors.textInverse, 0.6)}>
-                {t('paywall.previewLabel')}
-              </Text>
-              <View style={{ height: 6 }} />
-              <View style={{ gap: 6 }}>
-                <View style={{ height: 8, width: '70%', backgroundColor: withOpacity(colors.textInverse, 0.18), borderRadius: 4 }} />
-                <View style={{ height: 8, width: '45%', backgroundColor: withOpacity(colors.textInverse, 0.18), borderRadius: 4 }} />
+        <ScrollView contentContainerStyle={{ paddingHorizontal: breakpoint.isTablet ? layout.panePadding : spacing.lg, paddingBottom: spacing.xl }}>
+          <CenteredCard>
+            <View style={[styles(spacing).hero, { backgroundColor: colors.ctaDark, borderRadius: radius.xl }]}>
+              <Ionicons name="document-text" size={28} color={colors.accent} />
+              <View style={{ marginTop: spacing.sm }}>
+                <Text variant="caption" color={withOpacity(colors.textInverse, 0.6)}>
+                  {t('paywall.previewLabel')}
+                </Text>
+                <View style={{ height: 6 }} />
+                <View style={{ gap: 6 }}>
+                  <View style={{ height: 8, width: '70%', backgroundColor: withOpacity(colors.textInverse, 0.18), borderRadius: 4 }} />
+                  <View style={{ height: 8, width: '45%', backgroundColor: withOpacity(colors.textInverse, 0.18), borderRadius: 4 }} />
+                </View>
               </View>
             </View>
-          </View>
 
-          <Text variant="display" style={{ marginTop: spacing.xl }}>
-            {t('paywall.headline')}
-          </Text>
-
-          {trigger && triggerCopy[trigger] ? (
-            <Text variant="body" color={colors.textSecondary} style={{ marginTop: spacing.sm }}>
-              {triggerCopy[trigger]}
+            <Text variant="display" style={{ marginTop: spacing.xl }}>
+              {t('paywall.headline')}
             </Text>
-          ) : null}
 
-          <View style={{ marginTop: spacing.xl, gap: spacing.sm }}>
-            {benefits.map((benefit) => (
-              <PaywallFeature key={benefit} label={benefit} />
-            ))}
-          </View>
+            {trigger && triggerCopy[trigger] ? (
+              <Text variant="body" color={colors.textSecondary} style={{ marginTop: spacing.sm }}>
+                {triggerCopy[trigger]}
+              </Text>
+            ) : null}
 
-          <View style={{ marginTop: spacing.xl, gap: spacing.sm }}>
-            {products.map((product) => (
-              <PlanOption
-                key={product.planId}
-                product={product}
-                selected={selected === product.planId}
-                onSelect={() => setSelected(product.planId)}
-                badge={product.planId === 'annual' ? t('paywall.bestValue') : undefined}
+            <View style={{ marginTop: spacing.xl, gap: spacing.sm }}>
+              {benefits.map((benefit) => (
+                <PaywallFeature key={benefit} label={benefit} />
+              ))}
+            </View>
+
+            <View style={{ marginTop: spacing.xl, gap: spacing.sm }}>
+              {products.map((product) => (
+                <PlanOption
+                  key={product.planId}
+                  product={product}
+                  selected={selected === product.planId}
+                  onSelect={() => setSelected(product.planId)}
+                  badge={product.planId === 'annual' ? t('paywall.bestValue') : undefined}
+                />
+              ))}
+            </View>
+
+            <Text variant="caption" color={colors.textSecondary} style={{ marginTop: spacing.lg, textAlign: 'center' }}>
+              {t('paywall.legal')}
+            </Text>
+
+            <View style={{ marginTop: spacing.lg }}>
+              <Button
+                label={
+                  selectedProduct
+                    ? t('paywall.continueWithPrice', {
+                        price:
+                          selectedProduct.hasIntroductoryOffer && selectedProduct.introductoryPriceFormatted
+                            ? selectedProduct.introductoryPriceFormatted
+                            : selectedProduct.priceFormatted,
+                      })
+                    : t('paywall.continue')
+                }
+                onPress={handlePurchase}
+                loading={purchasing}
               />
-            ))}
-          </View>
+            </View>
 
-          <Text variant="caption" color={colors.textSecondary} style={{ marginTop: spacing.lg, textAlign: 'center' }}>
-            {t('paywall.legal')}
-          </Text>
+            <View style={{ marginTop: spacing.md, alignItems: 'center' }}>
+              <TextButton label={t('paywall.restore')} onPress={handleRestore} disabled={restoring} />
+            </View>
 
-          <View style={{ marginTop: spacing.lg }}>
-            <Button
-              label={
-                selectedProduct
-                  ? t('paywall.continueWithPrice', {
-                      price:
-                        selectedProduct.hasIntroductoryOffer && selectedProduct.introductoryPriceFormatted
-                          ? selectedProduct.introductoryPriceFormatted
-                          : selectedProduct.priceFormatted,
-                    })
-                  : t('paywall.continue')
-              }
-              onPress={handlePurchase}
-              loading={purchasing}
-            />
-          </View>
-
-          <View style={{ marginTop: spacing.md, alignItems: 'center' }}>
-            <TextButton label={t('paywall.restore')} onPress={handleRestore} disabled={restoring} />
-          </View>
-
-          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: spacing.md, marginTop: spacing.sm }}>
-            <TextButton label={t('paywall.terms')} onPress={() => void Linking.openURL(TERMS_OF_USE_URL)} />
-            <TextButton label={t('paywall.privacy')} onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)} />
-          </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: spacing.md, marginTop: spacing.sm }}>
+              <TextButton label={t('paywall.terms')} onPress={() => void Linking.openURL(TERMS_OF_USE_URL)} />
+              <TextButton label={t('paywall.privacy')} onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)} />
+            </View>
+          </CenteredCard>
         </ScrollView>
       )}
     </Screen>
