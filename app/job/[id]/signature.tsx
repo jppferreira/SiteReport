@@ -2,20 +2,24 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, View } from 'react-native';
 
-import { Button, Input, NavigationHeader, Screen, StatusBadge, Text, TextButton, useToast } from '@/components';
+import { Button, CenteredCard, Input, NavigationHeader, Screen, StatusBadge, Text, TextButton, useToast } from '@/components';
 import { signatureRepository } from '@/database';
 import { SignatureCanvas, SignatureCanvasHandle } from '@/features/signature/SignatureCanvas';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import { useSignature } from '@/hooks/useSignature';
+import { useTabletBreakpoint } from '@/hooks/useTabletBreakpoint';
 import { useI18n } from '@/i18n/useI18n';
 import { writeTextFile, deleteFileSafely, jobDirectory } from '@/services/fileService';
 import { useTheme } from '@/theme';
+import { getLayoutTokens } from '@/theme/layoutTokens';
 import { goBack } from '@/utils/goBack';
 
 export default function SignatureScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors, spacing } = useTheme();
   const { t } = useI18n();
+  const breakpoint = useTabletBreakpoint();
+  const layout = getLayoutTokens(breakpoint);
   const { signature, loading, refresh } = useSignature(id);
   const { isPro } = useEntitlement();
   const { showToast } = useToast();
@@ -98,12 +102,14 @@ export default function SignatureScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <ScrollView
           scrollEnabled={!drawing}
-          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: spacing.lg }}
+          contentContainerStyle={{ paddingHorizontal: breakpoint.isTablet ? layout.panePadding : spacing.lg, paddingBottom: spacing.xl }}
           keyboardShouldPersistTaps="handled"
         >
-          <Text variant="body" color={colors.textSecondary}>
-            {t('signature.intro')}
-          </Text>
+          <CenteredCard maxWidth={breakpoint.isTablet ? 700 : undefined}>
+            <View style={{ gap: spacing.lg }}>
+              <Text variant="body" color={colors.textSecondary}>
+                {t('signature.intro')}
+              </Text>
 
           {!isPro ? (
             <View style={{ flexDirection: 'row' }}>
@@ -139,9 +145,11 @@ export default function SignatureScreen() {
               <Button label={t('signature.accept')} onPress={handleSave} loading={saving} />
             </View>
           </View>
-          {signature ? (
-            <Button label={t('signature.removeSaved')} variant="tertiary" onPress={handleRemoveSignature} />
-          ) : null}
+              {signature ? (
+                <Button label={t('signature.removeSaved')} variant="tertiary" onPress={handleRemoveSignature} />
+              ) : null}
+            </View>
+          </CenteredCard>
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
