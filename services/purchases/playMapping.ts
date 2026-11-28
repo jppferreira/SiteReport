@@ -202,10 +202,11 @@ export function productInfoFromPlay(item: CatalogItem, product: PlayProductSnaps
       if (introPhase) {
         introductoryPriceFormatted = introPhase.formattedPrice;
         introductoryPriceValue = introPhase.priceAmountMicros ? Number(introPhase.priceAmountMicros) / 1_000_000 : undefined;
-      } else if (allPhases.length === 1) {
+      } else if (allPhases.length === 1 && allPhases[0]) {
         // Single-phase promo: use this phase as the intro price
-        introductoryPriceFormatted = allPhases[0].formattedPrice;
-        introductoryPriceValue = allPhases[0].priceAmountMicros ? Number(allPhases[0].priceAmountMicros) / 1_000_000 : undefined;
+        const singlePhase = allPhases[0];
+        introductoryPriceFormatted = singlePhase.formattedPrice;
+        introductoryPriceValue = singlePhase.priceAmountMicros ? Number(singlePhase.priceAmountMicros) / 1_000_000 : undefined;
         
         // Find base plan for recurring price
         const allOffers = product.subscriptionOfferDetailsAndroid ?? [];
@@ -221,10 +222,11 @@ export function productInfoFromPlay(item: CatalogItem, product: PlayProductSnaps
       if (introPhase) {
         introductoryPriceFormatted = introPhase.formattedPrice;
         introductoryPriceValue = introPhase.priceAmountMicros ? Number(introPhase.priceAmountMicros) / 1_000_000 : undefined;
-      } else if (normalizedPhases.length === 1) {
+      } else if (normalizedPhases.length === 1 && normalizedPhases[0]) {
         // Single-phase promo: use this phase as the intro price
-        introductoryPriceFormatted = normalizedPhases[0].formattedPrice;
-        introductoryPriceValue = normalizedPhases[0].priceAmountMicros ? Number(normalizedPhases[0].priceAmountMicros) / 1_000_000 : undefined;
+        const singlePhase = normalizedPhases[0];
+        introductoryPriceFormatted = singlePhase.formattedPrice;
+        introductoryPriceValue = singlePhase.priceAmountMicros ? Number(singlePhase.priceAmountMicros) / 1_000_000 : undefined;
         
         // Find base plan for recurring price
         const allOffers = product.subscriptionOffers ?? [];
