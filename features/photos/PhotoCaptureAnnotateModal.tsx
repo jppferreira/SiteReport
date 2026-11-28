@@ -3,7 +3,7 @@ import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, IconButton, Text } from '@/components';
@@ -39,6 +39,10 @@ type Snapshot = {
 export function PhotoCaptureAnnotateModal({ visible, type, onClose, onSave }: PhotoCaptureAnnotateModalProps) {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+  const isTablet = width >= 768;
+  const useRightRail = isLandscape && isTablet;
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>('back');
@@ -167,37 +171,47 @@ export function PhotoCaptureAnnotateModal({ visible, type, onClose, onSave }: Ph
               )}
 
               {permission?.granted ? (
-                <View style={styles.cameraControls}>
-                  <Pressable
+                <View style={[useRightRail ? styles.cameraControlsRight : styles.cameraControls]}>
+                  {!useRightRail ? <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={t('photoAnnotate.flipCameraA11y')}
                     onPress={() => setFacing((current) => (current === 'back' ? 'front' : 'back'))}
                     style={styles.flipButton}
                   >
                     <Ionicons name="camera-reverse-outline" size={22} color="#FFFFFF" />
+                  </Pressable> : null}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('photoAnnotate.flipCameraA11y')}
+                    onPress={() => setFacing((current) => (current === 'back' ? 'front' : 'back'))}
+                    style={useRightRail ? styles.railButton : { display: 'none' }}
+                  >
+                    <Ionicons name="camera-reverse-outline" size={24} color="#FFFFFF" />
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={t('photoAnnotate.shutterA11y')}
                     disabled={busy}
                     onPress={takePicture}
-                    style={[styles.shutter, busy ? { opacity: 0.5 } : null]}
+                    style={[useRightRail ? styles.railShutter : styles.shutter, busy ? { opacity: 0.5 } : null]}
                   >
-                    <View style={styles.shutterInner} />
+                    <View style={useRightRail ? styles.railShutterInner : styles.shutterInner} />
                   </Pressable>
-                  <View style={{ width: 44 }} />
+                  {!useRightRail ? <View style={{ width: 44 }} /> : null}
                 </View>
               ) : null}
             </View>
 
-            <View style={styles.liveHint}>
-              <Text variant="bodyMedium" color="#FFFFFF" style={{ marginBottom: 4 }}>
-                {t('photoAnnotate.liveCardsTitle')}
-              </Text>
-              <Text variant="caption" color="rgba(255,255,255,0.6)">
-                {t('photoAnnotate.liveCardsHint')}
-              </Text>
-            </View>
+            {!useRightRail ? (
+              <View style={styles.liveHint}>
+                <Text variant="bodyMedium" color="#FFFFFF" style={{ marginBottom: 4 }}>
+                  {t('photoAnnotate.liveCardsTitle')}
+                </Text>
+                <Text variant="caption" color="rgba(255,255,255,0.6)">
+                  {t('photoAnnotate.liveCardsHint')}
+                </Text>
+              </View>
+            ) : null}
           </View>
         )}
       </View>
@@ -254,6 +268,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingBottom: 16,
   },
+  cameraControlsRight: {
+    position: 'absolute',
+    right: 20,
+    top: 0,
+    bottom: 0,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 24,
+  },
   shutter: {
     width: 74,
     height: 74,
@@ -269,6 +293,32 @@ const styles = StyleSheet.create({
     height: 58,
     borderRadius: 29,
     backgroundColor: '#FFFFFF',
+  },
+  railShutter: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  railShutterInner: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFFFFF',
+  },
+  railButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   flipButton: {
     width: 44,
