@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components';
 import { ArTopBar, GlassIconButton, AR_COLORS, type ArToolMode } from '@/features/arTools';
+import { useTabletBreakpoint } from '@/hooks/useTabletBreakpoint';
 import { useI18n } from '@/i18n/useI18n';
 
 import { calibratedReading, calibrationFor } from './levelCalibration';
@@ -45,6 +46,7 @@ export function LevelToolView({ active, onClose, onChangeMode, topReserve = 0 }:
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
+  const breakpoint = useTabletBreakpoint();
   const { reading: raw, gravity, available, ready } = useDeviceLevel(active);
   const { settings, setUnit, toggleHaptics, toggleSound, setUprightVial, setZero } = useLevelSettings();
   const trackerRef = useRef(createOrientationTracker());
@@ -195,7 +197,9 @@ export function LevelToolView({ active, onClose, onChangeMode, topReserve = 0 }:
       ))}
     </View>
   ) : null;
-  const showBullseye = shownOrientation === 'flat' || (plumb && settings.uprightVial === 'bubble');
+  // On iPad portrait (plumb), always use bullseye (bubble), matching phone behavior.
+  // Landscape (longEdge) uses box. Flat always uses bullseye.
+  const showBullseye = shownOrientation === 'flat' || (plumb && (breakpoint.isTablet || settings.uprightVial === 'bubble'));
   const portraitBoxWidth = Math.min(frameW - 32, 360);
   const portraitBoxHeight = (portraitBoxWidth / 700) * 128;
   const numbers = (
