@@ -14,6 +14,7 @@ import {
   StyleSheet,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
@@ -146,6 +147,9 @@ export function PhotoAnnotationEditor({
   const { colors } = useTheme();
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isLandscape = windowWidth > windowHeight;
+  const isTablet = windowWidth >= 768;
 
   const [box, setBox] = useState({ width: 0, height: 0 });
   const [shapes, setShapes] = useState<AnnotationShape[]>(initial?.shapes ?? []);
