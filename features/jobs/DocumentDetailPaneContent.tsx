@@ -1,15 +1,13 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { IconButton, LoadingState, Text } from '@/components';
 import { documentsRepository } from '@/database';
-import { DocStatusBadge } from '@/features/documents/DocStatusBadge';
 import { useI18n } from '@/i18n/useI18n';
-import type { Document } from '@/models';
+import type { TradeDocument } from '@/models';
 import { useTheme } from '@/theme';
-import { formatDateShort, formatPence } from '@/utils/format';
+import { formatDateShort } from '@/utils/format';
 
 type DocumentDetailPaneContentProps = {
   documentId: string;
@@ -23,7 +21,7 @@ type DocumentDetailPaneContentProps = {
 export function DocumentDetailPaneContent({ documentId, onClose }: DocumentDetailPaneContentProps) {
   const { colors, spacing, radius } = useTheme();
   const { t } = useI18n();
-  const [doc, setDoc] = useState<Document | null>(null);
+  const [doc, setDoc] = useState<TradeDocument | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -51,7 +49,7 @@ export function DocumentDetailPaneContent({ documentId, onClose }: DocumentDetai
   if (!doc) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl }}>
-        <Text variant="bodyLarge" color={colors.textSecondary}>
+        <Text variant="body" color={colors.textSecondary}>
           {t('documents.notFound')}
         </Text>
       </View>
@@ -79,7 +77,7 @@ export function DocumentDetailPaneContent({ documentId, onClose }: DocumentDetai
       >
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-            <Text variant="title">{doc.title}</Text>
+            <Text variant="h3">{doc.title}</Text>
           </View>
           <Text variant="caption" color={colors.textSecondary} style={{ marginTop: 2 }}>
             {kindLabel}
@@ -97,11 +95,13 @@ export function DocumentDetailPaneContent({ documentId, onClose }: DocumentDetai
           ]}
         >
           <View style={{ gap: spacing.sm }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+            <View>
               <Text variant="caption" color={colors.textSecondary}>
                 Status
               </Text>
-              <DocStatusBadge status={doc.status} kind={doc.kind} />
+              <Text variant="body" style={{ marginTop: 2 }}>
+                {doc.status}
+              </Text>
             </View>
 
             {doc.createdAt ? (
@@ -142,8 +142,8 @@ export function DocumentDetailPaneContent({ documentId, onClose }: DocumentDetai
                 <Text variant="caption" color={colors.textSecondary}>
                   Total
                 </Text>
-                <Text variant="bodyLarge" style={{ marginTop: 2 }}>
-                  {formatPence(doc.totalPence)}
+                <Text variant="body" style={{ marginTop: 2 }}>
+                  £{(doc.totalPence / 100).toFixed(2)}
                 </Text>
               </View>
             ) : null}

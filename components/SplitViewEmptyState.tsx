@@ -25,7 +25,7 @@ export function SplitViewEmptyState({ icon = 'document-text-outline', message, h
   return (
     <View style={styles.container}>
       <Ionicons name={icon} size={64} color={colors.borderStrong} />
-      <Text variant="bodyLarge" color={colors.textSecondary} style={{ marginTop: 16, textAlign: 'center' }}>
+      <Text variant="body" color={colors.textSecondary} style={{ marginTop: 16, textAlign: 'center' }}>
         {message}
       </Text>
       {hint ? (

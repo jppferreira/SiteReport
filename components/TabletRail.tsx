@@ -31,7 +31,7 @@ export function TabletRail() {
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
-  const segments = useSegments();
+  const segments = useSegments() as string[];
   const insets = useSafeAreaInsets();
   const breakpoint = useTabletBreakpoint();
   const layout = getLayoutTokens(breakpoint);
@@ -67,11 +67,17 @@ export function TabletRail() {
     if (pathname.startsWith('/(tabs)/toolbox') || pathname.startsWith('/tools')) return 'toolbox';
     if (pathname.startsWith('/(tabs)/settings') || pathname.startsWith('/settings')) return 'settings';
     // Check segments for nested routes
-    if (segments[0] === '(tabs)' && segments[1] === 'jobs') return 'jobs';
-    if (segments[0] === '(tabs)' && segments[1] === 'toolbox') return 'toolbox';
-    if (segments[0] === '(tabs)' && segments[1] === 'settings') return 'settings';
-    if (segments[0] === 'settings') return 'settings';
-    if (segments[0] === 'job' || segments[0] === 'document') return 'jobs';
+    if (segments.length > 0 && segments[0] === '(tabs)') {
+      if (segments.length > 1) {
+        if (segments[1] === 'jobs') return 'jobs';
+        if (segments[1] === 'toolbox') return 'toolbox';
+        if (segments[1] === 'settings') return 'settings';
+      }
+    }
+    if (segments.length > 0) {
+      if (segments[0] === 'settings') return 'settings';
+      if (segments[0] === 'job' || segments[0] === 'document') return 'jobs';
+    }
     return 'jobs'; // Default to jobs
   })();
 

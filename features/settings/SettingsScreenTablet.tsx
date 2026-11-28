@@ -33,8 +33,6 @@ type SettingsSection =
 export function SettingsScreenTablet() {
   const { colors, spacing, radius } = useTheme();
   const { t } = useI18n();
-  const breakpoint = useTabletBreakpoint();
-  const layout = getLayoutTokens(breakpoint);
   const { profile } = useBusinessProfile();
   const [crewComposition] = useCrewAvatar();
   const { isPro } = useEntitlement();
@@ -54,7 +52,7 @@ export function SettingsScreenTablet() {
     }) ??
     '1';
 
-  const sections: Array<{ id: SettingsSection; label: string; icon: string; route: string }> = [
+  const sections: { id: SettingsSection; label: string; icon: string; route: string }[] = [
     { id: 'business-profile', label: t('settings.businessProfile'), icon: 'business-outline', route: '/settings/business-profile' },
     { id: 'quotes-invoices', label: t('settings.quotesInvoices'), icon: 'receipt-outline', route: '/settings/quotes-invoices' },
     { id: 'branding', label: t('settings.brandingAndLayout'), icon: 'color-palette-outline', route: '/settings/branding' },
@@ -144,7 +142,7 @@ export function SettingsScreenTablet() {
 
   const detailPaneContent = selectedSection ? (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl }}>
-      <Text variant="bodyLarge" color={colors.textSecondary}>
+      <Text variant="body" color={colors.textSecondary}>
         {t('settings.selectSectionHint')}
       </Text>
       <Text variant="caption" color={colors.textTertiary} style={{ marginTop: spacing.sm, textAlign: 'center' }}>

@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   Button,
-  CenteredCard,
   ErrorState,
   IconButton,
   Input,
@@ -58,7 +57,6 @@ export default function DocumentEditScreen() {
   const { t } = useI18n();
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
-  const breakpoint = useTabletBreakpoint();
   const pricingRef = useRef<PricingReferenceHandle>(null);
 
   const [doc, setDoc] = useState<TradeDocument | null>(null);

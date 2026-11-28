@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   type SharedValue,
@@ -30,8 +30,10 @@ import { jobsRepository } from '@/database';
 import type { JobDocumentSummary } from '@/database/repositories/documentsRepository';
 import { DocumentsSummaryCard } from '@/features/documents';
 import { getDocTileBg } from '@/features/documents/documentTokens';
+import { DocumentDetailPaneContent } from '@/features/jobs/DocumentDetailPaneContent';
 import { FirstReportPromptCard } from '@/features/jobs/FirstReportPromptCard';
 import { JobCard } from '@/features/jobs/JobCard';
+import { JobDetailPaneContent } from '@/features/jobs/JobDetailPaneContent';
 import { JobDocSegments } from '@/features/jobs/JobDocSegments';
 import { JobsFilterSheet } from '@/features/jobs/JobsFilterSheet';
 import { resolveJobPreviewRoute } from '@/features/jobs/openJobPreview';
@@ -67,7 +69,6 @@ export function JobsScreenTablet() {
   const { t } = useI18n();
   const { isPro } = useEntitlement();
   const breakpoint = useTabletBreakpoint();
-  const layout = getLayoutTokens(breakpoint);
 
   const {
     jobs,
@@ -386,7 +387,7 @@ export function JobsScreenTablet() {
 
     if (selection.type === 'job') {
       return (
-        <JobDetailPane
+        <JobDetailPaneContent
           jobId={selection.jobId}
           onClose={() => setSelection({ type: 'none' })}
         />
@@ -395,9 +396,8 @@ export function JobsScreenTablet() {
 
     if (selection.type === 'document') {
       return (
-        <DocumentDetailPane
+        <DocumentDetailPaneContent
           documentId={selection.documentId}
-          jobId={selection.jobId}
           onClose={() => setSelection({ type: 'none' })}
         />
       );
@@ -431,14 +431,7 @@ export function JobsScreenTablet() {
   );
 }
 
-// Detail pane components
-function JobDetailPane({ jobId, onClose }: { jobId: string; onClose: () => void }) {
-  return <JobDetailPaneContent jobId={jobId} onClose={onClose} />;
-}
-
-function DocumentDetailPane({ documentId, jobId, onClose }: { documentId: string; jobId: string; onClose: () => void }) {
-  return <DocumentDetailPaneContent documentId={documentId} onClose={onClose} />;
-}
+// Detail pane components (imported above)
 
 type JobsMoneySummaryProps = {
   visible: boolean;

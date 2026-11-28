@@ -21,7 +21,7 @@ type CenteredCardProps = {
  * Used for: Onboarding, Paywall (portrait), Client Signature, Centered forms.
  */
 export function CenteredCard({ children, maxWidth, testID }: CenteredCardProps) {
-  const { colors, spacing } = useTheme();
+  const { spacing } = useTheme();
   const breakpoint = useTabletBreakpoint();
   const layout = getLayoutTokens(breakpoint);
 

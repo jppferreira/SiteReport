@@ -1,24 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { IconButton, LoadingState, Text } from '@/components';
-import {
-  businessProfileRepository,
-  documentsRepository,
-  jobChecklistsRepository,
-  jobsRepository,
-  photoAreasRepository,
-  photosRepository,
-} from '@/database';
-import { JobDocumentsCard } from '@/features/documents';
-import { addressForMeta, computeGuidedChecklist } from '@/features/jobs/guidedChecklist';
-import { useEntitlement } from '@/hooks/useEntitlement';
+import { photosRepository } from '@/database';
+import { addressForMeta } from '@/features/jobs/guidedChecklist';
 import { useJobDocuments } from '@/hooks/useJobDocuments';
 import { useJob } from '@/hooks/useJob';
-import { useSignature } from '@/hooks/useSignature';
-import { useWorkSummary } from '@/hooks/useWorkSummary';
 import { useI18n } from '@/i18n/useI18n';
 import { formatDateShort } from '@/utils/format';
 import { useTheme } from '@/theme';
@@ -35,10 +24,7 @@ type JobDetailPaneContentProps = {
 export function JobDetailPaneContent({ jobId, onClose }: JobDetailPaneContentProps) {
   const { colors, spacing, radius } = useTheme();
   const { t } = useI18n();
-  const { isPro } = useEntitlement();
-  const { job, progress, loading, error, refresh } = useJob(jobId);
-  const { summary } = useWorkSummary(jobId);
-  const { signature } = useSignature(jobId);
+  const { job, loading, error, refresh } = useJob(jobId);
   const { documents, refreshOnFocus: refreshDocuments } = useJobDocuments(jobId);
   
   const [photoCounts, setPhotoCounts] = useState({ before: 0, during: 0, after: 0 });
@@ -65,21 +51,16 @@ export function JobDetailPaneContent({ jobId, onClose }: JobDetailPaneContentPro
   if (error || !job) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl }}>
-        <Text variant="bodyLarge" color={colors.textSecondary}>
+        <Text variant="body" color={colors.textSecondary}>
           {error || t('jobDetail.notFound')}
         </Text>
       </View>
     );
   }
 
-  const guided = computeGuidedChecklist({ job, progress, checklist: null, documents, summary, signature });
   const metaAddress = addressForMeta(job.address);
   const dateLabel = formatDateShort(job.jobDate);
-  const statusLabel = guided.allComplete
-    ? t('jobs.statusComplete')
-    : guided.completedCount > 0
-      ? t('jobs.statusInProgress')
-      : t('jobs.statusDraft');
+  const statusLabel = t('jobs.statusDraft');
 
   const totalPhotos = photoCounts.before + photoCounts.during + photoCounts.after;
 
@@ -96,7 +77,7 @@ export function JobDetailPaneContent({ jobId, onClose }: JobDetailPaneContentPro
         }}
       >
         <View style={{ flex: 1 }}>
-          <Text variant="title">{job.title}</Text>
+          <Text variant="h3">{job.title}</Text>
           {metaAddress ? (
             <Text variant="caption" color={colors.textSecondary} style={{ marginTop: 2 }}>
               {metaAddress}
@@ -129,17 +110,20 @@ export function JobDetailPaneContent({ jobId, onClose }: JobDetailPaneContentPro
         </View>
 
         {documents.length > 0 ? (
-          <JobDocumentsCard
-            jobId={jobId}
-            documents={documents}
-            onDocumentPress={(doc) => {
-              router.push(`/document/${doc.id}`);
-            }}
-            onNewDocument={() => {
-              router.push({ pathname: '/document/new', params: { jobId } });
-            }}
-            showNew={isPro}
-          />
+          <View style={[styles.section, { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md }]}>
+            <Text variant="bodyMedium" style={{ marginBottom: spacing.sm }}>
+              Documents ({documents.length})
+            </Text>
+            {documents.map((doc) => (
+              <Pressable
+                key={doc.id}
+                onPress={() => router.push(`/document/${doc.id}`)}
+                style={{ paddingVertical: spacing.xs }}
+              >
+                <Text variant="body">{doc.title || 'Untitled'}</Text>
+              </Pressable>
+            ))}
+          </View>
         ) : null}
 
         {totalPhotos > 0 ? (
