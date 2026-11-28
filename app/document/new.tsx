@@ -4,6 +4,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View
 
 import {
   Button,
+  CenteredCard,
   NavigationHeader,
   Screen,
   SearchInput,
@@ -14,9 +15,11 @@ import {
 } from '@/components';
 import { CustomerPicker, type CustomerPickerHandle } from '@/features/documents/CustomerPicker';
 import { customersRepository, documentsRepository, jobsRepository } from '@/database';
+import { useTabletBreakpoint } from '@/hooks/useTabletBreakpoint';
 import { useI18n } from '@/i18n/useI18n';
 import { normalizeDocumentKind, type Customer, type Job } from '@/models';
 import { useTheme } from '@/theme';
+import { getLayoutTokens } from '@/theme/layoutTokens';
 import { goBack } from '@/utils/goBack';
 import { logger } from '@/utils/logger';
 
@@ -41,6 +44,8 @@ export default function NewStandaloneDocumentScreen() {
   const { spacing, colors, radius } = useTheme();
   const { t } = useI18n();
   const { showToast } = useToast();
+  const breakpoint = useTabletBreakpoint();
+  const layout = getLayoutTokens(breakpoint);
   const customerPickerRef = useRef<CustomerPickerHandle>(null);
 
   const [linkMode, setLinkMode] = useState<LinkMode>(presetJobId ? 'job' : 'customer');
@@ -220,11 +225,13 @@ export default function NewStandaloneDocumentScreen() {
       >
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg }}
+          contentContainerStyle={{ padding: breakpoint.isTablet ? layout.panePadding : spacing.lg, paddingBottom: spacing.xxl }}
         >
-          <Text variant="body" color={colors.textSecondary}>
-            {t('documents.newFlow.subtitle')}
-          </Text>
+          <CenteredCard maxWidth={breakpoint.isTablet ? 600 : undefined}>
+            <View style={{ gap: spacing.lg }}>
+              <Text variant="body" color={colors.textSecondary}>
+                {t('documents.newFlow.subtitle')}
+              </Text>
 
           {presetJobId ? (
             <Text variant="caption" color={colors.textSecondary}>
@@ -328,11 +335,13 @@ export default function NewStandaloneDocumentScreen() {
             </Text>
           ) : null}
 
-          <Button
-            label={t('documents.newFlow.create')}
-            onPress={() => void handleCreate()}
-            loading={submitting}
-          />
+              <Button
+                label={t('documents.newFlow.create')}
+                onPress={() => void handleCreate()}
+                loading={submitting}
+              />
+            </View>
+          </CenteredCard>
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
