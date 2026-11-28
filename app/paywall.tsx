@@ -12,6 +12,15 @@ import { getProducts, purchase, restorePurchases } from '@/services/entitlementS
 import { useTheme } from '@/theme';
 import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/utils/siteUrls';
 
+/** Convert a hex color to rgba with the given opacity. */
+function withOpacity(hex: string, opacity: number): string {
+  const normalized = hex.replace('#', '');
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
 export default function PaywallScreen() {
   const { trigger } = useLocalSearchParams<{ trigger?: string }>();
   const { colors, radius, spacing } = useTheme();
@@ -159,13 +168,13 @@ export default function PaywallScreen() {
           <View style={[styles(spacing).hero, { backgroundColor: colors.ctaDark, borderRadius: radius.xl }]}>
             <Ionicons name="document-text" size={28} color={colors.accent} />
             <View style={{ marginTop: spacing.sm }}>
-              <Text variant="caption" color="rgba(255,255,255,0.6)">
+              <Text variant="caption" color={withOpacity(colors.textInverse, 0.6)}>
                 {t('paywall.previewLabel')}
               </Text>
               <View style={{ height: 6 }} />
               <View style={{ gap: 6 }}>
-                <View style={{ height: 8, width: '70%', backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 4 }} />
-                <View style={{ height: 8, width: '45%', backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 4 }} />
+                <View style={{ height: 8, width: '70%', backgroundColor: withOpacity(colors.textInverse, 0.18), borderRadius: 4 }} />
+                <View style={{ height: 8, width: '45%', backgroundColor: withOpacity(colors.textInverse, 0.18), borderRadius: 4 }} />
               </View>
             </View>
           </View>

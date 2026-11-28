@@ -244,7 +244,7 @@ function CurrentStepCard({
               style={[
                 styles.statusPill,
                 {
-                  backgroundColor: inProgress ? '#FFF4DB' : colors.accentSoft,
+                  backgroundColor: inProgress ? colors.inProgressBg : colors.accentSoft,
                 },
               ]}
             >
@@ -253,7 +253,7 @@ function CurrentStepCard({
                 style={{
                   fontSize: 10,
                   fontFamily: fontFamily.semibold,
-                  color: inProgress ? '#9A6A00' : colors.accentPressed,
+                  color: inProgress ? colors.inProgressFg : colors.accentPressed,
                 }}
               >
                 {inProgress ? t('jobDetail.guided.inProgress') : t('jobDetail.guided.upNext')}
@@ -493,9 +493,9 @@ function StagePill({
   const { colors } = useTheme();
   if (missing && !done) {
     return (
-      <View style={[styles.stage, styles.stageMissing, { backgroundColor: colors.surface }]}>
-        <Ionicons name="camera-outline" size={12} color="#9A6A00" />
-        <Text variant="caption" style={[styles.stageLabel, { color: '#9A6A00' }]}>
+      <View style={[styles.stage, styles.stageMissing, { backgroundColor: colors.surface, borderColor: colors.inProgressBorder }]}>
+        <Ionicons name="camera-outline" size={12} color={colors.inProgressFg} />
+        <Text variant="caption" style={[styles.stageLabel, { color: colors.inProgressFg }]}>
           {label}
         </Text>
       </View>
@@ -680,7 +680,7 @@ const styles = StyleSheet.create({
   stageMissing: {
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: '#E8A317',
+    // borderColor is set dynamically to inProgressBorder in the component
   },
   stageLabel: {
     fontSize: 12,

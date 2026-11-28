@@ -668,8 +668,8 @@ function ColourTab({
                 styles.swatch,
                 {
                   backgroundColor: color,
-                  borderWidth: selected ? 3 : 0,
-                  borderColor: colors.textPrimary,
+                  borderWidth: selected ? 3 : (color === '#101310' ? 1.5 : 0),
+                  borderColor: selected ? colors.textPrimary : colors.brandingSwatchRing,
                 },
               ]}
             >
