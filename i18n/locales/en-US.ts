@@ -80,6 +80,8 @@ const enUS = {
     deleteConfirmDescription:
       'This will permanently remove its information, photos and generated reports from this device.',
     deleteConfirmLabel: 'Delete job',
+    ipadEmptyDetailMessage: 'Select a job to view details',
+    ipadEmptyDetailHint: 'Its quote, report or invoice opens here.',
     filterAll: 'All',
     filterDraft: 'Draft',
     filterComplete: 'Complete',
@@ -1505,7 +1507,7 @@ const enUS = {
     usedByApp: 'Used by Trade Report',
     freeDeviceStorage: 'Free device storage',
     backupIntroIos:
-      'One file with your jobs, photos, signatures, and PDFs. Save to iCloud Drive uses the Apple ID already on this iPhone and keeps that zip only in your iCloud Drive. Save a copy opens the system folder picker.',
+      'One file with your jobs, photos, signatures, and PDFs. Save to iCloud Drive uses the Apple ID already on this device and keeps that zip only in your iCloud Drive. Save a copy opens the system folder picker.',
     backupIntroAndroid:
       'One file with your jobs, photos, signatures, and PDFs. Save to Google Drive opens the system save screen — switch to Google Drive if it opens on Downloads, then tap Save. In Expo Go it opens the share sheet — pick Google Drive there. Trade Report does not sign in to Google. Save a copy opens the system folder picker.',
     backupIntroOther:
@@ -1903,7 +1905,7 @@ const enUS = {
     passwordRequired: 'This backup is encrypted. Enter the password you used when you saved it.',
     wrongPassword: 'That password did not unlock the backup.',
     icloudNeedsIosApp: 'iCloud backup needs the Trade Report iOS app.',
-    icloudSignedOut: 'Sign in to iCloud on this iPhone, then try again. Trade Report does not have its own iCloud login.',
+    icloudSignedOut: 'Sign in to iCloud on this device, then try again. Trade Report does not have its own iCloud login.',
     icloudNotReady:
       'iCloud Drive is not available yet. Turn on iCloud Drive for Trade Report in Settings, then try again.',
     icloudWriteFailed: 'The backup could not be saved to iCloud Drive. Nothing on this phone was changed.',
