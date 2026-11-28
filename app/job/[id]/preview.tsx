@@ -28,6 +28,7 @@ import {
 } from '@/features/reports/PreviewStyleTray';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { useEntitlement } from '@/hooks/useEntitlement';
+import { useTabletBreakpoint } from '@/hooks/useTabletBreakpoint';
 import { useWorkSummary } from '@/hooks/useWorkSummary';
 import { useI18n } from '@/i18n/useI18n';
 import {

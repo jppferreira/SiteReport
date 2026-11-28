@@ -37,6 +37,7 @@ import {
   type TradeDocument,
 } from '@/models';
 import { useTheme } from '@/theme';
+import { getLayoutTokens } from '@/theme/layoutTokens';
 import { goBack } from '@/utils/goBack';
 import { logger } from '@/utils/logger';
 
@@ -57,6 +58,8 @@ export default function DocumentEditScreen() {
   const { t } = useI18n();
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
+  const breakpoint = useTabletBreakpoint();
+  const layout = getLayoutTokens(breakpoint);
   const pricingRef = useRef<PricingReferenceHandle>(null);
 
   const [doc, setDoc] = useState<TradeDocument | null>(null);
@@ -241,62 +244,134 @@ export default function DocumentEditScreen() {
       >
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{
-            paddingHorizontal: spacing.lg,
-            paddingBottom: barHeight + spacing.md,
-            gap: spacing.md,
-          }}
+          contentContainerStyle={
+            breakpoint.isTablet
+              ? {
+                  alignSelf: 'center',
+                  maxWidth: layout.contentMaxWidth,
+                  width: '100%',
+                  paddingHorizontal: layout.panePadding,
+                  paddingBottom: barHeight + spacing.md,
+                  gap: spacing.md,
+                }
+              : {
+                  paddingHorizontal: spacing.lg,
+                  paddingBottom: barHeight + spacing.md,
+                  gap: spacing.md,
+                }
+          }
         >
-          <Pressable
-            onPress={() =>
-              router.push({
-                pathname: '/document/new',
-                params: { kind: doc.kind, reassignDocumentId: doc.id },
-              })
-            }
-            style={[
-              styles.customerChip,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                borderRadius: radius.lg,
-                padding: spacing.sm,
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.avatar,
-                { backgroundColor: colors.accentSoft, borderRadius: 20 },
-              ]}
-            >
-              <Text variant="bodyMedium" color={colors.accent}>
-                {customerInitials(customerLabel ?? '?')}
-              </Text>
+          {breakpoint.isTablet ? (
+            <View style={[styles.twoColumn, { gap: layout.panePadding }]}>
+              <View style={styles.leftColumn}>
+                <Pressable
+                  onPress={() =>
+                    router.push({
+                      pathname: '/document/new',
+                      params: { kind: doc.kind, reassignDocumentId: doc.id },
+                    })
+                  }
+                  style={[
+                    styles.customerChip,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                      borderRadius: radius.lg,
+                      padding: spacing.sm,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.avatar,
+                      { backgroundColor: colors.accentSoft, borderRadius: 20 },
+                    ]}
+                  >
+                    <Text variant="bodyMedium" color={colors.accent}>
+                      {customerInitials(customerLabel ?? '?')}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="bodyMedium" numberOfLines={1}>
+                      {customerLabel ?? t('documents.editor.noCustomer')}
+                    </Text>
+                    {customerAddress ? (
+                      <Text variant="caption" color={colors.textSecondary} numberOfLines={1}>
+                        {customerAddress}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Text variant="caption" color={colors.accent} style={{ fontWeight: '600' }}>
+                    {t('documents.editor.changeCustomer')}
+                  </Text>
+                </Pressable>
+
+                <Input label={titleLabel} value={title} onChangeText={setTitle} autoCapitalize="sentences" />
+              </View>
+
+              <View style={styles.rightColumn}>
+                <DocumentPriceEditor
+                  pricing={pricing}
+                  hasVat={hasVat}
+                  pricingRef={pricingRef}
+                  onSavePricing={savePricing}
+                />
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text variant="bodyMedium" numberOfLines={1}>
-                {customerLabel ?? t('documents.editor.noCustomer')}
-              </Text>
-              {customerAddress ? (
-                <Text variant="caption" color={colors.textSecondary} numberOfLines={1}>
-                  {customerAddress}
+          ) : (
+            <>
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: '/document/new',
+                    params: { kind: doc.kind, reassignDocumentId: doc.id },
+                  })
+                }
+                style={[
+                  styles.customerChip,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    borderRadius: radius.lg,
+                    padding: spacing.sm,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.avatar,
+                    { backgroundColor: colors.accentSoft, borderRadius: 20 },
+                  ]}
+                >
+                  <Text variant="bodyMedium" color={colors.accent}>
+                    {customerInitials(customerLabel ?? '?')}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text variant="bodyMedium" numberOfLines={1}>
+                    {customerLabel ?? t('documents.editor.noCustomer')}
+                  </Text>
+                  {customerAddress ? (
+                    <Text variant="caption" color={colors.textSecondary} numberOfLines={1}>
+                      {customerAddress}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text variant="caption" color={colors.accent} style={{ fontWeight: '600' }}>
+                  {t('documents.editor.changeCustomer')}
                 </Text>
-              ) : null}
-            </View>
-            <Text variant="caption" color={colors.accent} style={{ fontWeight: '600' }}>
-              {t('documents.editor.changeCustomer')}
-            </Text>
-          </Pressable>
+              </Pressable>
 
-          <Input label={titleLabel} value={title} onChangeText={setTitle} autoCapitalize="sentences" />
+              <Input label={titleLabel} value={title} onChangeText={setTitle} autoCapitalize="sentences" />
 
-          <DocumentPriceEditor
-            pricing={pricing}
-            hasVat={hasVat}
-            pricingRef={pricingRef}
-            onSavePricing={savePricing}
-          />
+              <DocumentPriceEditor
+                pricing={pricing}
+                hasVat={hasVat}
+                pricingRef={pricingRef}
+                onSavePricing={savePricing}
+              />
+            </>
+          )}
         </ScrollView>
 
         <View
@@ -358,6 +433,17 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   sendBtn: {
+    flex: 1,
+  },
+  twoColumn: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  leftColumn: {
+    flex: 1,
+    gap: 16,
+  },
+  rightColumn: {
     flex: 1,
   },
 });
