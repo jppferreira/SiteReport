@@ -1326,6 +1326,9 @@ const enUS = {
 
   settings: {
     title: 'My Account',
+    iPadEmptyMessage: 'Select a section',
+    iPadEmptyHint: 'Choose from the list to view settings.',
+    selectSectionHint: 'Settings detail will appear here.',
     openA11y: 'My Account',
     noBusinessName: 'Add your business',
     avatarTitle: 'Profile character',
