@@ -1,4 +1,5 @@
 import { Entitlement, FREE_ENTITLEMENT, ProductInfo } from '@/models';
+import { logger } from '@/utils/logger';
 
 import { CatalogItem, catalogItemForOwned, catalogItemForPlan, LIFETIME_PRODUCT_ID, PLAY_SUBSCRIPTION_ID } from './catalog';
 
@@ -279,7 +280,26 @@ export function productInfoFromPlay(item: CatalogItem, product: PlayProductSnaps
 }
 
 function planForOwned(item: PlayOwnedItem): CatalogItem | undefined {
-  return catalogItemForOwned(item.productId, item.basePlanId) ?? (item.productId === PLAY_SUBSCRIPTION_ID ? catalogItemForPlan('monthly') : undefined);
+  const resolved = catalogItemForOwned(item.productId, item.basePlanId);
+  if (resolved) return resolved;
+  
+  // Legacy standalone SKUs (pre-base-plan era) where productId IS the plan.
+  if (item.productId === 'monthly' || item.productId === 'annual') {
+    return catalogItemForPlan(item.productId);
+  }
+  
+  // Modern shared subscription requires basePlanId to distinguish monthly vs annual.
+  // When Play omits it (rare, but can happen with license testers or pending purchases),
+  // log a warning so it's visible in the logs, then return undefined so this purchase
+  // is ignored rather than mislabeled as monthly.
+  if (item.productId === PLAY_SUBSCRIPTION_ID) {
+    logger.warn('Play purchase missing basePlanId for shared subscription', {
+      productId: item.productId,
+      purchaseState: item.purchaseState,
+    });
+  }
+  
+  return undefined;
 }
 
 /** Lifetime wins over a subscription. A cancelled subscription stays Pro until Play stops returning it. */

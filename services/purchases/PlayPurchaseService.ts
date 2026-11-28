@@ -210,6 +210,10 @@ export class PlayPurchaseService implements PurchaseService {
     for (const purchase of purchases) {
       if ('isSuspendedAndroid' in purchase && purchase.isSuspendedAndroid) continue;
       if (purchase.purchaseState === 'purchased' && 'isAcknowledgedAndroid' in purchase && purchase.isAcknowledgedAndroid === false) {
+        logger.info('Acknowledging unacknowledged Google Play purchase on entitlement query', {
+          productIds: productIdsOf(purchase),
+          purchaseState: purchase.purchaseState,
+        });
         await finishTransaction({ purchase, isConsumable: false }).catch((error: unknown) => {
           logger.warn('Failed to acknowledge an existing Google Play purchase', { error: String(error) });
         });

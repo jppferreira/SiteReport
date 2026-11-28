@@ -509,4 +509,30 @@ describe('Play subscription mapping', () => {
     expect(info?.hasIntroductoryOffer).toBe(true);
     expect(offerTokenFor(productNormalized, 'annual')).toBe('promo-token');
   });
+
+  it('ignores shared subscription purchase when basePlanId is missing (license tester edge case)', () => {
+    // Reproduces the bug where "Pro · Monthly" showed for an annual purchase because
+    // basePlanId was null/missing and the code incorrectly fell back to 'monthly'.
+    const entitlement = entitlementFromPlay([
+      { productId: 'tradesreport.pro', basePlanId: null, purchaseState: 'purchased', autoRenewing: true },
+    ]);
+    // Should be free (purchase ignored) rather than incorrectly showing as Pro Monthly.
+    expect(entitlement.status).toBe('free');
+  });
+
+  it('correctly identifies annual purchase when basePlanId is present', () => {
+    const entitlement = entitlementFromPlay([
+      { productId: 'tradesreport.pro', basePlanId: 'annual', purchaseState: 'purchased', autoRenewing: true },
+    ]);
+    expect(entitlement.status).toBe('pro');
+    expect(entitlement.planId).toBe('annual');
+  });
+
+  it('correctly identifies monthly purchase when basePlanId is present', () => {
+    const entitlement = entitlementFromPlay([
+      { productId: 'tradesreport.pro', basePlanId: 'monthly', purchaseState: 'purchased', autoRenewing: true },
+    ]);
+    expect(entitlement.status).toBe('pro');
+    expect(entitlement.planId).toBe('monthly');
+  });
 });
