@@ -5,8 +5,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useI18n } from '@/i18n/useI18n';
 
-import { Text } from '@/components';
+import { CenteredCard, Text } from '@/components';
+import { useTabletBreakpoint } from '@/hooks/useTabletBreakpoint';
 import { fontFamily, useTheme } from '@/theme';
+import { getLayoutTokens } from '@/theme/layoutTokens';
 
 import { StepDots } from './StepDots';
 
@@ -37,6 +39,8 @@ export function HeroOnboardingScreen({ steps, totalSteps = 6, onComplete }: Hero
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const breakpoint = useTabletBreakpoint();
+  const layout = getLayoutTokens(breakpoint);
   const [index, setIndex] = useState(0);
   const busyRef = useRef(false);
   const [contentOpacity] = useState(() => new Animated.Value(1));
@@ -105,35 +109,37 @@ export function HeroOnboardingScreen({ steps, totalSteps = 6, onComplete }: Hero
           },
         ]}
       >
-        <Animated.View style={[styles.copy, { opacity: contentOpacity }]}>
-          <Text accessibilityRole="header" style={[styles.title, { color: colors.textPrimary }]}>
-            {step.title}
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{step.subtitle}</Text>
-          <Text style={[styles.body, { color: colors.textTertiary }]}>{step.body}</Text>
-        </Animated.View>
+        <CenteredCard maxWidth={breakpoint.isTablet ? layout.contentMaxWidth : undefined}>
+          <Animated.View style={[styles.copy, { opacity: contentOpacity }]}>
+            <Text accessibilityRole="header" style={[styles.title, { color: colors.textPrimary }]}>
+              {step.title}
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{step.subtitle}</Text>
+            <Text style={[styles.body, { color: colors.textTertiary }]}>{step.body}</Text>
+          </Animated.View>
 
-        <View style={styles.navRow}>
-          <View style={styles.navSide} />
-          <View style={styles.dotsWrap}>
-            <StepDots step={stepNumber} totalSteps={totalSteps} />
+          <View style={styles.navRow}>
+            <View style={styles.navSide} />
+            <View style={styles.dotsWrap}>
+              <StepDots step={stepNumber} totalSteps={totalSteps} />
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('onboarding.heroNext')}
+              onPress={goNext}
+              hitSlop={8}
+              style={({ pressed }) => [
+                styles.next,
+                {
+                  backgroundColor: pressed ? colors.accentPressed : colors.accent,
+                  transform: [{ scale: pressed ? 0.96 : 1 }],
+                },
+              ]}
+            >
+              <Text style={[styles.nextLabel, { color: colors.accentOnAccent }]}>→</Text>
+            </Pressable>
           </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('onboarding.heroNext')}
-            onPress={goNext}
-            hitSlop={8}
-            style={({ pressed }) => [
-              styles.next,
-              {
-                backgroundColor: pressed ? colors.accentPressed : colors.accent,
-                transform: [{ scale: pressed ? 0.96 : 1 }],
-              },
-            ]}
-          >
-            <Text style={[styles.nextLabel, { color: colors.accentOnAccent }]}>→</Text>
-          </Pressable>
-        </View>
+        </CenteredCard>
       </View>
     </View>
   );
