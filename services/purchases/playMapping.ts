@@ -184,12 +184,6 @@ export function productInfoFromPlay(item: CatalogItem, product: PlayProductSnaps
   }
   if (!details && !normalized) return null;
 
-  const priceFormatted = recurring?.formattedPrice || normalized?.displayPrice || product.displayPrice;
-  const priceValue = recurring?.priceAmountMicros
-    ? Number(recurring.priceAmountMicros) / 1_000_000
-    : (normalized?.price ?? product.price ?? 0);
-  const currencyCode = recurring?.priceCurrencyCode || normalized?.currency || product.currency;
-
   // Extract introductory offer pricing (first paid phase before recurring, or first phase if single-phase promo)
   const allPhases = paidPhases(phases);
   const normalizedPhases = paidPhases(normalized?.pricingPhasesAndroid?.pricingPhaseList);
@@ -197,13 +191,27 @@ export function productInfoFromPlay(item: CatalogItem, product: PlayProductSnaps
   let introductoryPriceFormatted: string | undefined;
   let introductoryPriceValue: number | undefined;
   
+  // For single-phase promotional offers, we need to find the base plan price separately
+  let baseOfferForRecurringPrice: PlayOfferDetails | undefined;
+  let baseNormalizedForRecurringPrice: PlaySubscriptionOffer | undefined;
+  
   if (hasIntroductoryOffer) {
-    // Try to extract from details first (subscriptionOfferDetailsAndroid format)
+    // Try to extract intro from details first (subscriptionOfferDetailsAndroid format)
     if (allPhases.length > 0) {
       const introPhase = allPhases.length > 1 ? allPhases[0] : (allPhases[0] !== recurring ? allPhases[0] : undefined);
       if (introPhase) {
         introductoryPriceFormatted = introPhase.formattedPrice;
         introductoryPriceValue = introPhase.priceAmountMicros ? Number(introPhase.priceAmountMicros) / 1_000_000 : undefined;
+      } else if (allPhases.length === 1) {
+        // Single-phase promo: use this phase as the intro price
+        introductoryPriceFormatted = allPhases[0].formattedPrice;
+        introductoryPriceValue = allPhases[0].priceAmountMicros ? Number(allPhases[0].priceAmountMicros) / 1_000_000 : undefined;
+        
+        // Find base plan for recurring price
+        const allOffers = product.subscriptionOfferDetailsAndroid ?? [];
+        baseOfferForRecurringPrice = allOffers.find((offer) => 
+          offer.basePlanId === item.basePlanId && !offer.offerId
+        );
       }
     }
     // Fall back to normalized format (subscriptionOffers format)
@@ -213,8 +221,46 @@ export function productInfoFromPlay(item: CatalogItem, product: PlayProductSnaps
       if (introPhase) {
         introductoryPriceFormatted = introPhase.formattedPrice;
         introductoryPriceValue = introPhase.priceAmountMicros ? Number(introPhase.priceAmountMicros) / 1_000_000 : undefined;
+      } else if (normalizedPhases.length === 1) {
+        // Single-phase promo: use this phase as the intro price
+        introductoryPriceFormatted = normalizedPhases[0].formattedPrice;
+        introductoryPriceValue = normalizedPhases[0].priceAmountMicros ? Number(normalizedPhases[0].priceAmountMicros) / 1_000_000 : undefined;
+        
+        // Find base plan for recurring price
+        const allOffers = product.subscriptionOffers ?? [];
+        baseNormalizedForRecurringPrice = allOffers.find((offer) => 
+          (offer.basePlanIdAndroid === item.basePlanId || offer.id === item.basePlanId) && (!offer.id || offer.id === item.basePlanId)
+        );
       }
     }
+  }
+
+  // Determine recurring price: use base plan if we found one for a single-phase promo, otherwise use the last phase
+  let priceFormatted: string;
+  let priceValue: number;
+  let currencyCode: string;
+  
+  if (baseOfferForRecurringPrice) {
+    const basePhases = baseOfferForRecurringPrice.pricingPhases?.pricingPhaseList;
+    const baseRecurring = paidPhases(basePhases).at(-1) ?? basePhases?.at(-1);
+    priceFormatted = baseRecurring?.formattedPrice || product.displayPrice;
+    priceValue = baseRecurring?.priceAmountMicros ? Number(baseRecurring.priceAmountMicros) / 1_000_000 : (product.price ?? 0);
+    currencyCode = baseRecurring?.priceCurrencyCode || product.currency;
+  } else if (baseNormalizedForRecurringPrice) {
+    const basePhases = baseNormalizedForRecurringPrice.pricingPhasesAndroid?.pricingPhaseList;
+    const baseRecurring = paidPhases(basePhases).at(-1) ?? basePhases?.at(-1);
+    priceFormatted = baseRecurring?.formattedPrice || baseNormalizedForRecurringPrice.displayPrice || product.displayPrice;
+    priceValue = baseRecurring?.priceAmountMicros 
+      ? Number(baseRecurring.priceAmountMicros) / 1_000_000 
+      : (baseNormalizedForRecurringPrice.price ?? product.price ?? 0);
+    currencyCode = baseRecurring?.priceCurrencyCode || baseNormalizedForRecurringPrice.currency || product.currency;
+  } else {
+    // Multi-phase promo or no promo: use the recurring phase
+    priceFormatted = recurring?.formattedPrice || normalized?.displayPrice || product.displayPrice;
+    priceValue = recurring?.priceAmountMicros
+      ? Number(recurring.priceAmountMicros) / 1_000_000
+      : (normalized?.price ?? product.price ?? 0);
+    currencyCode = recurring?.priceCurrencyCode || normalized?.currency || product.currency;
   }
 
   return {

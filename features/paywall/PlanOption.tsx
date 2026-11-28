@@ -60,7 +60,9 @@ export function PlanOption({ product, selected, onSelect, badge }: PlanOptionPro
             </Text>
             {showRegularPrice ? (
               <Text variant="caption" color={colors.textTertiary} style={{ marginTop: 2 }}>
-                {t('paywall.thenPrice', { price: product.priceFormatted })}
+                {product.planId === 'annual' 
+                  ? t('paywall.thenPriceYearly', { price: product.priceFormatted })
+                  : t('paywall.thenPrice', { price: product.priceFormatted })}
               </Text>
             ) : null}
           </View>
