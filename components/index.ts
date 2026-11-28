@@ -34,3 +34,6 @@ export { PaywallFeature } from './PaywallFeature';
 export { PermissionNotice } from './PermissionNotice';
 export { LocalImage } from './LocalImage';
 export { CrewAvatar } from './CrewAvatar';
+export { SplitView } from './SplitView';
+export { SplitViewEmptyState } from './SplitViewEmptyState';
+export { TabletRail } from './TabletRail';
