@@ -2,8 +2,9 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components';
-import { DOC_KIND_TILE_BG } from '@/features/documents/documentTokens';
+import { getDocTileBg } from '@/features/documents/documentTokens';
 import type { DocumentKind } from '@/models';
+import { useTheme } from '@/theme';
 
 const LABEL: Record<DocumentKind, string> = {
   quote: 'Q',
@@ -11,31 +12,37 @@ const LABEL: Record<DocumentKind, string> = {
   invoice: 'I',
 };
 
-const ON_FG: Record<DocumentKind, string> = {
-  quote: '#2F6FBF',
-  report: '#178A3C',
-  invoice: '#6B4CA0',
-};
-
-const OFF_BG = '#F2F4F2';
-const OFF_FG = '#8E9791';
-
 type JobPipProps = {
   kind: DocumentKind;
   on: boolean;
 };
 
 export function JobPip({ kind, on }: JobPipProps) {
+  const { colors, scheme } = useTheme();
+
+  const onColor = (() => {
+    switch (kind) {
+      case 'quote':
+        return colors.pipQuote;
+      case 'report':
+        return colors.pipReport;
+      case 'invoice':
+        return colors.pipInvoice;
+      default:
+        return colors.textPrimary;
+    }
+  })();
+
   return (
     <View
       style={[
         styles.pip,
-        { backgroundColor: on ? DOC_KIND_TILE_BG[kind] : OFF_BG },
+        { backgroundColor: on ? getDocTileBg(kind, scheme) : colors.pipOffBg },
       ]}
     >
       <Text
         variant="caption"
-        color={on ? ON_FG[kind] : OFF_FG}
+        color={on ? onColor : colors.pipOffFg}
         style={styles.label}
       >
         {LABEL[kind]}

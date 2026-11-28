@@ -11,7 +11,6 @@ import {
 import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/theme';
 
-import { DOC_SENT_BLUE, DOC_SENT_BLUE_SOFT } from './documentTokens';
 import { displayStatus, expiresSoon } from './filterDocuments';
 
 type DocStatusBadgeProps = {
@@ -71,7 +70,7 @@ function paletteForStatus(
     case 'draft':
       return { bg: colors.surfaceSunken, fg: colors.textSecondary, dot: colors.textTertiary };
     case 'sent':
-      return { bg: DOC_SENT_BLUE_SOFT, fg: DOC_SENT_BLUE, dot: DOC_SENT_BLUE };
+      return { bg: colors.docSentBlueSoft, fg: colors.docSentBlue, dot: colors.docSentBlue };
     case 'accepted':
       return { bg: colors.accentSoft, fg: colors.accent, dot: colors.accent };
     case 'declined':
@@ -79,9 +78,9 @@ function paletteForStatus(
     case 'unpaid':
       return { bg: colors.warningSoft, fg: colors.warning, dot: colors.warning };
     case 'overdue':
-      return { bg: colors.destructive, fg: colors.textInverse, dot: colors.textInverse, solid: true };
+      return { bg: colors.destructive, fg: colors.docSolidLabel, dot: colors.docSolidLabel, solid: true };
     case 'paid':
-      return { bg: colors.accent, fg: colors.textInverse, dot: colors.textInverse, solid: true };
+      return { bg: colors.accent, fg: colors.accentOnAccent, dot: colors.accentOnAccent, solid: true };
     default:
       return { bg: colors.surfaceSunken, fg: colors.textSecondary, dot: colors.textTertiary };
   }
@@ -106,6 +105,5 @@ const styles = StyleSheet.create({
   },
   solidText: {
     fontWeight: '700',
-    color: '#FFFFFF',
   },
 });

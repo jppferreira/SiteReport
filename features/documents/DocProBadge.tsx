@@ -3,8 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components';
 import { useI18n } from '@/i18n/useI18n';
-
-import { DOC_PRO_BG } from './documentTokens';
+import { useTheme } from '@/theme';
 
 type DocProBadgeProps = {
   compact?: boolean;
@@ -12,10 +11,11 @@ type DocProBadgeProps = {
 
 export function DocProBadge({ compact }: DocProBadgeProps) {
   const { t } = useI18n();
+  const { colors } = useTheme();
 
   return (
-    <View style={[styles.badge, compact ? styles.compact : null, { backgroundColor: DOC_PRO_BG }]}>
-      <Text variant="caption" color="#FFFFFF" style={styles.label}>
+    <View style={[styles.badge, compact ? styles.compact : null, { backgroundColor: colors.docProBg }]}>
+      <Text variant="caption" color={colors.docProFg} style={styles.label}>
         {t('common.proBadge')}
       </Text>
     </View>
