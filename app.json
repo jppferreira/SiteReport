@@ -151,6 +151,12 @@
         "projectId": "0c5e1edf-bf91-458d-8ce4-536a5b644367"
       }
     },
-    "owner": "joaoferreira500"
+    "owner": "joaoferreira500",
+    "updates": {
+      "url": "https://u.expo.dev/0c5e1edf-bf91-458d-8ce4-536a5b644367"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }

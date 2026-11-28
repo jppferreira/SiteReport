@@ -429,4 +429,141 @@ describe('Play subscription mapping', () => {
     expect(info?.hasIntroductoryOffer).toBe(false);
     expect(offerTokenFor(productNoBF, 'annual')).toBe('base-token');
   });
+
+  it('shows base plan price as recurring for single-phase promotional offer (Black Friday one-year intro)', () => {
+    const productWithSinglePhasePromo: PlayProductSnapshot = {
+      id: 'tradesreport.pro',
+      displayPrice: '£29.99',
+      currency: 'GBP',
+      price: 29.99,
+      subscriptionOfferDetailsAndroid: [
+        {
+          basePlanId: 'annual',
+          offerId: 'black-friday-2026',
+          offerToken: 'promo-token',
+          pricingPhases: {
+            pricingPhaseList: [
+              { formattedPrice: '£19.99', priceAmountMicros: '19990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' },
+            ],
+          },
+        },
+        {
+          basePlanId: 'annual',
+          offerId: null,
+          offerToken: 'base-token',
+          pricingPhases: {
+            pricingPhaseList: [{ formattedPrice: '£29.99', priceAmountMicros: '29990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' }],
+          },
+        },
+      ],
+    };
+    
+    const info = productInfoFromPlay(annual, productWithSinglePhasePromo);
+    expect(info?.priceFormatted).toBe('£29.99'); // Base plan price
+    expect(info?.priceValue).toBe(29.99);
+    expect(info?.introductoryPriceFormatted).toBe('£19.99'); // Promo price
+    expect(info?.introductoryPriceValue).toBe(19.99);
+    expect(info?.hasIntroductoryOffer).toBe(true);
+    expect(offerTokenFor(productWithSinglePhasePromo, 'annual')).toBe('promo-token');
+  });
+
+  it('shows base plan price as recurring for single-phase promo using normalized format', () => {
+    const productNormalized: PlayProductSnapshot = {
+      id: 'tradesreport.pro',
+      displayPrice: '£29.99',
+      currency: 'GBP',
+      price: 29.99,
+      subscriptionOffers: [
+        {
+          id: 'black-friday-2026',
+          displayPrice: '£19.99',
+          price: 19.99,
+          currency: 'GBP',
+          offerTokenAndroid: 'promo-token',
+          basePlanIdAndroid: 'annual',
+          pricingPhasesAndroid: {
+            pricingPhaseList: [
+              { formattedPrice: '£19.99', priceAmountMicros: '19990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' },
+            ],
+          },
+        },
+        {
+          id: 'annual',
+          displayPrice: '£29.99',
+          price: 29.99,
+          currency: 'GBP',
+          offerTokenAndroid: 'base-token',
+          basePlanIdAndroid: 'annual',
+          pricingPhasesAndroid: {
+            pricingPhaseList: [{ formattedPrice: '£29.99', priceAmountMicros: '29990000', priceCurrencyCode: 'GBP', billingPeriod: 'P1Y' }],
+          },
+        },
+      ],
+    };
+    
+    const info = productInfoFromPlay(annual, productNormalized);
+    expect(info?.priceFormatted).toBe('£29.99'); // Base plan price
+    expect(info?.priceValue).toBe(29.99);
+    expect(info?.introductoryPriceFormatted).toBe('£19.99'); // Promo price
+    expect(info?.introductoryPriceValue).toBe(19.99);
+    expect(info?.hasIntroductoryOffer).toBe(true);
+    expect(offerTokenFor(productNormalized, 'annual')).toBe('promo-token');
+  });
+
+  it('ignores shared subscription purchase when basePlanId is missing (license tester edge case)', () => {
+    // Reproduces the bug where "Pro · Monthly" showed for an annual purchase because
+    // basePlanId was null/missing and the code incorrectly fell back to 'monthly'.
+    const entitlement = entitlementFromPlay([
+      { productId: 'tradesreport.pro', basePlanId: null, purchaseState: 'purchased', autoRenewing: true },
+    ]);
+    // Should be free (purchase ignored) rather than incorrectly showing as Pro Monthly.
+    expect(entitlement.status).toBe('free');
+  });
+
+  it('correctly identifies annual purchase when basePlanId is present', () => {
+    const entitlement = entitlementFromPlay([
+      { productId: 'tradesreport.pro', basePlanId: 'annual', purchaseState: 'purchased', autoRenewing: true },
+    ]);
+    expect(entitlement.status).toBe('pro');
+    expect(entitlement.planId).toBe('annual');
+  });
+
+  it('correctly identifies monthly purchase when basePlanId is present', () => {
+    const entitlement = entitlementFromPlay([
+      { productId: 'tradesreport.pro', basePlanId: 'monthly', purchaseState: 'purchased', autoRenewing: true },
+    ]);
+    expect(entitlement.status).toBe('pro');
+    expect(entitlement.planId).toBe('monthly');
+  });
+
+  it('grants Pro for purchased annual subscription after acknowledgment (app launch scenario)', () => {
+    // Simulates the scenario where a user completed purchase, app was killed,
+    // then on launch getEntitlement() acknowledges the purchase and grants Pro.
+    // The PlayPurchaseService now re-queries after acknowledgment to pick up this state.
+    const entitlement = entitlementFromPlay([
+      { productId: 'tradesreport.pro', basePlanId: 'annual', purchaseState: 'purchased', autoRenewing: true },
+    ]);
+    expect(entitlement.status).toBe('pro');
+    expect(entitlement.planId).toBe('annual');
+    expect(entitlement.subscriptionState).toBe('active');
+  });
+
+  it('grants Pro for purchased monthly subscription after acknowledgment (app launch scenario)', () => {
+    const entitlement = entitlementFromPlay([
+      { productId: 'tradesreport.pro', basePlanId: 'monthly', purchaseState: 'purchased', autoRenewing: true },
+    ]);
+    expect(entitlement.status).toBe('pro');
+    expect(entitlement.planId).toBe('monthly');
+    expect(entitlement.subscriptionState).toBe('active');
+  });
+
+  it('does not grant Pro for pending purchases (payment not yet confirmed)', () => {
+    // Pending purchases should not grant Pro until they transition to 'purchased'.
+    // This is correct behavior - we wait for payment confirmation.
+    const entitlement = entitlementFromPlay([
+      { productId: 'tradesreport.pro', basePlanId: 'annual', purchaseState: 'pending', autoRenewing: false },
+    ]);
+    expect(entitlement.status).toBe('free');
+    expect(entitlement.subscriptionState).toBe('pending');
+  });
 });

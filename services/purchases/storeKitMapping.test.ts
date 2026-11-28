@@ -159,4 +159,62 @@ describe('StoreKit entitlement mapping', () => {
     expect(annualEmptyMode.introductoryPriceFormatted).toBeUndefined();
     expect(annualEmptyMode.hasIntroductoryOffer).toBe(false);
   });
+
+  it('grants Pro for purchased annual subscription after finishing transaction (app launch scenario)', () => {
+    // Simulates the scenario where a user completed purchase, app was killed,
+    // then on launch getEntitlement() finishes the transaction and grants Pro.
+    // The StoreKitPurchaseService now re-queries after finishing to pick up this state.
+    const entitlement = entitlementFromStoreKit(
+      [
+        {
+          productId: 'tradesreport.pro.annual',
+          purchaseState: 'purchased',
+          expiresAt: Date.parse('2027-11-28T12:00:00.000Z'),
+          autoRenewing: true,
+          inBillingRetry: false,
+        },
+      ],
+      NOW,
+    );
+    expect(entitlement.status).toBe('pro');
+    expect(entitlement.planId).toBe('annual');
+    expect(entitlement.subscriptionState).toBe('active');
+  });
+
+  it('grants Pro for purchased monthly subscription after finishing transaction (app launch scenario)', () => {
+    const entitlement = entitlementFromStoreKit(
+      [
+        {
+          productId: 'tradesreport.pro.monthly',
+          purchaseState: 'purchased',
+          expiresAt: NEXT_MONTH,
+          autoRenewing: true,
+          inBillingRetry: false,
+        },
+      ],
+      NOW,
+    );
+    expect(entitlement.status).toBe('pro');
+    expect(entitlement.planId).toBe('monthly');
+    expect(entitlement.subscriptionState).toBe('active');
+  });
+
+  it('does not grant Pro for Ask to Buy pending purchases (payment not yet approved)', () => {
+    // Pending purchases should not grant Pro until they transition to 'purchased'.
+    // This is correct behavior - we wait for parental approval or payment confirmation.
+    const entitlement = entitlementFromStoreKit(
+      [
+        {
+          productId: 'tradesreport.pro.annual',
+          purchaseState: 'pending',
+          expiresAt: null,
+          autoRenewing: false,
+          inBillingRetry: false,
+        },
+      ],
+      NOW,
+    );
+    expect(entitlement.status).toBe('free');
+    expect(entitlement.subscriptionState).toBe('pending');
+  });
 });

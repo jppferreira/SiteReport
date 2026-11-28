@@ -157,20 +157,39 @@ export class StoreKitPurchaseService implements PurchaseService {
 
   async getEntitlement(): Promise<Entitlement> {
     await this.initialize();
-    const [purchases, activeSubscriptions] = await Promise.all([
+    let [purchases, activeSubscriptions] = await Promise.all([
       getAvailablePurchases({ onlyIncludeActiveItemsIOS: true }),
       getActiveSubscriptions(SUBSCRIPTION_IDS).catch(() => [] as ActiveSubscription[]),
     ]);
+    
+    // Finish any purchased transactions first, then re-query to pick up state changes
+    let finishedAny = false;
+    for (const purchase of purchases) {
+      if (purchase.purchaseState === 'purchased') {
+        logger.info('Finishing App Store transaction on entitlement query', {
+          productIds: productIdsOf(purchase),
+          purchaseState: purchase.purchaseState,
+        });
+        await finishTransaction({ purchase, isConsumable: false }).catch((error: unknown) => {
+          logger.warn('Failed to finish an App Store transaction', { error: String(error) });
+        });
+        finishedAny = true;
+      }
+    }
+    
+    // Re-query after finishing transactions to ensure we have the latest state
+    if (finishedAny) {
+      [purchases, activeSubscriptions] = await Promise.all([
+        getAvailablePurchases({ onlyIncludeActiveItemsIOS: true }),
+        getActiveSubscriptions(SUBSCRIPTION_IDS).catch(() => [] as ActiveSubscription[]),
+      ]);
+    }
+    
     const activeByProduct = new Map(activeSubscriptions.map((subscription) => [subscription.productId, subscription]));
 
     const items: StoreKitOwnedItem[] = [];
     const seen = new Set<string>();
     for (const purchase of purchases) {
-      if (purchase.purchaseState === 'purchased') {
-        await finishTransaction({ purchase, isConsumable: false }).catch((error: unknown) => {
-          logger.warn('Failed to finish an App Store transaction', { error: String(error) });
-        });
-      }
       for (const productId of productIdsOf(purchase)) {
         if (!isAppleProduct(productId)) continue;
         const active = activeByProduct.get(productId);
