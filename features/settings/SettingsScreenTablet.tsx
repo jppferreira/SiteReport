@@ -3,7 +3,8 @@ import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { CrewAvatar, Screen, SplitView, SplitViewEmptyState, StatusBadge, Text } from '@/components';
+import { Button, CrewAvatar, Screen, SplitView, SplitViewEmptyState, StatusBadge, Text } from '@/components';
+import { BrandingDetailPane } from '@/features/settings/BrandingDetailPane';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { useCrewAvatar } from '@/hooks/useCrewAvatar';
 import { useEntitlement } from '@/hooks/useEntitlement';
@@ -110,9 +111,6 @@ export function SettingsScreenTablet() {
               key={section.id}
               onPress={() => {
                 setSelectedSection(section.id);
-                // For now, just navigate to the existing screen
-                // In a full implementation, we'd render detail panes inline
-                router.push(section.route);
               }}
               style={({ pressed }) => [
                 styles.sectionRow,
@@ -140,22 +138,46 @@ export function SettingsScreenTablet() {
     </View>
   );
 
-  const detailPaneContent = selectedSection ? (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl }}>
-      <Text variant="body" color={colors.textSecondary}>
-        {t('settings.selectSectionHint')}
-      </Text>
-      <Text variant="caption" color={colors.textTertiary} style={{ marginTop: spacing.sm, textAlign: 'center' }}>
-        (Full detail panes to be implemented - currently navigates to existing screens)
-      </Text>
-    </View>
-  ) : (
-    <SplitViewEmptyState
-      icon="settings-outline"
-      message={t('settings.iPadEmptyMessage')}
-      hint={t('settings.iPadEmptyHint')}
-    />
-  );
+  const renderDetailPane = () => {
+    if (!selectedSection) {
+      return (
+        <SplitViewEmptyState
+          icon="settings-outline"
+          message={t('settings.iPadEmptyMessage')}
+          hint={t('settings.iPadEmptyHint')}
+        />
+      );
+    }
+
+    // Branding has a special split layout with live preview
+    if (selectedSection === 'branding') {
+      return <BrandingDetailPane />;
+    }
+
+    // For other sections, show a generic detail pane with link to full screen
+    const section = sections.find((s) => s.id === selectedSection);
+    if (!section) return null;
+
+    return (
+      <View style={{ flex: 1, padding: spacing.xl, gap: spacing.lg }}>
+        <View>
+          <Text variant="h2" style={{ marginBottom: spacing.sm }}>
+            {section.label}
+          </Text>
+          <Text variant="body" color={colors.textSecondary}>
+            {t('settings.iPadDetailHint')}
+          </Text>
+        </View>
+        <Button
+          label={t('settings.openFullScreen')}
+          variant="accent"
+          onPress={() => router.push(section.route)}
+        />
+      </View>
+    );
+  };
+
+  const detailPaneContent = renderDetailPane();
 
   return (
     <Screen edges={['top', 'left', 'right']}>
