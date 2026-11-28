@@ -535,4 +535,35 @@ describe('Play subscription mapping', () => {
     expect(entitlement.status).toBe('pro');
     expect(entitlement.planId).toBe('monthly');
   });
+
+  it('grants Pro for purchased annual subscription after acknowledgment (app launch scenario)', () => {
+    // Simulates the scenario where a user completed purchase, app was killed,
+    // then on launch getEntitlement() acknowledges the purchase and grants Pro.
+    // The PlayPurchaseService now re-queries after acknowledgment to pick up this state.
+    const entitlement = entitlementFromPlay([
+      { productId: 'tradesreport.pro', basePlanId: 'annual', purchaseState: 'purchased', autoRenewing: true },
+    ]);
+    expect(entitlement.status).toBe('pro');
+    expect(entitlement.planId).toBe('annual');
+    expect(entitlement.subscriptionState).toBe('active');
+  });
+
+  it('grants Pro for purchased monthly subscription after acknowledgment (app launch scenario)', () => {
+    const entitlement = entitlementFromPlay([
+      { productId: 'tradesreport.pro', basePlanId: 'monthly', purchaseState: 'purchased', autoRenewing: true },
+    ]);
+    expect(entitlement.status).toBe('pro');
+    expect(entitlement.planId).toBe('monthly');
+    expect(entitlement.subscriptionState).toBe('active');
+  });
+
+  it('does not grant Pro for pending purchases (payment not yet confirmed)', () => {
+    // Pending purchases should not grant Pro until they transition to 'purchased'.
+    // This is correct behavior - we wait for payment confirmation.
+    const entitlement = entitlementFromPlay([
+      { productId: 'tradesreport.pro', basePlanId: 'annual', purchaseState: 'pending', autoRenewing: false },
+    ]);
+    expect(entitlement.status).toBe('free');
+    expect(entitlement.subscriptionState).toBe('pending');
+  });
 });

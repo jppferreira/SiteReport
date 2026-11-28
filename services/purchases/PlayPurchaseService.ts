@@ -199,14 +199,13 @@ export class PlayPurchaseService implements PurchaseService {
 
   async getEntitlement(): Promise<Entitlement> {
     await this.initialize();
-    const [purchases, activeSubscriptions] = await Promise.all([
+    let [purchases, activeSubscriptions] = await Promise.all([
       getAvailablePurchases(),
       getActiveSubscriptions(SUBSCRIPTION_PRODUCT_IDS).catch(() => []),
     ]);
-    const activeByProduct = new Map(activeSubscriptions.map((subscription) => [subscription.productId, subscription]));
-
-    const items: PlayOwnedItem[] = [];
-    const seen = new Set<string>();
+    
+    // Acknowledge any unacknowledged purchases first, then re-query to pick up state changes
+    let acknowledgedAny = false;
     for (const purchase of purchases) {
       if ('isSuspendedAndroid' in purchase && purchase.isSuspendedAndroid) continue;
       if (purchase.purchaseState === 'purchased' && 'isAcknowledgedAndroid' in purchase && purchase.isAcknowledgedAndroid === false) {
@@ -217,7 +216,24 @@ export class PlayPurchaseService implements PurchaseService {
         await finishTransaction({ purchase, isConsumable: false }).catch((error: unknown) => {
           logger.warn('Failed to acknowledge an existing Google Play purchase', { error: String(error) });
         });
+        acknowledgedAny = true;
       }
+    }
+    
+    // Re-query after acknowledgment to ensure we have the latest state
+    if (acknowledgedAny) {
+      [purchases, activeSubscriptions] = await Promise.all([
+        getAvailablePurchases(),
+        getActiveSubscriptions(SUBSCRIPTION_PRODUCT_IDS).catch(() => []),
+      ]);
+    }
+    
+    const activeByProduct = new Map(activeSubscriptions.map((subscription) => [subscription.productId, subscription]));
+
+    const items: PlayOwnedItem[] = [];
+    const seen = new Set<string>();
+    for (const purchase of purchases) {
+      if ('isSuspendedAndroid' in purchase && purchase.isSuspendedAndroid) continue;
       const baseState =
         purchase.purchaseState === 'pending' || purchase.purchaseState === 'purchased'
           ? purchase.purchaseState
