@@ -374,7 +374,7 @@ export function ArMeasureSession({ jobId, areaId, capabilities, active, onClose,
             )}
           </View>
         </View>
-      )}
+      ) : null}
 
       <EditMeasurementSheet
         measurement={editing}

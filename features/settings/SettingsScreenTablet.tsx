@@ -4,7 +4,11 @@ import React, { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Button, CrewAvatar, Screen, SplitView, SplitViewEmptyState, StatusBadge, Text } from '@/components';
+import { AppearanceDetailPane } from '@/features/settings/AppearanceDetailPane';
 import { BrandingDetailPane } from '@/features/settings/BrandingDetailPane';
+import { BusinessProfileDetailPane } from '@/features/settings/BusinessProfileDetailPane';
+import { GenericDetailPane } from '@/features/settings/GenericDetailPane';
+import { LanguageDetailPane } from '@/features/settings/LanguageDetailPane';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { useCrewAvatar } from '@/hooks/useCrewAvatar';
 import { useEntitlement } from '@/hooks/useEntitlement';
@@ -149,32 +153,125 @@ export function SettingsScreenTablet() {
       );
     }
 
-    // Branding has a special split layout with live preview
-    if (selectedSection === 'branding') {
-      return <BrandingDetailPane />;
+    switch (selectedSection) {
+      case 'business-profile':
+        return <BusinessProfileDetailPane />;
+      
+      case 'quotes-invoices':
+        return (
+          <GenericDetailPane
+            title={t('settings.quotesInvoices')}
+            subtitle={t('quotesInvoices.subtitle')}
+            items={[
+              { label: t('quotesInvoices.defaultDueDays'), value: `${profile?.defaultDueDays || 14} ${t('common.days')}` },
+            ]}
+            fullScreenHref="/settings/quotes-invoices"
+          />
+        );
+      
+      case 'branding':
+        return <BrandingDetailPane />;
+      
+      case 'avatar':
+        return (
+          <GenericDetailPane
+            title={t('settings.changeAvatar')}
+            subtitle={t('avatar.subtitle')}
+            items={[{ label: t('avatar.current'), value: t('avatar.customAvatar') }]}
+            fullScreenHref="/settings/avatar"
+          />
+        );
+      
+      case 'appearance':
+        return <AppearanceDetailPane />;
+      
+      case 'language':
+        return <LanguageDetailPane />;
+      
+      case 'preferences':
+        return (
+          <GenericDetailPane
+            title={t('settings.preferences')}
+            subtitle={t('preferences.subtitle')}
+            items={[
+              { label: t('preferences.defaultStageLabel'), value: t('preferences.defaultStageValue') },
+            ]}
+            fullScreenHref="/settings/preferences"
+          />
+        );
+      
+      case 'data':
+        return (
+          <GenericDetailPane
+            title={t('settings.dataBackup')}
+            subtitle={t('data.subtitle')}
+            items={[
+              { label: t('data.iCloudStatus'), value: t('data.iCloudStatusValue') },
+            ]}
+            fullScreenHref="/settings/data"
+          />
+        );
+      
+      case 'privacy':
+        return (
+          <GenericDetailPane
+            title={t('settings.privacy')}
+            subtitle={t('privacy.subtitle')}
+            items={[
+              { label: t('privacy.dataCollection'), value: t('privacy.dataCollectionValue') },
+            ]}
+            fullScreenHref="/settings/privacy"
+          />
+        );
+      
+      case 'help':
+        return (
+          <GenericDetailPane
+            title={t('settings.help')}
+            subtitle={t('help.subtitle')}
+            items={[
+              { label: t('help.version'), value: version },
+              { label: t('help.build'), value: build },
+            ]}
+            fullScreenHref="/settings/help"
+          />
+        );
+      
+      case 'about':
+        return (
+          <GenericDetailPane
+            title={t('settings.about')}
+            subtitle={t('about.subtitle')}
+            items={[
+              { label: t('about.version'), value: `${version} (${build})` },
+              { label: t('about.developer'), value: 'Trade Report' },
+            ]}
+            fullScreenHref="/settings/about"
+          />
+        );
+      
+      default:
+        const section = sections.find((s) => s.id === selectedSection);
+        if (!section) return null;
+        
+        return (
+          <View style={{ flex: 1, padding: spacing.xl, gap: spacing.lg }}>
+            <View>
+              <Text variant="h2" style={{ marginBottom: spacing.sm }}>
+                {section.label}
+              </Text>
+              <Text variant="body" color={colors.textSecondary}>
+                {t('settings.iPadDetailHint')}
+              </Text>
+            </View>
+            <Button
+              label={t('settings.openFullScreen')}
+              variant="accent"
+              onPress={() => router.push(section.route)}
+            />
+          </View>
+        );
     }
-
-    // For other sections, show a generic detail pane with link to full screen
-    const section = sections.find((s) => s.id === selectedSection);
-    if (!section) return null;
-
-    return (
-      <View style={{ flex: 1, padding: spacing.xl, gap: spacing.lg }}>
-        <View>
-          <Text variant="h2" style={{ marginBottom: spacing.sm }}>
-            {section.label}
-          </Text>
-          <Text variant="body" color={colors.textSecondary}>
-            {t('settings.iPadDetailHint')}
-          </Text>
-        </View>
-        <Button
-          label={t('settings.openFullScreen')}
-          variant="accent"
-          onPress={() => router.push(section.route)}
-        />
-      </View>
-    );
   };
 
   const detailPaneContent = renderDetailPane();
