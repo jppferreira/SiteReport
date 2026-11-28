@@ -431,23 +431,13 @@ export function JobsScreenTablet() {
   );
 }
 
-// Placeholder components - will be implemented next
+// Detail pane components
 function JobDetailPane({ jobId, onClose }: { jobId: string; onClose: () => void }) {
-  return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text>Job Detail: {jobId}</Text>
-      <Text>(To be implemented)</Text>
-    </View>
-  );
+  return <JobDetailPaneContent jobId={jobId} onClose={onClose} />;
 }
 
 function DocumentDetailPane({ documentId, jobId, onClose }: { documentId: string; jobId: string; onClose: () => void }) {
-  return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text>Document Detail: {documentId}</Text>
-      <Text>(To be implemented)</Text>
-    </View>
-  );
+  return <DocumentDetailPaneContent documentId={documentId} onClose={onClose} />;
 }
 
 type JobsMoneySummaryProps = {
